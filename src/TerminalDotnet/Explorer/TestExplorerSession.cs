@@ -2,7 +2,7 @@ using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Explorer;
 
-public sealed class TestExplorerSession(ITestBackend backend)
+public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? sourceProvider = null)
 {
     public ExplorerState State { get; private set; } =
         new(ExplorerStatus.Loading, [], 0, "Discovering tests...");
@@ -31,12 +31,14 @@ public sealed class TestExplorerSession(ITestBackend backend)
                 Message = $"Running {selected.Tests.Count} tests..."
             };
             var run = await backend.RunAsync(selected.Tests, cancellationToken);
+            var sourceContext = await ReadFailureSourceAsync(run, cancellationToken);
             State = State with
             {
                 Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
                 VisibleNodes = WithRunOutcome(selected.Tests, run),
                 Message = run.Output,
-                LastRun = run
+                LastRun = run,
+                SourceContext = sourceContext
             };
             return;
         }
@@ -50,6 +52,25 @@ public sealed class TestExplorerSession(ITestBackend backend)
         };
 
         State = State with { SelectedIndex = selectedIndex };
+    }
+
+    private async Task<SourceContext?> ReadFailureSourceAsync(
+        TestRun run,
+        CancellationToken cancellationToken)
+    {
+        var failure = run.Results.FirstOrDefault(result =>
+            result.Outcome == TestOutcome.Failed &&
+            result.SourceFile is not null &&
+            result.SourceLine is not null);
+        if (failure is null || sourceProvider is null)
+        {
+            return null;
+        }
+
+        return await sourceProvider.ReadAsync(
+            failure.SourceFile!,
+            failure.SourceLine!.Value,
+            cancellationToken);
     }
 
     private static string ClassName(string fullyQualifiedName)

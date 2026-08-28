@@ -1,4 +1,5 @@
 using TerminalDotnet.Explorer;
+using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 
 var target = FindTarget(Environment.CurrentDirectory);
@@ -9,7 +10,12 @@ if (target is null)
 }
 
 var session = new TestExplorerSession(
-    new DotnetCliTestBackend(new ProcessCommandRunner(), new TemporaryTrxResultStore()));
+    new DotnetCliTestBackend(new ProcessCommandRunner(), new TemporaryTrxResultStore()),
+    new FileSourceProvider());
+var editor = Environment.GetEnvironmentVariable("EDITOR");
+var editorLauncher = string.IsNullOrWhiteSpace(editor)
+    ? null
+    : new EditorLauncher(editor, new ProcessCommandRunner());
 try
 {
     await session.LoadAsync(target);
@@ -27,6 +33,14 @@ while (true)
     if (key.Key is ConsoleKey.Q || key.Key is ConsoleKey.Escape)
     {
         break;
+    }
+
+    if (key.KeyChar == 'o' && editorLauncher is not null && session.State.SourceContext is not null)
+    {
+        await editorLauncher.OpenAsync(
+            session.State.SourceContext.Path,
+            session.State.SourceContext.HighlightLine);
+        continue;
     }
 
     ExplorerCommand? command = key switch
@@ -95,6 +109,18 @@ static void Render(ExplorerState state, string target)
         Console.WriteLine(failure.StackTrace);
     }
 
+    if (state.SourceContext is not null)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"Source: {state.SourceContext.Path}");
+        foreach (var (line, offset) in state.SourceContext.Lines.Select((line, offset) => (line, offset)))
+        {
+            var lineNumber = state.SourceContext.StartLine + offset;
+            var cursor = lineNumber == state.SourceContext.HighlightLine ? ">" : " ";
+            Console.WriteLine($"{cursor} {lineNumber,4} {line}");
+        }
+    }
+
     Console.WriteLine();
-    Console.WriteLine(" ↑/k up   ↓/j down   r/Enter run subtree   q/Esc quit");
+    Console.WriteLine(" ↑/k up   ↓/j down   r/Enter run subtree   o open source   q/Esc quit");
 }

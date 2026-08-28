@@ -139,6 +139,38 @@ public sealed class TestExplorerSessionTests
         Assert.Equal(TestNodeOutcome.Failed, session.State.VisibleNodes[2].Outcome);
     }
 
+    [Fact]
+    public async Task A_failed_run_loads_source_context_around_the_failure_line()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var failure = new TestResult(
+            test,
+            TestOutcome.Failed,
+            TimeSpan.Zero,
+            "Expected total to be 10.",
+            null,
+            "/repo/CartTests.cs",
+            42);
+        var source = new SourceContext(
+            "/repo/CartTests.cs",
+            41,
+            42,
+            ["var cart = new Cart();", "Assert.Equal(10, cart.Total);"]);
+        var session = new TestExplorerSession(
+            new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])),
+            new InMemorySourceProvider(source));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+
+        // Assert
+        Assert.Same(source, session.State.SourceContext);
+    }
+
     private sealed class InMemoryTestBackend(
         IReadOnlyList<TestCase> tests,
         TestRun? run = null) : ITestBackend
@@ -153,5 +185,13 @@ public sealed class TestExplorerSessionTests
             LastRun = tests;
             return Task.FromResult(run ?? new TestRun(true, "Passed"));
         }
+    }
+
+    private sealed class InMemorySourceProvider(SourceContext source) : ISourceProvider
+    {
+        public Task<SourceContext> ReadAsync(
+            string path,
+            int line,
+            CancellationToken cancellationToken = default) => Task.FromResult(source);
     }
 }

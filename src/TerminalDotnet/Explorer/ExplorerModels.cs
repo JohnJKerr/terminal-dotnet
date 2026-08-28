@@ -37,7 +37,8 @@ public sealed record ExplorerState(
     IReadOnlyList<VisibleTestNode> VisibleNodes,
     int SelectedIndex,
     string Message,
-    TestRun? LastRun = null);
+    TestRun? LastRun = null,
+    SourceContext? SourceContext = null);
 
 public abstract record ExplorerCommand
 {
