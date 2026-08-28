@@ -130,9 +130,9 @@ public sealed class DotnetCliTestBackendTests
         // Assert
         Assert.Equal(
         [
-            "/repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll|Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 1)",
-            "/repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll|Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 2)",
-            "/repo/Order.Tests/bin/Debug/net10.0/Order.Tests.dll|Shop.Order.Tests.OrderTests.Submits_order|Submits order"
+            "/repo/Cart.Tests/Cart.Tests.csproj|Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 1)",
+            "/repo/Cart.Tests/Cart.Tests.csproj|Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 2)",
+            "/repo/Order.Tests/Order.Tests.csproj|Shop.Order.Tests.OrderTests.Submits_order|Submits order"
         ], tests.Select(test => $"{test.ProjectPath}|{test.FullyQualifiedName}|{test.DisplayName}"));
     }
 
@@ -158,6 +158,61 @@ public sealed class DotnetCliTestBackendTests
         Assert.Equal(expected, $"{test.FullyQualifiedName}|{test.DisplayName}");
     }
 
+    [Fact]
+    public async Task A_discovered_test_run_targets_the_owning_project_instead_of_the_assembly()
+    {
+        // Arrange
+        var runner = new QueuedCommandRunner(
+            new CommandResult(0, """
+                Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+                The following Tests are available:
+                    Shop.Cart.Tests.CartTests.Adds_item
+                """, ""),
+            new CommandResult(0, "1 test passed", ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var test = (await backend.DiscoverAsync("/repo/Shop.sln")).Single();
+
+        // Act
+        await backend.RunAsync([test]);
+
+        // Assert
+        Assert.Equal("/repo/Cart.Tests/Cart.Tests.csproj", runner.Requests[1].Arguments[1]);
+    }
+
+    [Fact]
+    public async Task Parameterized_results_map_back_to_their_distinct_display_cases()
+    {
+        // Arrange
+        var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
+        var results = new InMemoryTestResultStore("""
+            <TestRun>
+              <Results>
+                <UnitTestResult testId="case-1" testName="Shop.Tests.PriceTests.Accepts_price(value: 1)" outcome="Passed" />
+                <UnitTestResult testId="case-2" testName="Shop.Tests.PriceTests.Accepts_price(value: 2)" outcome="Passed" />
+              </Results>
+              <TestDefinitions>
+                <UnitTest id="case-1"><TestMethod className="Shop.Tests.PriceTests" name="Accepts_price" /></UnitTest>
+                <UnitTest id="case-2"><TestMethod className="Shop.Tests.PriceTests" name="Accepts_price" /></UnitTest>
+              </TestDefinitions>
+            </TestRun>
+            """);
+        var backend = new DotnetCliTestBackend(runner, results);
+
+        // Act
+        var run = await backend.RunAsync(
+        [
+            new TestCase("Shop.Tests.PriceTests.Accepts_price", "Accepts price(value: 1)", "/repo/Price.Tests.csproj"),
+            new TestCase("Shop.Tests.PriceTests.Accepts_price", "Accepts price(value: 2)", "/repo/Price.Tests.csproj")
+        ]);
+
+        // Assert
+        Assert.Equal(
+        [
+            "Accepts price(value: 1)",
+            "Accepts price(value: 2)"
+        ], run.Results.Select(result => result.Test.DisplayName));
+    }
+
     private sealed class InMemoryCommandRunner(CommandResult result) : ICommandRunner
     {
         public CommandRequest? LastRequest { get; private set; }
@@ -175,5 +230,18 @@ public sealed class DotnetCliTestBackendTests
 
         public Task<string> ReadAsync(string path, CancellationToken cancellationToken = default) =>
             Task.FromResult(contents);
+    }
+
+    private sealed class QueuedCommandRunner(params CommandResult[] results) : ICommandRunner
+    {
+        private readonly Queue<CommandResult> remaining = new(results);
+
+        public List<CommandRequest> Requests { get; } = [];
+
+        public Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default)
+        {
+            Requests.Add(request);
+            return Task.FromResult(remaining.Dequeue());
+        }
     }
 }

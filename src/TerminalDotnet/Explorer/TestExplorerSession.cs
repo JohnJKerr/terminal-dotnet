@@ -71,7 +71,22 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
             VisibleNodes = WithOutcome(tests, TestNodeOutcome.Running),
             Message = $"Running {tests.Count} tests..."
         };
-        var run = await backend.RunAsync(tests, cancellationToken);
+        TestRun run;
+        try
+        {
+            run = await backend.RunAsync(tests, cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            State = State with
+            {
+                Status = ExplorerStatus.Ready,
+                VisibleNodes = WithOutcome(tests, TestNodeOutcome.NotRun),
+                Message = "Run cancelled"
+            };
+            return;
+        }
+
         var sourceContext = await ReadFailureSourceAsync(run, cancellationToken);
         State = State with
         {
@@ -129,7 +144,11 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
                 run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed);
         }
 
-        var results = run.Results.ToDictionary(result => result.Test);
+        var results = run.Results
+            .GroupBy(result => result.Test)
+            .ToDictionary(
+                group => group.Key,
+                group => group.FirstOrDefault(result => result.Outcome == TestOutcome.Failed) ?? group.First());
         return State.VisibleNodes
             .Select(node => NodeWithResult(node, results))
             .ToArray();

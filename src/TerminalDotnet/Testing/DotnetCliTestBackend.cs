@@ -71,7 +71,21 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     {
         const string prefix = "Test run for ";
         var framework = line.IndexOf(" (", prefix.Length, StringComparison.Ordinal);
-        return framework < 0 ? null : line[prefix.Length..framework];
+        return framework < 0 ? null : ProjectTarget(line[prefix.Length..framework]);
+    }
+
+    private static string ProjectTarget(string assemblyPath)
+    {
+        var binSegment = $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}";
+        var bin = assemblyPath.IndexOf(binSegment, StringComparison.OrdinalIgnoreCase);
+        if (bin < 0)
+        {
+            return assemblyPath;
+        }
+
+        var projectDirectory = assemblyPath[..bin];
+        var projectName = Path.GetFileNameWithoutExtension(assemblyPath);
+        return Path.Combine(projectDirectory, $"{projectName}.csproj");
     }
 
     public async Task<TestRun> RunAsync(
@@ -148,7 +162,11 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         }
 
         var fullyQualifiedName = $"{definition.Attribute("className")?.Value}.{definition.Attribute("name")?.Value}";
-        var test = requestedTests.FirstOrDefault(candidate => candidate.FullyQualifiedName == fullyQualifiedName);
+        var resultDisplayName = result.Attribute("testName")?.Value.Replace('_', ' ');
+        var test = requestedTests.FirstOrDefault(candidate =>
+                candidate.FullyQualifiedName == fullyQualifiedName &&
+                resultDisplayName?.EndsWith(candidate.DisplayName, StringComparison.Ordinal) == true)
+            ?? requestedTests.FirstOrDefault(candidate => candidate.FullyQualifiedName == fullyQualifiedName);
         if (test is null)
         {
             return null;

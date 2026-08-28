@@ -245,6 +245,30 @@ public sealed class TestExplorerSessionTests
         ], backend.RunHistory.Select(run => $"run:{string.Join(',', run.Select(test => test.FullyQualifiedName))}"));
     }
 
+    [Fact]
+    public async Task Cancelling_an_active_run_restores_a_ready_not_run_state()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var backend = new CancellableTestBackend(test);
+        var session = new TestExplorerSession(backend);
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        using var cancellation = new CancellationTokenSource();
+        var activeRun = session.DispatchAsync(new ExplorerCommand.RunSelected(), cancellation.Token);
+        await backend.Started.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Act
+        await cancellation.CancelAsync();
+        await activeRun;
+
+        // Assert
+        Assert.Equal(
+            (ExplorerStatus.Ready, "Run cancelled", TestNodeOutcome.NotRun),
+            (session.State.Status, session.State.Message, session.State.VisibleNodes[2].Outcome));
+    }
+
     private sealed class InMemoryTestBackend(
         IReadOnlyList<TestCase> tests,
         TestRun? run = null) : ITestBackend
@@ -269,5 +293,23 @@ public sealed class TestExplorerSessionTests
             string path,
             int line,
             CancellationToken cancellationToken = default) => Task.FromResult(source);
+    }
+
+    private sealed class CancellableTestBackend(TestCase test) : ITestBackend
+    {
+        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<IReadOnlyList<TestCase>> DiscoverAsync(
+            string target,
+            CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<TestCase>>([test]);
+
+        public async Task<TestRun> RunAsync(
+            IReadOnlyCollection<TestCase> tests,
+            CancellationToken cancellationToken = default)
+        {
+            Started.SetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return new TestRun(true, "Passed");
+        }
     }
 }

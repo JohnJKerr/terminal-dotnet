@@ -16,6 +16,9 @@ var editor = Environment.GetEnvironmentVariable("EDITOR");
 var editorLauncher = string.IsNullOrWhiteSpace(editor)
     ? null
     : new EditorLauncher(editor, new ProcessCommandRunner());
+Task? activeRun = null;
+CancellationTokenSource? runCancellation = null;
+ExplorerState? renderedState = null;
 try
 {
     await session.LoadAsync(target);
@@ -28,11 +31,43 @@ catch (Exception exception)
 
 while (true)
 {
-    Render(session.State, target);
+    if (!ReferenceEquals(renderedState, session.State))
+    {
+        Render(session.State, target);
+        renderedState = session.State;
+    }
+
+    if (activeRun is not null && activeRun.IsCompleted)
+    {
+        await activeRun;
+        activeRun = null;
+        runCancellation?.Dispose();
+        runCancellation = null;
+        continue;
+    }
+
+    if (activeRun is not null && !Console.KeyAvailable)
+    {
+        await Task.Delay(50);
+        continue;
+    }
+
     var key = Console.ReadKey(intercept: true);
     if (key.Key is ConsoleKey.Q || key.Key is ConsoleKey.Escape)
     {
+        if (runCancellation is not null)
+        {
+            await runCancellation.CancelAsync();
+            await activeRun!;
+        }
+
         break;
+    }
+
+    if (key.KeyChar == 'c' && runCancellation is not null)
+    {
+        await runCancellation.CancelAsync();
+        continue;
     }
 
     if (key.KeyChar == 'o' && editorLauncher is not null && session.State.SourceContext is not null)
@@ -55,6 +90,13 @@ while (true)
 
     if (command is not null)
     {
+        if (command is ExplorerCommand.RunSelected or ExplorerCommand.RerunLast or ExplorerCommand.RerunFailed)
+        {
+            runCancellation = new CancellationTokenSource();
+            activeRun = session.DispatchAsync(command, runCancellation.Token);
+            continue;
+        }
+
         await session.DispatchAsync(command);
     }
 }
@@ -124,5 +166,5 @@ static void Render(ExplorerState state, string target)
     }
 
     Console.WriteLine();
-    Console.WriteLine(" ↑/k up  ↓/j down  r run  R rerun  F failures  o source  q quit");
+    Console.WriteLine(" ↑/k up  ↓/j down  r run  R rerun  F failures  c cancel  o source  q quit");
 }
