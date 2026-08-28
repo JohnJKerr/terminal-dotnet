@@ -27,6 +27,7 @@ Keep terminal framework types and process details outside the explorer module.
 
 - Exercise behavior only through the public interface. Do not expose internals or add `InternalsVisibleTo` for tests.
 - Use xUnit.
+- Keep one assertion call per test. Split distinct observations into separate behavior tests.
 - Delineate non-empty test sections with `// Arrange`, `// Act`, and `// Assert` comments.
 - Name tests as observable behavior. Use `Given{Context}` fixtures and `When{Action}` classes when shared setup makes that structure useful.
 - Replace external processes with an in-memory `ICommandRunner`; the unit suite must not launch live `dotnet test` processes.

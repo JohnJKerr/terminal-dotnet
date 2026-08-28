@@ -21,15 +21,20 @@ public sealed class DotnetCliTestBackendTests
         var tests = await backend.DiscoverAsync("/repo/Shop.sln");
 
         // Assert
-        Assert.Equal("dotnet", runner.LastRequest!.FileName);
-        Assert.Equal(
-            ["test", "/repo/Shop.sln", "--list-tests", "--nologo", "--tl:off"],
-            runner.LastRequest.Arguments);
         Assert.Equal(
         [
-            "Shop.Tests.CartTests.Adds_item",
-            "Shop.Tests.CartTests.Removes_item"
-        ], tests.Select(test => test.FullyQualifiedName));
+            "command:dotnet",
+            "argument:test",
+            "argument:/repo/Shop.sln",
+            "argument:--list-tests",
+            "argument:--nologo",
+            "argument:--tl:off",
+            "test:Shop.Tests.CartTests.Adds_item",
+            "test:Shop.Tests.CartTests.Removes_item"
+        ],
+            [$"command:{runner.LastRequest!.FileName}",
+                .. runner.LastRequest.Arguments.Select(argument => $"argument:{argument}"),
+                .. tests.Select(test => $"test:{test.FullyQualifiedName}")]);
     }
 
     [Fact]
@@ -49,17 +54,20 @@ public sealed class DotnetCliTestBackendTests
         // Assert
         Assert.Equal(
         [
-            "test",
-            "/repo/Shop.sln",
-            "--filter",
-            "FullyQualifiedName=Shop.Tests.CartTests.Adds_item|FullyQualifiedName=Shop.Tests.CartTests.Removes_item",
-            "--logger",
-            "trx;LogFileName=/tmp/terminal-dotnet.trx",
-            "--nologo",
-            "--tl:off"
-        ], runner.LastRequest!.Arguments);
-        Assert.True(run.Passed);
-        Assert.Equal("2 tests passed", run.Output);
+            "argument:test",
+            "argument:/repo/Shop.sln",
+            "argument:--filter",
+            "argument:FullyQualifiedName=Shop.Tests.CartTests.Adds_item|FullyQualifiedName=Shop.Tests.CartTests.Removes_item",
+            "argument:--logger",
+            "argument:trx;LogFileName=/tmp/terminal-dotnet.trx",
+            "argument:--nologo",
+            "argument:--tl:off",
+            "passed:True",
+            "output:2 tests passed"
+        ],
+            [.. runner.LastRequest!.Arguments.Select(argument => $"argument:{argument}"),
+                $"passed:{run.Passed}",
+                $"output:{run.Output}"]);
     }
 
     [Fact]
@@ -95,12 +103,10 @@ public sealed class DotnetCliTestBackendTests
         ]);
 
         // Assert
-        var failure = Assert.Single(run.Results);
-        Assert.Equal(TestOutcome.Failed, failure.Outcome);
-        Assert.Equal("Expected total to be 10.", failure.ErrorMessage);
-        Assert.Equal("/repo/CartTests.cs", failure.SourceFile);
-        Assert.Equal(42, failure.SourceLine);
-        Assert.Equal(TimeSpan.FromMilliseconds(12), failure.Duration);
+        var failure = run.Results.Single();
+        Assert.Equal(
+            (TestOutcome.Failed, "Expected total to be 10.", "/repo/CartTests.cs", 42, TimeSpan.FromMilliseconds(12)),
+            (failure.Outcome, failure.ErrorMessage, failure.SourceFile, failure.SourceLine, failure.Duration));
     }
 
     private sealed class InMemoryCommandRunner(CommandResult result) : ICommandRunner
