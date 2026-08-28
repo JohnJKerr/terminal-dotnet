@@ -29,9 +29,17 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         }
 
         var discovered = false;
+        var testTarget = target;
         var tests = new List<TestCase>();
         foreach (var line in result.StandardOutput.Split('\n'))
         {
+            if (line.StartsWith("Test run for ", StringComparison.Ordinal))
+            {
+                testTarget = TestTarget(line) ?? target;
+                discovered = false;
+                continue;
+            }
+
             if (line.Contains("The following Tests are available:", StringComparison.Ordinal))
             {
                 discovered = true;
@@ -43,14 +51,27 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
                 continue;
             }
 
-            var fullyQualifiedName = line.Trim();
+            var discoveredName = line.Trim();
+            var parameterStart = discoveredName.IndexOf('(');
+            var fullyQualifiedName = parameterStart < 0
+                ? discoveredName
+                : discoveredName[..parameterStart].TrimEnd();
+            var methodSeparator = fullyQualifiedName.LastIndexOf('.');
+            var displayName = discoveredName[(methodSeparator + 1)..].Replace('_', ' ');
             tests.Add(new TestCase(
                 fullyQualifiedName,
-                fullyQualifiedName.Split('.')[^1].Replace('_', ' '),
-                target));
+                displayName,
+                testTarget));
         }
 
         return tests;
+    }
+
+    private static string? TestTarget(string line)
+    {
+        const string prefix = "Test run for ";
+        var framework = line.IndexOf(" (", prefix.Length, StringComparison.Ordinal);
+        return framework < 0 ? null : line[prefix.Length..framework];
     }
 
     public async Task<TestRun> RunAsync(
@@ -127,7 +148,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         }
 
         var fullyQualifiedName = $"{definition.Attribute("className")?.Value}.{definition.Attribute("name")?.Value}";
-        var test = requestedTests.SingleOrDefault(candidate => candidate.FullyQualifiedName == fullyQualifiedName);
+        var test = requestedTests.FirstOrDefault(candidate => candidate.FullyQualifiedName == fullyQualifiedName);
         if (test is null)
         {
             return null;

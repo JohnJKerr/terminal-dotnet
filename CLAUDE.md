@@ -36,3 +36,7 @@ Keep terminal framework types and process details outside the explorer module.
 ## Prototype scope
 
 This remains a throwaway vertical slice for validating tree navigation and subtree execution. Keep files, Git views, persistence, and editor integration out until the interaction is validated.
+
+## Commits
+
+Prefix commit subjects with the feature area, for example: `Run Tests: Ensure single test can run`.

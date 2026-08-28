@@ -109,6 +109,55 @@ public sealed class DotnetCliTestBackendTests
             (failure.Outcome, failure.ErrorMessage, failure.SourceFile, failure.SourceLine, failure.Duration));
     }
 
+    [Fact]
+    public async Task Discovery_retains_test_modules_and_normalizes_parameterized_test_identities()
+    {
+        // Arrange
+        var runner = new InMemoryCommandRunner(new CommandResult(0, """
+            Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+            The following Tests are available:
+                Shop.Cart.Tests.CartTests.Adds_item(value: 1)
+                Shop.Cart.Tests.CartTests.Adds_item(value: 2)
+            Test run for /repo/Order.Tests/bin/Debug/net10.0/Order.Tests.dll (.NETCoreApp,Version=v10.0)
+            The following Tests are available:
+                Shop.Order.Tests.OrderTests.Submits_order
+            """, ""));
+        var backend = new DotnetCliTestBackend(runner);
+
+        // Act
+        var tests = await backend.DiscoverAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal(
+        [
+            "/repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll|Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 1)",
+            "/repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll|Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 2)",
+            "/repo/Order.Tests/bin/Debug/net10.0/Order.Tests.dll|Shop.Order.Tests.OrderTests.Submits_order|Submits order"
+        ], tests.Select(test => $"{test.ProjectPath}|{test.FullyQualifiedName}|{test.DisplayName}"));
+    }
+
+    [Theory]
+    [InlineData("Shop.Tests.PriceTests.Accepts_price(value: 1.50)", "Shop.Tests.PriceTests.Accepts_price|Accepts price(value: 1.50)")]
+    [InlineData("Shop.Tests.PriceTests.Accepts_price(1.50)", "Shop.Tests.PriceTests.Accepts_price|Accepts price(1.50)")]
+    [InlineData("Shop.Tests.PriceTests.Accepts_price (1.50)", "Shop.Tests.PriceTests.Accepts_price|Accepts price (1.50)")]
+    public async Task Discovery_preserves_parameter_values_in_the_display_name(
+        string reportedName,
+        string expected)
+    {
+        // Arrange
+        var runner = new InMemoryCommandRunner(new CommandResult(0, $"""
+            The following Tests are available:
+                {reportedName}
+            """, ""));
+        var backend = new DotnetCliTestBackend(runner);
+
+        // Act
+        var test = (await backend.DiscoverAsync("/repo/Shop.sln")).Single();
+
+        // Assert
+        Assert.Equal(expected, $"{test.FullyQualifiedName}|{test.DisplayName}");
+    }
+
     private sealed class InMemoryCommandRunner(CommandResult result) : ICommandRunner
     {
         public CommandRequest? LastRequest { get; private set; }
