@@ -75,6 +75,7 @@ while (true)
         await editorLauncher.OpenAsync(
             session.State.SourceContext.Path,
             session.State.SourceContext.HighlightLine);
+        renderedState = null;
         continue;
     }
 

@@ -9,6 +9,7 @@ public sealed class EditorLauncher(string editor, ICommandRunner commandRunner)
             new CommandRequest(
                 editor,
                 [$"+{line}", path],
-                Path.GetDirectoryName(Path.GetFullPath(path))!),
+                Path.GetDirectoryName(Path.GetFullPath(path))!,
+                CaptureOutput: false),
             cancellationToken);
 }

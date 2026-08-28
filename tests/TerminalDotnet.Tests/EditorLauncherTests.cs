@@ -18,11 +18,16 @@ public sealed class EditorLauncherTests
 
         // Assert
         Assert.Equal(
-            "code|+42|/repo/CartTests.cs|/repo",
+            "code|+42|/repo/CartTests.cs|/repo|capture:False",
             runner.LastRequest is null
                 ? null
                 : string.Join('|',
-                    [runner.LastRequest.FileName, .. runner.LastRequest.Arguments, runner.LastRequest.WorkingDirectory]));
+                    [
+                        runner.LastRequest.FileName,
+                        .. runner.LastRequest.Arguments,
+                        runner.LastRequest.WorkingDirectory,
+                        $"capture:{runner.LastRequest.CaptureOutput}"
+                    ]));
     }
 
     private sealed class InMemoryCommandRunner : ICommandRunner
