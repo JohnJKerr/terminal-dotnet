@@ -48,6 +48,8 @@ while (true)
         { Key: ConsoleKey.UpArrow } or { KeyChar: 'k' } => new ExplorerCommand.MoveUp(),
         { Key: ConsoleKey.DownArrow } or { KeyChar: 'j' } => new ExplorerCommand.MoveDown(),
         { KeyChar: 'r' } or { Key: ConsoleKey.Enter } => new ExplorerCommand.RunSelected(),
+        { KeyChar: 'R' } => new ExplorerCommand.RerunLast(),
+        { KeyChar: 'F' } => new ExplorerCommand.RerunFailed(),
         _ => null
     };
 
@@ -122,5 +124,5 @@ static void Render(ExplorerState state, string target)
     }
 
     Console.WriteLine();
-    Console.WriteLine(" ↑/k up   ↓/j down   r/Enter run subtree   o open source   q/Esc quit");
+    Console.WriteLine(" ↑/k up  ↓/j down  r run  R rerun  F failures  o source  q quit");
 }

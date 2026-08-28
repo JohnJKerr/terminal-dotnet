@@ -192,11 +192,65 @@ public sealed class TestExplorerSessionTests
         Assert.Same(source, session.State.SourceContext);
     }
 
+    [Fact]
+    public async Task Rerunning_the_last_run_uses_the_previous_tests_after_selection_moves()
+    {
+        // Arrange
+        var backend = new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj")
+        ]);
+        var session = new TestExplorerSession(backend);
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RerunLast());
+
+        // Assert
+        Assert.Equal(
+        [
+            "Shop.Tests.CartTests.Adds_item",
+            "Shop.Tests.CartTests.Adds_item"
+        ], backend.RunHistory.SelectMany(run => run).Select(test => test.FullyQualifiedName));
+    }
+
+    [Fact]
+    public async Task Rerunning_failures_runs_only_tests_that_failed_in_the_previous_run()
+    {
+        // Arrange
+        var failed = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var passed = new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj");
+        var failure = new TestResult(failed, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null);
+        var backend = new InMemoryTestBackend(
+            [failed, passed],
+            new TestRun(false, "1 test failed", [failure]));
+        var session = new TestExplorerSession(backend);
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RerunFailed());
+
+        // Assert
+        Assert.Equal(
+        [
+            "run:Shop.Tests.CartTests.Adds_item,Shop.Tests.CartTests.Removes_item",
+            "run:Shop.Tests.CartTests.Adds_item"
+        ], backend.RunHistory.Select(run => $"run:{string.Join(',', run.Select(test => test.FullyQualifiedName))}"));
+    }
+
     private sealed class InMemoryTestBackend(
         IReadOnlyList<TestCase> tests,
         TestRun? run = null) : ITestBackend
     {
         public IReadOnlyCollection<TestCase> LastRun { get; private set; } = [];
+        public List<IReadOnlyCollection<TestCase>> RunHistory { get; } = [];
 
         public Task<IReadOnlyList<TestCase>> DiscoverAsync(string target, CancellationToken cancellationToken = default) =>
             Task.FromResult(tests);
@@ -204,6 +258,7 @@ public sealed class TestExplorerSessionTests
         public Task<TestRun> RunAsync(IReadOnlyCollection<TestCase> tests, CancellationToken cancellationToken = default)
         {
             LastRun = tests;
+            RunHistory.Add(tests);
             return Task.FromResult(run ?? new TestRun(true, "Passed"));
         }
     }

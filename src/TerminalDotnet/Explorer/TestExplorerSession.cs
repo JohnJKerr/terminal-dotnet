@@ -4,6 +4,8 @@ namespace TerminalDotnet.Explorer;
 
 public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? sourceProvider = null)
 {
+    private IReadOnlyList<TestCase> lastRunTests = [];
+
     public ExplorerState State { get; private set; } =
         new(ExplorerStatus.Loading, [], 0, "Discovering tests...");
 
@@ -23,23 +25,27 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
     {
         if (command is ExplorerCommand.RunSelected && State.VisibleNodes.Count > 0)
         {
-            var selected = State.VisibleNodes[State.SelectedIndex];
-            State = State with
+            await RunTestsAsync(State.VisibleNodes[State.SelectedIndex].Tests, cancellationToken);
+            return;
+        }
+
+        if (command is ExplorerCommand.RerunLast && lastRunTests.Count > 0)
+        {
+            await RunTestsAsync(lastRunTests, cancellationToken);
+            return;
+        }
+
+        if (command is ExplorerCommand.RerunFailed)
+        {
+            var failedTests = State.LastRun?.Results
+                .Where(result => result.Outcome == TestOutcome.Failed)
+                .Select(result => result.Test)
+                .ToArray() ?? [];
+            if (failedTests.Length > 0)
             {
-                Status = ExplorerStatus.Running,
-                VisibleNodes = WithOutcome(selected.Tests, TestNodeOutcome.Running),
-                Message = $"Running {selected.Tests.Count} tests..."
-            };
-            var run = await backend.RunAsync(selected.Tests, cancellationToken);
-            var sourceContext = await ReadFailureSourceAsync(run, cancellationToken);
-            State = State with
-            {
-                Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
-                VisibleNodes = WithRunOutcome(selected.Tests, run),
-                Message = run.Output,
-                LastRun = run,
-                SourceContext = sourceContext
-            };
+                await RunTestsAsync(failedTests, cancellationToken);
+            }
+
             return;
         }
 
@@ -52,6 +58,29 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
         };
 
         State = State with { SelectedIndex = selectedIndex };
+    }
+
+    private async Task RunTestsAsync(
+        IReadOnlyList<TestCase> tests,
+        CancellationToken cancellationToken)
+    {
+        lastRunTests = tests;
+        State = State with
+        {
+            Status = ExplorerStatus.Running,
+            VisibleNodes = WithOutcome(tests, TestNodeOutcome.Running),
+            Message = $"Running {tests.Count} tests..."
+        };
+        var run = await backend.RunAsync(tests, cancellationToken);
+        var sourceContext = await ReadFailureSourceAsync(run, cancellationToken);
+        State = State with
+        {
+            Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
+            VisibleNodes = WithRunOutcome(tests, run),
+            Message = run.Output,
+            LastRun = run,
+            SourceContext = sourceContext
+        };
     }
 
     private async Task<SourceContext?> ReadFailureSourceAsync(

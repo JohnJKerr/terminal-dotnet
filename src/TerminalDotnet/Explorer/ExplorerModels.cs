@@ -45,4 +45,6 @@ public abstract record ExplorerCommand
     public sealed record MoveUp : ExplorerCommand;
     public sealed record MoveDown : ExplorerCommand;
     public sealed record RunSelected : ExplorerCommand;
+    public sealed record RerunLast : ExplorerCommand;
+    public sealed record RerunFailed : ExplorerCommand;
 }
