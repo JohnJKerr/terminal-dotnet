@@ -66,7 +66,14 @@ static void Render(ExplorerState state, string target)
     {
         var node = state.VisibleNodes[index];
         var cursor = index == state.SelectedIndex ? ">" : " ";
-        var marker = node.Kind == TestNodeKind.Test ? "•" : "▼";
+        var marker = node.Outcome switch
+        {
+            TestNodeOutcome.Running => "◌",
+            TestNodeOutcome.Passed => "✓",
+            TestNodeOutcome.Failed => "✗",
+            _ when node.Kind == TestNodeKind.Test => "•",
+            _ => "▼"
+        };
         Console.WriteLine($"{cursor} {new string(' ', node.Depth * 2)}{marker} {node.Name}");
     }
 

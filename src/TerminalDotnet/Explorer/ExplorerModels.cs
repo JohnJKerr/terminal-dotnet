@@ -17,11 +17,20 @@ public enum TestNodeKind
     Test
 }
 
+public enum TestNodeOutcome
+{
+    NotRun,
+    Running,
+    Passed,
+    Failed
+}
+
 public sealed record VisibleTestNode(
     int Depth,
     TestNodeKind Kind,
     string Name,
-    IReadOnlyList<TestCase> Tests);
+    IReadOnlyList<TestCase> Tests,
+    TestNodeOutcome Outcome = TestNodeOutcome.NotRun);
 
 public sealed record ExplorerState(
     ExplorerStatus Status,

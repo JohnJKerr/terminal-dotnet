@@ -84,6 +84,34 @@ public sealed class TestExplorerSessionTests
         Assert.Equal("Passed", session.State.Message);
     }
 
+    [Fact]
+    public async Task A_completed_run_retains_outcomes_on_the_selected_subtree()
+    {
+        // Arrange
+        var backend = new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+        ]);
+        var session = new TestExplorerSession(backend);
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+
+        // Assert
+        Assert.Equal(
+        [
+            TestNodeOutcome.Passed,
+            TestNodeOutcome.Passed,
+            TestNodeOutcome.Passed
+        ], session.State.VisibleNodes.Skip(1).Take(3).Select(node => node.Outcome));
+        Assert.Equal(TestNodeOutcome.NotRun, session.State.VisibleNodes[0].Outcome);
+        Assert.Equal(TestNodeOutcome.NotRun, session.State.VisibleNodes[4].Outcome);
+    }
+
     private sealed class InMemoryTestBackend(IReadOnlyList<TestCase> tests) : ITestBackend
     {
         public IReadOnlyCollection<TestCase> LastRun { get; private set; } = [];

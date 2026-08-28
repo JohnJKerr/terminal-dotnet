@@ -24,11 +24,19 @@ public sealed class TestExplorerSession(ITestBackend backend)
         if (command is ExplorerCommand.RunSelected && State.VisibleNodes.Count > 0)
         {
             var selected = State.VisibleNodes[State.SelectedIndex];
-            State = State with { Status = ExplorerStatus.Running, Message = $"Running {selected.Tests.Count} tests..." };
+            State = State with
+            {
+                Status = ExplorerStatus.Running,
+                VisibleNodes = WithOutcome(selected.Tests, TestNodeOutcome.Running),
+                Message = $"Running {selected.Tests.Count} tests..."
+            };
             var run = await backend.RunAsync(selected.Tests, cancellationToken);
             State = State with
             {
                 Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
+                VisibleNodes = WithOutcome(
+                    selected.Tests,
+                    run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed),
                 Message = run.Output
             };
             return;
@@ -49,6 +57,16 @@ public sealed class TestExplorerSession(ITestBackend backend)
     {
         var parts = fullyQualifiedName.Split('.');
         return parts.Length > 1 ? parts[^2] : fullyQualifiedName;
+    }
+
+    private IReadOnlyList<VisibleTestNode> WithOutcome(
+        IReadOnlyList<TestCase> selectedTests,
+        TestNodeOutcome outcome)
+    {
+        var selected = selectedTests.ToHashSet();
+        return State.VisibleNodes
+            .Select(node => node.Tests.All(selected.Contains) ? node with { Outcome = outcome } : node)
+            .ToArray();
     }
 
     private static IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project)
