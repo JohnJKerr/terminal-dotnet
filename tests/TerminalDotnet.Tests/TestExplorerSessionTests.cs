@@ -112,7 +112,36 @@ public sealed class TestExplorerSessionTests
         Assert.Equal(TestNodeOutcome.NotRun, session.State.VisibleNodes[4].Outcome);
     }
 
-    private sealed class InMemoryTestBackend(IReadOnlyList<TestCase> tests) : ITestBackend
+    [Fact]
+    public async Task A_failed_run_exposes_the_selected_tests_failure_details()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var failure = new TestResult(
+            test,
+            TestOutcome.Failed,
+            TimeSpan.FromMilliseconds(12),
+            "Expected total to be 10.",
+            "at CartTests.Adds_item() in /repo/CartTests.cs:line 42",
+            "/repo/CartTests.cs",
+            42);
+        var backend = new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure]));
+        var session = new TestExplorerSession(backend);
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+
+        // Assert
+        Assert.Same(failure, Assert.Single(session.State.LastRun!.Results));
+        Assert.Equal(TestNodeOutcome.Failed, session.State.VisibleNodes[2].Outcome);
+    }
+
+    private sealed class InMemoryTestBackend(
+        IReadOnlyList<TestCase> tests,
+        TestRun? run = null) : ITestBackend
     {
         public IReadOnlyCollection<TestCase> LastRun { get; private set; } = [];
 
@@ -122,7 +151,7 @@ public sealed class TestExplorerSessionTests
         public Task<TestRun> RunAsync(IReadOnlyCollection<TestCase> tests, CancellationToken cancellationToken = default)
         {
             LastRun = tests;
-            return Task.FromResult(new TestRun(true, "Passed"));
+            return Task.FromResult(run ?? new TestRun(true, "Passed"));
         }
     }
 }

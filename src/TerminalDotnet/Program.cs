@@ -8,7 +8,8 @@ if (target is null)
     return 1;
 }
 
-var session = new TestExplorerSession(new DotnetCliTestBackend(new ProcessCommandRunner()));
+var session = new TestExplorerSession(
+    new DotnetCliTestBackend(new ProcessCommandRunner(), new TemporaryTrxResultStore()));
 try
 {
     await session.LoadAsync(target);
@@ -80,6 +81,20 @@ static void Render(ExplorerState state, string target)
     Console.WriteLine();
     Console.WriteLine(new string('─', Math.Max(20, Math.Min(Console.WindowWidth - 1, 80))));
     Console.WriteLine(state.Message);
+    var failure = state.LastRun?.Results.FirstOrDefault(result => result.Outcome == TestOutcome.Failed);
+    if (failure is not null)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"✗ {failure.Test.DisplayName} ({failure.Duration.TotalMilliseconds:0} ms)");
+        Console.WriteLine(failure.ErrorMessage);
+        if (failure.SourceFile is not null)
+        {
+            Console.WriteLine($"{failure.SourceFile}:{failure.SourceLine}");
+        }
+
+        Console.WriteLine(failure.StackTrace);
+    }
+
     Console.WriteLine();
     Console.WriteLine(" ↑/k up   ↓/j down   r/Enter run subtree   q/Esc quit");
 }

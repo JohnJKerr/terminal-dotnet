@@ -34,10 +34,9 @@ public sealed class TestExplorerSession(ITestBackend backend)
             State = State with
             {
                 Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
-                VisibleNodes = WithOutcome(
-                    selected.Tests,
-                    run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed),
-                Message = run.Output
+                VisibleNodes = WithRunOutcome(selected.Tests, run),
+                Message = run.Output,
+                LastRun = run
             };
             return;
         }
@@ -67,6 +66,42 @@ public sealed class TestExplorerSession(ITestBackend backend)
         return State.VisibleNodes
             .Select(node => node.Tests.All(selected.Contains) ? node with { Outcome = outcome } : node)
             .ToArray();
+    }
+
+    private IReadOnlyList<VisibleTestNode> WithRunOutcome(
+        IReadOnlyList<TestCase> selectedTests,
+        TestRun run)
+    {
+        if (run.Results.Count == 0)
+        {
+            return WithOutcome(
+                selectedTests,
+                run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed);
+        }
+
+        var results = run.Results.ToDictionary(result => result.Test);
+        return State.VisibleNodes
+            .Select(node => NodeWithResult(node, results))
+            .ToArray();
+    }
+
+    private static VisibleTestNode NodeWithResult(
+        VisibleTestNode node,
+        IReadOnlyDictionary<TestCase, TestResult> results)
+    {
+        var nodeResults = node.Tests
+            .Where(results.ContainsKey)
+            .Select(test => results[test])
+            .ToArray();
+        if (nodeResults.Length != node.Tests.Count)
+        {
+            return node;
+        }
+
+        var outcome = nodeResults.Any(result => result.Outcome == TestOutcome.Failed)
+            ? TestNodeOutcome.Failed
+            : TestNodeOutcome.Passed;
+        return node with { Outcome = outcome };
     }
 
     private static IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project)
