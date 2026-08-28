@@ -10,23 +10,11 @@ public sealed class TestExplorerSession(ITestBackend backend)
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
         var tests = await backend.DiscoverAsync(target, cancellationToken);
-        var nodes = new List<VisibleTestNode>();
-
-        foreach (var project in tests.GroupBy(test => test.ProjectPath).OrderBy(group => group.Key))
-        {
-            nodes.Add(new VisibleTestNode(
-                0,
-                TestNodeKind.Project,
-                Path.GetFileNameWithoutExtension(project.Key),
-                project.ToArray()));
-
-            foreach (var testClass in project.GroupBy(test => ClassName(test.FullyQualifiedName)).OrderBy(group => group.Key))
-            {
-                nodes.Add(new VisibleTestNode(1, TestNodeKind.Class, testClass.Key, testClass.ToArray()));
-                nodes.AddRange(testClass.OrderBy(test => test.DisplayName).Select(test =>
-                    new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test])));
-            }
-        }
+        var nodes = tests
+            .GroupBy(test => test.ProjectPath)
+            .OrderBy(project => project.Key)
+            .SelectMany(ProjectNodes)
+            .ToArray();
 
         State = new ExplorerState(ExplorerStatus.Ready, nodes, 0, $"Ready — {tests.Count} tests discovered");
     }
@@ -61,5 +49,32 @@ public sealed class TestExplorerSession(ITestBackend backend)
     {
         var parts = fullyQualifiedName.Split('.');
         return parts.Length > 1 ? parts[^2] : fullyQualifiedName;
+    }
+
+    private static IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project)
+    {
+        var projectTests = project.ToArray();
+        var projectNode = new VisibleTestNode(
+            0,
+            TestNodeKind.Project,
+            Path.GetFileNameWithoutExtension(project.Key),
+            projectTests);
+        var classNodes = projectTests
+            .GroupBy(test => ClassName(test.FullyQualifiedName))
+            .OrderBy(testClass => testClass.Key)
+            .SelectMany(ClassNodes);
+
+        return [projectNode, .. classNodes];
+    }
+
+    private static IEnumerable<VisibleTestNode> ClassNodes(IGrouping<string, TestCase> testClass)
+    {
+        var classTests = testClass.ToArray();
+        var classNode = new VisibleTestNode(1, TestNodeKind.Class, testClass.Key, classTests);
+        var testNodes = classTests
+            .OrderBy(test => test.DisplayName)
+            .Select(test => new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test]));
+
+        return [classNode, .. testNodes];
     }
 }

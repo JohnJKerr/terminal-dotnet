@@ -8,6 +8,7 @@ public sealed class DotnetCliTestBackendTests
     [Fact]
     public async Task Discovery_issues_a_list_tests_command_and_returns_the_reported_tests()
     {
+        // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, """
             Determining projects to restore...
             The following Tests are available:
@@ -16,8 +17,10 @@ public sealed class DotnetCliTestBackendTests
             """, ""));
         var backend = new DotnetCliTestBackend(runner);
 
+        // Act
         var tests = await backend.DiscoverAsync("/repo/Shop.sln");
 
+        // Assert
         Assert.Equal("dotnet", runner.LastRequest!.FileName);
         Assert.Equal(
             ["test", "/repo/Shop.sln", "--list-tests", "--nologo", "--tl:off"],
@@ -32,15 +35,18 @@ public sealed class DotnetCliTestBackendTests
     [Fact]
     public async Task Running_tests_issues_one_exact_filter_command()
     {
+        // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
         var backend = new DotnetCliTestBackend(runner);
 
+        // Act
         var run = await backend.RunAsync(
         [
             new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.sln"),
             new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "/repo/Shop.sln")
         ]);
 
+        // Assert
         Assert.Equal(
         [
             "test",

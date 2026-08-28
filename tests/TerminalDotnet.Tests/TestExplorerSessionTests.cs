@@ -9,6 +9,7 @@ public sealed class TestExplorerSessionTests
     [Fact]
     public async Task Loading_discovered_tests_produces_a_project_class_and_test_tree()
     {
+        // Arrange
         var backend = new InMemoryTestBackend(
         [
             new TestCase("Shop.Tests.CartTests.Adding_item_updates_total", "Adding item updates total", "Shop.Tests.csproj"),
@@ -16,8 +17,10 @@ public sealed class TestExplorerSessionTests
         ]);
         var session = new TestExplorerSession(backend);
 
+        // Act
         await session.LoadAsync("/repo/Shop.sln");
 
+        // Assert
         Assert.Equal(
         [
             (0, TestNodeKind.Project, "Shop.Tests"),
@@ -32,24 +35,32 @@ public sealed class TestExplorerSessionTests
     [Fact]
     public async Task Moving_selection_stays_within_the_visible_tree()
     {
+        // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
         [
             new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")
         ]));
         await session.LoadAsync("/repo/Shop.sln");
 
+        // Act
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Assert
         Assert.Equal(2, session.State.SelectedIndex);
 
+        // Act
         await session.DispatchAsync(new ExplorerCommand.MoveUp());
+
+        // Assert
         Assert.Equal(1, session.State.SelectedIndex);
     }
 
     [Fact]
     public async Task Running_a_class_runs_every_test_beneath_the_selected_class()
     {
+        // Arrange
         var backend = new InMemoryTestBackend(
         [
             new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
@@ -60,8 +71,10 @@ public sealed class TestExplorerSessionTests
         await session.LoadAsync("/repo/Shop.sln");
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
+        // Act
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
 
+        // Assert
         Assert.Equal(
         [
             "Shop.Tests.CartTests.Adds_item",
