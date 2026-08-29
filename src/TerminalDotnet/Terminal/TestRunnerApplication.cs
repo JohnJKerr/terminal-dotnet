@@ -20,6 +20,7 @@ public sealed class TestRunnerApplication(
 
     private CancellationTokenSource? runCancellation;
     private IReadOnlyList<OutputLine> outputLines = [];
+    private IReadOnlyList<VisibleTestNode> testNodes = [];
     private bool openSourceRequested;
 
     public void Run()
@@ -72,16 +73,21 @@ public sealed class TestRunnerApplication(
         return panels;
     }
 
-    private static ListView Tests() => new()
+    private ListView Tests()
     {
-        Title = "Tests",
-        X = WorkspaceX,
-        Y = ContentInset,
-        Width = Dim.Fill(ContentInset),
-        Height = Dim.Percent(55),
-        ShowMarks = false,
-        KeystrokeNavigator = null
-    };
+        var tests = new ListView
+        {
+            Title = "Tests",
+            X = WorkspaceX,
+            Y = ContentInset,
+            Width = Dim.Fill(ContentInset),
+            Height = Dim.Percent(55),
+            ShowMarks = false,
+            KeystrokeNavigator = null
+        };
+        tests.RowRender += (_, args) => ColorTestRow(tests, args);
+        return tests;
+    }
 
     private ListView Output(ListView tests)
     {
@@ -211,6 +217,7 @@ public sealed class TestRunnerApplication(
     {
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Target}";
+        testNodes = snapshot.Tests;
         tests.SetSource(new ObservableCollection<string>(snapshot.Tests.Select(TestRow)));
         outputLines = snapshot.OutputLines;
         output.SetSource(new ObservableCollection<string>(snapshot.OutputLines.Select(line => line.Text)));
@@ -218,6 +225,23 @@ public sealed class TestRunnerApplication(
         {
             tests.SelectedItem = snapshot.SelectedIndex;
         }
+    }
+
+    private void ColorTestRow(ListView tests, ListViewRowEventArgs args)
+    {
+        if (args.Row >= testNodes.Count || tests.IsSelectedOrMarked(args.Row))
+        {
+            return;
+        }
+
+        var foreground = testNodes[args.Row].Outcome switch
+        {
+            TestNodeOutcome.Failed => Color.BrightRed,
+            TestNodeOutcome.Passed => Color.BrightGreen,
+            TestNodeOutcome.Running => Color.BrightCyan,
+            _ => Color.White
+        };
+        SetRowForeground(tests, args, foreground);
     }
 
     private void ColorOutputRow(ListView output, ListViewRowEventArgs args)
@@ -240,7 +264,15 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        var background = output.GetAttributeForRole(VisualRole.Normal).Background;
+        SetRowForeground(output, args, foreground);
+    }
+
+    private static void SetRowForeground(
+        ListView list,
+        ListViewRowEventArgs args,
+        Color foreground)
+    {
+        var background = list.GetAttributeForRole(VisualRole.Normal).Background;
         args.RowAttribute = new global::Terminal.Gui.Drawing.Attribute(foreground, background);
     }
 
