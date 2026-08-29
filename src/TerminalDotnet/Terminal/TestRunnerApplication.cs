@@ -24,8 +24,9 @@ public sealed class TestRunnerApplication(
         var panels = Panels();
         var tests = Tests();
         var output = Output(tests);
+        var shortcuts = Shortcuts();
 
-        window.Add(panels, tests, output);
+        window.Add(panels, tests, output, shortcuts);
         application.Keyboard.KeyDown += (_, key) =>
             HandleKey(application, key, panels, tests, output);
         Render(tests, output);
@@ -44,7 +45,7 @@ public sealed class TestRunnerApplication(
             X = 0,
             Y = 0,
             Width = 20,
-            Height = Dim.Fill(),
+            Height = Dim.Fill(1),
             ShowMarks = false,
             KeystrokeNavigator = null
         };
@@ -70,9 +71,18 @@ public sealed class TestRunnerApplication(
         X = 20,
         Y = Pos.Bottom(tests),
         Width = Dim.Fill(),
-        Height = Dim.Fill(),
+        Height = Dim.Fill(1),
         ShowMarks = false,
         KeystrokeNavigator = null
+    };
+
+    private static Label Shortcuts() => new()
+    {
+        X = 1,
+        Y = Pos.AnchorEnd(1),
+        Width = Dim.Fill(1),
+        Height = 1,
+        Text = "Tab pane  ↑/k up  ↓/j down  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
     };
 
     private void HandleKey(
