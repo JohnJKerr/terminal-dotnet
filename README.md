@@ -27,6 +27,17 @@ dotnet test /path/to/terminal-dotnet/TerminalDotnet.slnx -m:1
 
 The .NET command line is behind `ICommandRunner`. Tests use an in-memory implementation and do not launch live test runs.
 
+## Failure-to-source demo
+
+The demo project is deliberately excluded from the solution because its test always fails. From its directory, launch the prototype with an editor configured:
+
+```bash
+cd /path/to/terminal-dotnet/samples/TerminalDotnet.DemoTests
+EDITOR=nvim dotnet run --project ../../src/TerminalDotnet
+```
+
+Run `Opening a failure in the configured editor`, wait for the `Source:` excerpt, then press `o`. The editor should open `FailureDemoTests.cs` at the failing assertion.
+
 ## Prototype limits
 
 - Parses the human-readable VSTest `--list-tests` output.
