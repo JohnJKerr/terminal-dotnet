@@ -30,6 +30,25 @@ public sealed class EditorLauncherTests
                     ]));
     }
 
+    [Fact]
+    public async Task Opening_source_preserves_arguments_from_the_configured_editor_command()
+    {
+        // Arrange
+        var runner = new InMemoryCommandRunner();
+        var launcher = new EditorLauncher("omarchy-launch-editor --inline", runner);
+
+        // Act
+        await launcher.OpenAsync("/repo/CartTests.cs", 42);
+
+        // Assert
+        Assert.Equal(
+            "omarchy-launch-editor|--inline|+42|/repo/CartTests.cs",
+            runner.LastRequest is null
+                ? null
+                : string.Join('|',
+                    [runner.LastRequest.FileName, .. runner.LastRequest.Arguments]));
+    }
+
     private sealed class InMemoryCommandRunner : ICommandRunner
     {
         public CommandRequest? LastRequest { get; private set; }
