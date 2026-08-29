@@ -20,7 +20,7 @@ public class WhenCreatingATestPanelSnapshot
         var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
 
         // Assert
-        Assert.Equal(["first line", "second line"], snapshot.OutputLines);
+        Assert.Equal(["first line", "second line"], snapshot.OutputLines.Select(line => line.Text));
     }
 
     [Fact]
@@ -38,5 +38,42 @@ public class WhenCreatingATestPanelSnapshot
 
         // Assert
         Assert.Equal(4, snapshot.SelectedIndex);
+    }
+
+    [Fact]
+    public void It_marks_failed_output_as_failure()
+    {
+        // Arrange
+        var state = new ExplorerState(
+            ExplorerStatus.Failed,
+            [],
+            0,
+            "Failed! - Failed: 1, Passed: 0");
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal(OutputLineTone.Failure, snapshot.OutputLines[0].Tone);
+    }
+
+    [Theory]
+    [InlineData("Passed! - Passed: 12", OutputLineTone.Success)]
+    [InlineData("Skipped: 2", OutputLineTone.Skipped)]
+    [InlineData("Running 12 tests...", OutputLineTone.Status)]
+    public void It_marks_test_status_output_with_its_tone(string output, OutputLineTone expectedTone)
+    {
+        // Arrange
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [],
+            0,
+            output);
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal(expectedTone, snapshot.OutputLines[0].Tone);
     }
 }

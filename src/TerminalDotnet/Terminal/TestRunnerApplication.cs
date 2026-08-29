@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using Terminal.Gui.App;
+using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
@@ -18,6 +19,7 @@ public sealed class TestRunnerApplication(
     private const int WorkspaceX = ContentInset + PanelWidth + 1;
 
     private CancellationTokenSource? runCancellation;
+    private IReadOnlyList<OutputLine> outputLines = [];
     private bool openSourceRequested;
 
     public void Run()
@@ -81,16 +83,21 @@ public sealed class TestRunnerApplication(
         KeystrokeNavigator = null
     };
 
-    private static ListView Output(ListView tests) => new()
+    private ListView Output(ListView tests)
     {
-        Title = "Execution Output",
-        X = WorkspaceX,
-        Y = Pos.Bottom(tests),
-        Width = Dim.Fill(ContentInset),
-        Height = Dim.Fill(2),
-        ShowMarks = false,
-        KeystrokeNavigator = null
-    };
+        var output = new ListView
+        {
+            Title = "Execution Output",
+            X = WorkspaceX,
+            Y = Pos.Bottom(tests),
+            Width = Dim.Fill(ContentInset),
+            Height = Dim.Fill(2),
+            ShowMarks = false,
+            KeystrokeNavigator = null
+        };
+        output.RowRender += (_, args) => ColorOutputRow(output, args);
+        return output;
+    }
 
     private static Label Shortcuts() => new()
     {
@@ -205,11 +212,36 @@ public sealed class TestRunnerApplication(
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Target}";
         tests.SetSource(new ObservableCollection<string>(snapshot.Tests.Select(TestRow)));
-        output.SetSource(new ObservableCollection<string>(snapshot.OutputLines));
+        outputLines = snapshot.OutputLines;
+        output.SetSource(new ObservableCollection<string>(snapshot.OutputLines.Select(line => line.Text)));
         if (snapshot.Tests.Count > 0)
         {
             tests.SelectedItem = snapshot.SelectedIndex;
         }
+    }
+
+    private void ColorOutputRow(ListView output, ListViewRowEventArgs args)
+    {
+        if (args.Row >= outputLines.Count || output.IsSelectedOrMarked(args.Row))
+        {
+            return;
+        }
+
+        var foreground = outputLines[args.Row].Tone switch
+        {
+            OutputLineTone.Failure => Color.BrightRed,
+            OutputLineTone.Success => Color.BrightGreen,
+            OutputLineTone.Skipped => Color.BrightYellow,
+            OutputLineTone.Status => Color.BrightCyan,
+            _ => Color.None
+        };
+        if (foreground == Color.None)
+        {
+            return;
+        }
+
+        var background = output.GetAttributeForRole(VisualRole.Normal).Background;
+        args.RowAttribute = new global::Terminal.Gui.Drawing.Attribute(foreground, background);
     }
 
     private static string TestRow(VisibleTestNode node)
