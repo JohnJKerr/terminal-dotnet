@@ -13,6 +13,10 @@ public sealed class TestRunnerApplication(
     string target,
     EditorLauncher? editorLauncher = null)
 {
+    private const int ContentInset = 1;
+    private const int PanelWidth = 20;
+    private const int WorkspaceX = ContentInset + PanelWidth + 1;
+
     private CancellationTokenSource? runCancellation;
     private bool openSourceRequested;
 
@@ -30,7 +34,7 @@ public sealed class TestRunnerApplication(
         using IApplication application = Application.Create();
         application.Init();
 
-        using var window = new Window { Title = $"TerminalDotnet — {Path.GetFileName(target)}" };
+        using var window = new Window { Title = "terminal-dotnet" };
         var panels = Panels();
         var tests = Tests();
         var output = Output(tests);
@@ -54,10 +58,10 @@ public sealed class TestRunnerApplication(
         var panels = new ListView
         {
             Title = "Panels",
-            X = 0,
-            Y = 0,
-            Width = 20,
-            Height = Dim.Fill(1),
+            X = ContentInset,
+            Y = ContentInset,
+            Width = PanelWidth,
+            Height = Dim.Fill(2),
             ShowMarks = false,
             KeystrokeNavigator = null
         };
@@ -69,9 +73,9 @@ public sealed class TestRunnerApplication(
     private static ListView Tests() => new()
     {
         Title = "Tests",
-        X = 20,
-        Y = 0,
-        Width = Dim.Fill(),
+        X = WorkspaceX,
+        Y = ContentInset,
+        Width = Dim.Fill(ContentInset),
         Height = Dim.Percent(55),
         ShowMarks = false,
         KeystrokeNavigator = null
@@ -80,10 +84,10 @@ public sealed class TestRunnerApplication(
     private static ListView Output(ListView tests) => new()
     {
         Title = "Execution Output",
-        X = 20,
+        X = WorkspaceX,
         Y = Pos.Bottom(tests),
-        Width = Dim.Fill(),
-        Height = Dim.Fill(1),
+        Width = Dim.Fill(ContentInset),
+        Height = Dim.Fill(2),
         ShowMarks = false,
         KeystrokeNavigator = null
     };
