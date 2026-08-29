@@ -14,9 +14,19 @@ public sealed class TestRunnerApplication(
     EditorLauncher? editorLauncher = null)
 {
     private CancellationTokenSource? runCancellation;
+    private bool openSourceRequested;
 
     public void Run()
     {
+        while (RunTerminal())
+        {
+            OpenSource();
+        }
+    }
+
+    private bool RunTerminal()
+    {
+        openSourceRequested = false;
         using IApplication application = Application.Create();
         application.Init();
 
@@ -35,6 +45,8 @@ public sealed class TestRunnerApplication(
         application.Run(window);
         runCancellation?.Cancel();
         runCancellation?.Dispose();
+        runCancellation = null;
+        return openSourceRequested;
     }
 
     private static ListView Panels()
@@ -99,6 +111,13 @@ public sealed class TestRunnerApplication(
             return;
         }
 
+        if (Is(key, KeyCode.O))
+        {
+            key.Handled = true;
+            RequestOpenSource(application);
+            return;
+        }
+
         if (panels.HasFocus && Is(key, KeyCode.Enter))
         {
             key.Handled = true;
@@ -128,12 +147,6 @@ public sealed class TestRunnerApplication(
         ListView tests,
         ListView output)
     {
-        if (command is OpenSource)
-        {
-            _ = OpenSourceAsync(application);
-            return;
-        }
-
         if (command is CancelRun)
         {
             runCancellation?.Cancel();
@@ -164,17 +177,23 @@ public sealed class TestRunnerApplication(
         application.Invoke(() => Render(tests, output));
     }
 
-    private async Task OpenSourceAsync(IApplication application)
+    private void RequestOpenSource(IApplication application)
     {
         if (editorLauncher is null || session.State.SourceContext is null)
         {
             return;
         }
 
-        await editorLauncher.OpenAsync(
-            session.State.SourceContext.Path,
-            session.State.SourceContext.HighlightLine);
-        application.Invoke(() => { });
+        openSourceRequested = true;
+        application.RequestStop();
+    }
+
+    private void OpenSource()
+    {
+        var source = session.State.SourceContext!;
+        editorLauncher!.OpenAsync(
+            source.Path,
+            source.HighlightLine).GetAwaiter().GetResult();
     }
 
     private void Render(ListView tests, ListView output)
@@ -251,7 +270,7 @@ public sealed class TestRunnerApplication(
             return new CancelRun();
         }
 
-        return Is(key, KeyCode.O) ? new OpenSource() : null;
+        return null;
     }
 
     private static bool RunsTests(ExplorerCommand command) => command is
@@ -262,8 +281,6 @@ public sealed class TestRunnerApplication(
     private static bool Is(Key key, KeyCode keyCode) => key.NoShift.KeyCode == keyCode;
 
     private record TerminalCommand(ExplorerCommand? ExplorerCommand = null);
-
-    private sealed record OpenSource : TerminalCommand;
 
     private sealed record CancelRun : TerminalCommand;
 }
