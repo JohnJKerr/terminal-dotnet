@@ -29,14 +29,26 @@ The .NET command line is behind `ICommandRunner`. Tests use an in-memory impleme
 
 ## Failure-to-source demo
 
-The demo project is deliberately excluded from the solution because its test always fails. From its directory, launch the prototype with an editor configured:
+The demo project is deliberately excluded from the solution because its test always fails. From the repository root, restore the demo project once:
 
 ```bash
-cd /path/to/terminal-dotnet/samples/TerminalDotnet.DemoTests
-EDITOR=nvim dotnet run --project ../../src/TerminalDotnet
+dotnet restore samples/TerminalDotnet.DemoTests/TerminalDotnet.DemoTests.csproj
+```
+
+Then launch the prototype from the demo directory with an editor configured:
+
+```bash
+cd samples/TerminalDotnet.DemoTests
+EDITOR=nvim dotnet run --project ../../src/TerminalDotnet/TerminalDotnet.csproj
 ```
 
 Run `Opening a failure in the configured editor`, wait for the `Source:` excerpt, then press `o`. The editor should open `FailureDemoTests.cs` at the failing assertion.
+
+To verify the fixture without the terminal UI, run this from the repository root. A failed test at `FailureDemoTests.cs:line 11` is the expected result:
+
+```bash
+dotnet test samples/TerminalDotnet.DemoTests/TerminalDotnet.DemoTests.csproj -m:1
+```
 
 ## Prototype limits
 
