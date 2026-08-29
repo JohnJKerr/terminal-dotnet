@@ -20,17 +20,15 @@ public sealed class TestRunnerApplication(
         using IApplication application = Application.Create();
         application.Init();
 
-        using var window = new Window { Title = "TerminalDotnet" };
-        var header = Header();
+        using var window = new Window { Title = $"TerminalDotnet — {Path.GetFileName(target)}" };
         var panels = Panels();
         var tests = Tests();
-        var result = Result();
-        var output = Output(result);
-        var help = Help();
+        var output = Output(tests);
 
-        window.Add(header, panels, tests, result, output, help);
-        application.Keyboard.KeyDown += (_, key) => HandleKey(application, key, tests, result, output, header);
-        Render(tests, result, output, header);
+        window.Add(panels, tests, output);
+        application.Keyboard.KeyDown += (_, key) =>
+            HandleKey(application, key, panels, tests, output);
+        Render(tests, output);
         tests.SetFocus();
 
         application.Run(window);
@@ -38,59 +36,88 @@ public sealed class TestRunnerApplication(
         runCancellation?.Dispose();
     }
 
-    private static Label Header() => new()
+    private static ListView Panels()
     {
-        X = 1, Y = 0, Width = Dim.Fill(1), Height = 1
-    };
-
-    private static FrameView Panels() => new()
-    {
-        Title = "Panels", X = 0, Y = 1, Width = 14, Height = Dim.Fill(2), Text = "\n  2 Tests"
-    };
+        var panels = new ListView
+        {
+            Title = "Panels",
+            X = 0,
+            Y = 0,
+            Width = 20,
+            Height = Dim.Fill(),
+            ShowMarks = false,
+            KeystrokeNavigator = null
+        };
+        panels.SetSource(new ObservableCollection<string>(["Tests"]));
+        panels.SelectedItem = 0;
+        return panels;
+    }
 
     private static ListView Tests() => new()
     {
-        Title = "Tests", X = 14, Y = 1, Width = 36, Height = Dim.Fill(2),
-        ShowMarks = false, KeystrokeNavigator = null
+        Title = "Tests",
+        X = 20,
+        Y = 0,
+        Width = Dim.Fill(),
+        Height = Dim.Percent(55),
+        ShowMarks = false,
+        KeystrokeNavigator = null
     };
 
-    private static FrameView Result() => new()
+    private static ListView Output(ListView tests) => new()
     {
-        Title = "Result", X = 50, Y = 1, Width = Dim.Fill(), Height = Dim.Percent(50)
-    };
-
-    private static FrameView Output(FrameView result) => new()
-    {
-        Title = "Output", X = 50, Y = Pos.Bottom(result), Width = Dim.Fill(), Height = Dim.Fill(2)
-    };
-
-    private static Label Help() => new()
-    {
-        X = 1, Y = Pos.AnchorEnd(1), Width = Dim.Fill(1), Height = 1,
-        Text = "↑/k up  ↓/j down  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
+        Title = "Execution Output",
+        X = 20,
+        Y = Pos.Bottom(tests),
+        Width = Dim.Fill(),
+        Height = Dim.Fill(),
+        ShowMarks = false,
+        KeystrokeNavigator = null
     };
 
     private void HandleKey(
         IApplication application,
         Key key,
+        ListView panels,
         ListView tests,
-        FrameView result,
-        FrameView output,
-        Label header)
+        ListView output)
     {
-        var command = CommandFor(key);
+        if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))
+        {
+            key.Handled = true;
+            application.RequestStop();
+            return;
+        }
+
+        if (panels.HasFocus && Is(key, KeyCode.Enter))
+        {
+            key.Handled = true;
+            tests.SetFocus();
+            return;
+        }
+
+        if (output.HasFocus && ScrollOutput(key, output))
+        {
+            key.Handled = true;
+            return;
+        }
+
+        var command = tests.HasFocus ? CommandFor(key) : null;
         if (command is null)
         {
-            if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))
-            {
-                key.Handled = true;
-                application.RequestStop();
-            }
-
             return;
         }
 
         key.Handled = true;
+        HandleCommand(application, command, tests, output);
+    }
+
+    private void HandleCommand(
+        IApplication application,
+        TerminalCommand command,
+        ListView tests,
+        ListView output)
+    {
         if (command is OpenSource)
         {
             _ = OpenSourceAsync(application);
@@ -103,33 +130,28 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        _ = DispatchAsync(application, command.ExplorerCommand!, tests, result, output, header);
+        _ = DispatchAsync(application, command.ExplorerCommand!, tests, output);
     }
 
     private async Task DispatchAsync(
         IApplication application,
         ExplorerCommand command,
         ListView tests,
-        FrameView result,
-        FrameView output,
-        Label header)
+        ListView output)
     {
-        var runsTests = command is ExplorerCommand.RunSelected or
-            ExplorerCommand.RerunLast or
-            ExplorerCommand.RerunFailed;
-        if (!runsTests)
+        if (!RunsTests(command))
         {
             await session.DispatchAsync(command);
-            Render(tests, result, output, header);
+            Render(tests, output);
             return;
         }
 
         runCancellation?.Dispose();
         runCancellation = new CancellationTokenSource();
         var run = session.DispatchAsync(command, runCancellation.Token);
-        Render(tests, result, output, header);
+        Render(tests, output);
         await run;
-        application.Invoke(() => Render(tests, result, output, header));
+        application.Invoke(() => Render(tests, output));
     }
 
     private async Task OpenSourceAsync(IApplication application)
@@ -145,19 +167,16 @@ public sealed class TestRunnerApplication(
         application.Invoke(() => { });
     }
 
-    private void Render(ListView tests, FrameView result, FrameView output, Label header)
+    private void Render(ListView tests, ListView output)
     {
         var snapshot = TestPanelSnapshot.From(session.State, target);
-        header.Text = $"sidecar │ Tests › {snapshot.Target}";
+        tests.Title = $"Tests — {snapshot.Target}";
         tests.SetSource(new ObservableCollection<string>(snapshot.Tests.Select(TestRow)));
+        output.SetSource(new ObservableCollection<string>(snapshot.OutputLines));
         if (snapshot.Tests.Count > 0)
         {
             tests.SelectedItem = snapshot.SelectedIndex;
         }
-
-        result.Title = snapshot.Result.Title;
-        result.Text = $"{snapshot.Result.Summary}\n\n{snapshot.Result.Details}";
-        output.Text = snapshot.Output;
     }
 
     private static string TestRow(VisibleTestNode node)
@@ -171,6 +190,23 @@ public sealed class TestRunnerApplication(
             _ => "▼"
         };
         return $"{new string(' ', node.Depth * 2)}{marker} {node.Name}";
+    }
+
+    private static bool ScrollOutput(Key key, ListView output)
+    {
+        if (Is(key, KeyCode.K))
+        {
+            output.MoveUp(false);
+            return true;
+        }
+
+        if (Is(key, KeyCode.J))
+        {
+            output.MoveDown(false);
+            return true;
+        }
+
+        return false;
     }
 
     private static TerminalCommand? CommandFor(Key key)
@@ -207,6 +243,11 @@ public sealed class TestRunnerApplication(
 
         return Is(key, KeyCode.O) ? new OpenSource() : null;
     }
+
+    private static bool RunsTests(ExplorerCommand command) => command is
+        ExplorerCommand.RunSelected or
+        ExplorerCommand.RerunLast or
+        ExplorerCommand.RerunFailed;
 
     private static bool Is(Key key, KeyCode keyCode) => key.NoShift.KeyCode == keyCode;
 
