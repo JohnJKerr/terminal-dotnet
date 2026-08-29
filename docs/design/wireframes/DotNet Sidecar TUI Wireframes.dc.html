@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#f0eee9;font-family:system-ui,sans-serif}a{color:#2a78d6}a:hover{color:#1a4f92}.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}.dv-card{max-width:100%;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}.dv-next{margin:22px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}</style></helmet>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">TUI sidecar — panel geometry, nav model, search, status bar. 120×34, all frames.</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Stacked accordion nav — lazygit-literal. Four sections always visible left, focused one expands in place; detail on the right.</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">Idle / launch — no detail opened yet, all sections collapsed</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:560px">
+  <div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 4px;color:#8a8fa0;font-size:11px"><span><span style="color:#56a8d6">■</span> sidecar</span><span>Acme.Orders.sln · <span style="color:#6cc36b">main</span> · 3 agents idle</span></div>
+  <div style="flex:1;display:flex;gap:6px;min-height:0">
+    <div style="width:290px;display:flex;flex-direction:column;gap:6px">
+      <div style="flex:1;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#1b1d25;color:#56a8d6;border-bottom:1px solid #2f3340;font-size:11px"><span>[1] Solution</span><span style="color:#6f7484">7 projects</span></div>
+        <div style="padding:4px 0"><div style="padding:0 8px;height:18px;display:flex;gap:6px;background:#243044;color:#e6e8ee">▸ Acme.Orders.Domain<span style="margin-left:auto;color:#d9a54a">●2</span></div><div style="padding:0 8px;height:18px;display:flex;gap:6px">▸ Acme.Orders.Api</div><div style="padding:0 8px;height:18px;display:flex;gap:6px">▸ Acme.Orders.Infra<span style="margin-left:auto;color:#d9a54a">●1</span></div><div style="padding:0 8px;height:18px;color:#6f7484">  … 4 more</div></div>
+      </div>
+      <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px"><span>[2] Tests</span><span><span style="color:#6cc36b">184</span>/<span style="color:#e06c75">3</span>/<span style="color:#6f7484">12</span></span></div>
+        <div style="padding:4px 0"><div style="padding:0 8px;height:18px;display:flex;gap:6px">▸ <span style="color:#e06c75">✗</span> Orders.Domain.Tests</div><div style="padding:0 8px;height:18px;display:flex;gap:6px">▸ <span style="color:#6cc36b">✓</span> Orders.Api.Tests</div><div style="padding:0 8px;height:18px;color:#6f7484">  … 3 more</div></div>
+      </div>
+      <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px"><span>[3] Changeset</span><span><span style="color:#6cc36b">+214</span> <span style="color:#e06c75">−87</span></span></div>
+        <div style="padding:4px 0"><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#d9a54a">M</span> OrderService.cs<span style="margin-left:auto"><span style="color:#6cc36b">+61</span> <span style="color:#e06c75">−12</span></span></div><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#6cc36b">A</span> RefundPolicy.cs<span style="margin-left:auto"><span style="color:#6cc36b">+88</span></span></div><div style="padding:0 8px;height:18px;color:#6f7484">  … 6 more</div></div>
+      </div>
+      <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px"><span>[4] Changelog</span><span style="color:#6f7484">main ↑2</span></div>
+        <div style="padding:4px 0"><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#d9a54a">a3f9c21</span> refund policy split</div><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#d9a54a">7b21e04</span> agent: extract validator</div><div style="padding:0 8px;height:18px;color:#6f7484">  … 812 more</div></div>
+      </div>
+    </div>
+    <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#6f7484"><div style="color:#8a8fa0">no panel open</div><div style="font-size:11px">1–4 focus a section · / search within it · ↵ open right</div><div style="font-size:11px;color:#4d5260">agent activity lands in Changeset and Tests automatically</div></div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span><span style="color:#56a8d6">1-4</span> section</span><span><span style="color:#56a8d6">/</span> search</span><span><span style="color:#56a8d6">↵</span> open</span><span><span style="color:#56a8d6">␣</span> expand</span><span><span style="color:#56a8d6">r</span> run tests</span><span><span style="color:#56a8d6">:</span> palette</span><span><span style="color:#56a8d6">?</span> keys</span><span><span style="color:#56a8d6">q</span> quit</span></div>
+</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">Solution explorer expanded — section takes the full left column, siblings shrink to title rows</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:560px">
+  <div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 4px;color:#8a8fa0;font-size:11px"><span><span style="color:#56a8d6">■</span> sidecar</span><span>Acme.Orders.sln · <span style="color:#6cc36b">main</span></span></div>
+  <div style="flex:1;display:flex;gap:6px;min-height:0">
+    <div style="width:290px;display:flex;flex-direction:column;gap:6px;min-height:0">
+      <div style="flex:1;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden;min-height:0"><div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#1b1d25;color:#56a8d6;border-bottom:1px solid #2f3340;font-size:11px"><span>[1] Solution</span><span style="color:#6f7484">7 projects</span></div>
+        <div style="height:20px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid #23252e;color:#6f7484;font-size:11px">/ <span style="color:#c9ccd6">order</span><span style="color:#3d4150">▏</span><span style="margin-left:auto">11 hits</span></div>
+        <div style="padding:4px 0;overflow:hidden">
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">▾ Acme.Orders.Domain<span style="margin-left:auto;color:#d9a54a">●2</span></div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ ▾ Orders/</div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px;background:#243044;color:#e6e8ee">│ │ <span style="color:#d9a54a">M</span> <span style="color:#56a8d6;text-decoration:underline">Order</span>Service.cs<span style="margin-left:auto"><span style="color:#6cc36b">+61</span> <span style="color:#e06c75">−12</span></span></div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ │ &nbsp; <span style="color:#56a8d6;text-decoration:underline">Order</span>.cs</div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ │ <span style="color:#6cc36b">A</span> RefundPolicy.cs<span style="margin-left:auto;color:#6cc36b">+88</span></div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ ▸ Abstractions/</div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">▾ Acme.<span style="color:#56a8d6;text-decoration:underline">Order</span>s.Api<span style="margin-left:auto;color:#6f7484">42</span></div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ ▸ Controllers/</div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ ▸ Program.cs</div>
+          <div style="padding:0 8px;height:18px;display:flex;gap:6px">▸ Acme.<span style="color:#56a8d6;text-decoration:underline">Order</span>s.Infra<span style="margin-left:auto;color:#d9a54a">●1</span></div>
+          <div style="padding:0 8px;height:18px;color:#6f7484">▸ … 4 more projects</div>
+        </div>
+      </div>
+      <div style="height:20px;border:1px solid #2f3340;display:flex;align-items:center;justify-content:space-between;padding:0 8px;color:#8a8fa0;font-size:11px;background:#1b1d25"><span>[2] Tests</span><span><span style="color:#6cc36b">184</span>/<span style="color:#e06c75">3</span></span></div>
+      <div style="height:20px;border:1px solid #2f3340;display:flex;align-items:center;justify-content:space-between;padding:0 8px;color:#8a8fa0;font-size:11px;background:#1b1d25"><span>[3] Changeset</span><span><span style="color:#6cc36b">+214</span> <span style="color:#e06c75">−87</span></span></div>
+      <div style="height:20px;border:1px solid #2f3340;display:flex;align-items:center;justify-content:space-between;padding:0 8px;color:#8a8fa0;font-size:11px;background:#1b1d25"><span>[4] Changelog</span><span style="color:#6f7484">main ↑2</span></div>
+    </div>
+    <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px">Preview · Orders/OrderService.cs<span style="margin-left:auto;color:#6f7484">↵ open · read-only</span></div>
+      <div style="padding:4px 0;color:#7c8090"><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  1</span> namespace Acme.Orders.Domain.Orders;</div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  2</span></div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  3</span> public sealed class OrderService(IOrderRepository repo, IRefundPolicy policy)</div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  4</span> {</div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  5</span>     public async Task&lt;Result&gt; RefundAsync(OrderId id, CancellationToken ct)</div><div style="padding:0 8px;height:18px;color:#4d5260">    …</div></div>
+    </div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span style="color:#56a8d6">SOLUTION · filter "order"</span><span><span style="color:#56a8d6">↵</span> open file</span><span><span style="color:#56a8d6">␣</span> fold</span><span><span style="color:#56a8d6">esc</span> clear filter</span><span><span style="color:#56a8d6">d</span> diff file</span><span><span style="color:#56a8d6">t</span> tests for file</span><span><span style="color:#56a8d6">?</span> keys</span></div>
+</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">File open in code view — solution collapses to a rail, breadcrumb carries the path back</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:560px">
+  <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 4px;color:#8a8fa0;font-size:11px"><span><span style="color:#56a8d6">■</span> sidecar</span><span style="color:#3d4150">│</span><span><span style="color:#6f7484">Solution ›</span> Acme.Orders.Domain <span style="color:#6f7484">›</span> Orders <span style="color:#6f7484">›</span> <span style="color:#e6e8ee">OrderService.cs</span> <span style="color:#6f7484">›</span> <span style="color:#c586c0">code</span></span><span style="margin-left:auto"><span style="color:#d9a54a">● modified</span></span></div>
+  <div style="flex:1;display:flex;gap:6px;min-height:0">
+    <div style="width:26px;border:1px solid #2f3340;background:#1b1d25;display:flex;flex-direction:column;align-items:center;padding:6px 0;gap:10px;font-size:11px;color:#6f7484"><span style="color:#56a8d6">1</span><span>2</span><span>3</span><span>4</span></div>
+    <div style="flex:1;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden">
+      <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px">OrderService.cs<span style="color:#3d4150">│</span><span style="color:#6f7484">C# · 214 lines · LF · utf-8</span><span style="margin-left:auto"><span style="color:#e06c75">✗ 1 test</span> <span style="color:#3d4150">│</span> <span style="color:#6cc36b">+61</span> <span style="color:#e06c75">−87</span></span></div>
+      <div style="padding:4px 0;overflow:hidden">
+        <div style="padding:0 8px;height:18px"><span style="color:#4d5260">  38</span>     public async Task&lt;Result&gt; RefundAsync(OrderId id, CancellationToken ct)</div>
+        <div style="padding:0 8px;height:18px"><span style="color:#4d5260">  39</span>     {</div>
+        <div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#6cc36b">  40</span> <span style="color:#6cc36b">▏</span>        var order = await repo.GetAsync(id, ct);</div>
+        <div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#6cc36b">  41</span> <span style="color:#6cc36b">▏</span>        if (order is null) return Result.NotFound(id);</div>
+        <div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#6cc36b">  42</span> <span style="color:#6cc36b">▏</span></div>
+        <div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#6cc36b">  43</span> <span style="color:#6cc36b">▏</span>        var verdict = policy.Evaluate(order, DateTimeOffset.UtcNow);</div>
+        <div style="padding:0 8px;height:18px;background:#232733;color:#e6e8ee;border-left:2px solid #56a8d6;padding-left:6px"><span style="color:#8a8fa0">  44</span>          if (!verdict.Allowed) return Result.Rejected(verdict.Reason);</div>
+        <div style="padding:0 8px;height:18px"><span style="color:#4d5260">  45</span></div>
+        <div style="padding:0 8px;height:18px"><span style="color:#4d5260">  46</span>         order.MarkRefunded(verdict.Amount);</div>
+        <div style="padding:0 8px;height:18px"><span style="color:#4d5260">  47</span>         await repo.SaveAsync(order, ct);</div>
+        <div style="padding:0 8px;height:18px"><span style="color:#4d5260">  48</span>         return Result.Ok(order.Id);</div>
+        <div style="padding:0 8px;height:18px"><span style="color:#4d5260">  49</span>     }</div>
+        <div style="padding:0 8px;height:18px;color:#4d5260">     …</div>
+        <div style="padding:0 8px;height:18px;color:#e06c75">  ⚠ CS8604 possible null reference argument · line 43</div>
+      </div>
+    </div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span style="color:#c586c0">CODE · OrderService.cs</span><span><span style="color:#56a8d6">d</span> diff</span><span><span style="color:#56a8d6">t</span> tests</span><span><span style="color:#56a8d6">g</span> blame</span><span><span style="color:#56a8d6">]e</span> next error</span><span><span style="color:#56a8d6">esc</span> back to Solution</span><span><span style="color:#56a8d6">⌫</span> breadcrumb up</span></div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Three columns — narrow section rail, master list, detail. Nav never moves; search sits in the list column.</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">Test explorer, suite selected — detail splits vertically into result + output</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:560px">
+  <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 4px;color:#8a8fa0;font-size:11px"><span><span style="color:#56a8d6">■</span> sidecar</span><span style="color:#3d4150">│</span><span><span style="color:#6f7484">Tests ›</span> Orders.Domain.Tests <span style="color:#6f7484">›</span> <span style="color:#e6e8ee">RefundPolicyTests</span></span><span style="margin-left:auto">run 14s ago · <span style="color:#6cc36b">184</span> <span style="color:#e06c75">3</span> <span style="color:#6f7484">12</span></span></div>
+  <div style="flex:1;display:flex;gap:6px;min-height:0">
+    <div style="width:120px;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden;background:#1b1d25"><div style="height:20px;padding:0 8px;color:#6f7484;font-size:11px;border-bottom:1px solid #2f3340;display:flex;align-items:center">PANELS</div>
+      <div style="padding:4px 0"><div style="padding:0 8px;height:18px">1 Solution</div><div style="padding:0 8px;height:18px;background:#243044;color:#e6e8ee;border-left:2px solid #56a8d6;padding-left:6px">2 Tests</div><div style="padding:0 8px;height:18px">3 Changeset</div><div style="padding:0 8px;height:18px">4 Changelog</div></div>
+      <div style="margin-top:auto;padding:6px 8px;color:#4d5260;font-size:10px;line-height:14px">agents write<br>here, not<br>a panel</div>
+    </div>
+    <div style="width:280px;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px"><span>Tests</span><span style="color:#6f7484">199</span></div>
+      <div style="height:20px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid #23252e;color:#6f7484;font-size:11px">/ <span style="color:#c9ccd6">refund</span><span style="color:#3d4150">▏</span><span style="margin-left:auto">6 hits</span></div>
+      <div style="padding:4px 0">
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">▾ <span style="color:#e06c75">✗</span> Orders.Domain.Tests</div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px;background:#243044;color:#e6e8ee">│ ▾ <span style="color:#e06c75">✗</span> <span style="color:#56a8d6;text-decoration:underline">Refund</span>PolicyTests<span style="margin-left:auto;color:#6f7484">9</span></div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ │ <span style="color:#6cc36b">✓</span> Allows_within_window<span style="margin-left:auto;color:#4d5260">4ms</span></div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ │ <span style="color:#e06c75">✗</span> <span style="color:#e06c75">Rejects_after_window</span><span style="margin-left:auto;color:#4d5260">7ms</span></div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ │ <span style="color:#e06c75">✗</span> <span style="color:#e06c75">Caps_partial_amount</span><span style="margin-left:auto;color:#4d5260">3ms</span></div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ │ <span style="color:#6f7484">○ Skips_when_flagged</span></div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ ▸ <span style="color:#6cc36b">✓</span> OrderServiceTests<span style="margin-left:auto;color:#6f7484">31</span></div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">▸ <span style="color:#6cc36b">✓</span> Orders.Api.Tests<span style="margin-left:auto;color:#6f7484">88</span></div>
+        <div style="padding:0 8px;height:18px;color:#6f7484">▸ … 3 more</div>
+      </div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
+      <div style="flex:0 0 40%;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px">Result · RefundPolicyTests<span style="margin-left:auto"><span style="color:#6cc36b">7 passed</span> <span style="color:#e06c75">2 failed</span> <span style="color:#6f7484">1 skipped</span></span></div>
+        <div style="padding:4px 0"><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#e06c75">✗ Rejects_after_window</span><span style="margin-left:auto;color:#6f7484">Assert.False() Failure</span></div><div style="padding:0 8px;height:18px;color:#7c8090">    Expected: False · Actual: True</div><div style="padding:0 8px;height:18px;color:#7c8090">    at RefundPolicy.Evaluate(<span style="color:#56a8d6;text-decoration:underline">RefundPolicy.cs:43</span>)</div><div style="padding:0 8px;height:18px;color:#7c8090">    at RefundPolicyTests.Rejects_after_window(<span style="color:#56a8d6;text-decoration:underline">:28</span>)</div></div>
+      </div>
+      <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px">Output<span style="margin-left:auto;color:#6f7484">dotnet test --filter RefundPolicyTests</span></div>
+        <div style="padding:4px 0;color:#7c8090"><div style="padding:0 8px;height:18px">Determining projects to restore…</div><div style="padding:0 8px;height:18px">Acme.Orders.Domain → bin/Debug/net9.0/…</div><div style="padding:0 8px;height:18px"><span style="color:#d9a54a">warn</span> CS8604 OrderService.cs(43,17)</div><div style="padding:0 8px;height:18px"><span style="color:#e06c75">Failed!</span> — Failed: 2, Passed: 7, Skipped: 1</div><div style="padding:0 8px;height:18px;color:#4d5260">…</div></div>
+      </div>
+    </div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span style="color:#56a8d6">TESTS · 2 failing</span><span><span style="color:#56a8d6">↵</span> code view</span><span><span style="color:#56a8d6">r</span> rerun</span><span><span style="color:#56a8d6">R</span> rerun failed</span><span><span style="color:#56a8d6">]f</span> next failure</span><span><span style="color:#56a8d6">o</span> output pane</span><span><span style="color:#56a8d6">/</span> filter</span></div>
+</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">Failing test → code view — breadcrumb keeps the test that sent you here; assertion pinned below</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:560px">
+  <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 4px;color:#8a8fa0;font-size:11px"><span><span style="color:#56a8d6">■</span> sidecar</span><span style="color:#3d4150">│</span><span><span style="color:#6f7484">Tests ›</span> RefundPolicyTests <span style="color:#6f7484">›</span> <span style="color:#e06c75">Rejects_after_window</span> <span style="color:#6f7484">›</span> <span style="color:#c586c0">code</span> <span style="color:#6f7484">›</span> <span style="color:#e6e8ee">RefundPolicy.cs:43</span></span></div>
+  <div style="flex:1;display:flex;gap:6px;min-height:0">
+    <div style="width:120px;border:1px solid #2f3340;background:#1b1d25;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;padding:0 8px;color:#6f7484;font-size:11px;border-bottom:1px solid #2f3340;display:flex;align-items:center">PANELS</div><div style="padding:4px 0"><div style="padding:0 8px;height:18px">1 Solution</div><div style="padding:0 8px;height:18px;background:#243044;color:#e6e8ee;border-left:2px solid #56a8d6;padding-left:6px">2 Tests</div><div style="padding:0 8px;height:18px">3 Changeset</div><div style="padding:0 8px;height:18px">4 Changelog</div></div></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px;min-height:0">
+      <div style="flex:1;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px">RefundPolicy.cs<span style="color:#3d4150">│</span><span style="color:#6cc36b">A</span> <span style="color:#6f7484">new this changeset</span><span style="margin-left:auto;color:#6f7484">d diff · esc back to test</span></div>
+        <div style="padding:4px 0"><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  38</span>     public Verdict Evaluate(Order order, DateTimeOffset now)</div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  39</span>     {</div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  40</span>         var age = now - order.PlacedAt;</div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  41</span>         var window = order.Channel is Channel.Retail</div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  42</span>             ? TimeSpan.FromDays(30) : TimeSpan.FromDays(14);</div><div style="padding:0 8px;height:18px;background:#2b1f22;border-left:2px solid #e06c75;padding-left:6px"><span style="color:#e06c75">  43</span>         return new Verdict(age &lt;= window, "window elapsed");</div><div style="padding:0 8px;height:18px"><span style="color:#4d5260">  44</span>     }</div><div style="padding:0 8px;height:18px;color:#4d5260">     …</div></div>
+      </div>
+      <div style="flex:0 0 128px;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden"><div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#e06c75;border-bottom:1px solid #2f3340;font-size:11px">✗ Rejects_after_window<span style="margin-left:auto;color:#6f7484">pinned failure · 1 of 2</span></div>
+        <div style="padding:4px 0;color:#7c8090"><div style="padding:0 8px;height:18px">Assert.False() Failure — Expected: False, Actual: True</div><div style="padding:0 8px;height:18px">order.PlacedAt = 2026-07-02 · now = 2026-08-29 · Channel.Retail</div><div style="padding:0 8px;height:18px"><span style="color:#56a8d6;text-decoration:underline">RefundPolicy.cs:43</span> ← <span style="color:#56a8d6;text-decoration:underline">RefundPolicyTests.cs:28</span></div><div style="padding:0 8px;height:18px;color:#4d5260">↑↓ walk frames · ↵ jump</div></div>
+      </div>
+    </div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span style="color:#c586c0">CODE ← TEST</span><span><span style="color:#56a8d6">]f</span> next failure</span><span><span style="color:#56a8d6">r</span> rerun this test</span><span><span style="color:#56a8d6">d</span> diff</span><span><span style="color:#56a8d6">⌫</span> up breadcrumb</span><span><span style="color:#56a8d6">esc</span> Tests</span></div>
+</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Zoom model — nav is a top tab strip, detail is full width. Search is global (<span style="font-family:ui-monospace">:</span> palette), not per panel.</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">Changeset list — totals in the tab, per-file bars; diff opens over the same width</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:400px">
+  <div style="height:22px;display:flex;align-items:stretch;gap:2px;font-size:11px">
+    <div style="padding:2px 10px;color:#6f7484;border:1px solid #2f3340">1 Solution</div>
+    <div style="padding:2px 10px;color:#6f7484;border:1px solid #2f3340">2 Tests <span style="color:#e06c75">3✗</span></div>
+    <div style="padding:2px 10px;color:#e6e8ee;border:1px solid #56a8d6;background:#1b2330">3 Changeset <span style="color:#6cc36b">+214</span> <span style="color:#e06c75">−87</span></div>
+    <div style="padding:2px 10px;color:#6f7484;border:1px solid #2f3340">4 Changelog</div>
+    <div style="margin-left:auto;padding:2px 10px;color:#6f7484">9 files · <span style="color:#6cc36b">main</span> · <span style="color:#d9a54a">2 by agent</span></div>
+  </div>
+  <div style="flex:1;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden;min-height:0">
+    <div style="padding:4px 0">
+      <div style="padding:0 8px;height:18px;display:flex;gap:8px;background:#243044;color:#e6e8ee"><span style="color:#d9a54a">M</span> Acme.Orders.Domain/Orders/OrderService.cs<span style="margin-left:auto"><span style="color:#6cc36b">+61</span> <span style="color:#e06c75">−12</span> <span style="color:#6cc36b">███████</span><span style="color:#e06c75">██</span></span></div>
+      <div style="padding:0 8px;height:18px;display:flex;gap:8px"><span style="color:#6cc36b">A</span> Acme.Orders.Domain/Orders/RefundPolicy.cs<span style="margin-left:auto"><span style="color:#6cc36b">+88</span> <span style="color:#6f7484">−0</span> <span style="color:#6cc36b">██████████</span></span></div>
+      <div style="padding:0 8px;height:18px;display:flex;gap:8px"><span style="color:#d9a54a">M</span> Acme.Orders.Api/Controllers/RefundsController.cs<span style="margin-left:auto"><span style="color:#6cc36b">+31</span> <span style="color:#e06c75">−28</span> <span style="color:#6cc36b">█████</span><span style="color:#e06c75">████</span></span></div>
+      <div style="padding:0 8px;height:18px;display:flex;gap:8px"><span style="color:#e06c75">D</span> Acme.Orders.Infra/Legacy/RefundCalculator.cs<span style="margin-left:auto"><span style="color:#6f7484">+0</span> <span style="color:#e06c75">−41</span> <span style="color:#e06c75">██████</span></span></div>
+      <div style="padding:0 8px;height:18px;display:flex;gap:8px"><span style="color:#d9a54a">M</span> tests/Orders.Domain.Tests/RefundPolicyTests.cs<span style="margin-left:auto"><span style="color:#6cc36b">+34</span> <span style="color:#e06c75">−6</span> <span style="color:#6cc36b">█████</span><span style="color:#e06c75">█</span></span></div>
+      <div style="padding:0 8px;height:18px;display:flex;gap:8px;color:#6f7484">… 4 more (Directory.Packages.props, README.md, 2 project files)</div>
+    </div>
+    <div style="margin-top:auto;height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;border-top:1px solid #23252e;color:#6f7484;font-size:11px">total<span style="color:#6cc36b">+214</span><span style="color:#e06c75">−87</span><span style="margin-left:auto">staged 3 of 9</span></div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span style="color:#56a8d6">CHANGESET</span><span><span style="color:#56a8d6">↵</span> diff</span><span><span style="color:#56a8d6">c</span> code view</span><span><span style="color:#56a8d6">s</span> stage</span><span><span style="color:#56a8d6">X</span> discard</span><span><span style="color:#56a8d6">:</span> palette / search</span><span><span style="color:#56a8d6">?</span> keys</span></div>
+</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">Diff view — full width, unified; <span style="font-family:ui-monospace">c</span> swaps to code view at the same line</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:400px">
+  <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 4px;color:#8a8fa0;font-size:11px"><span><span style="color:#56a8d6">■</span> sidecar</span><span style="color:#3d4150">│</span><span><span style="color:#6f7484">Changeset ›</span> <span style="color:#e6e8ee">OrderService.cs</span> <span style="color:#6f7484">›</span> <span style="color:#c586c0">diff</span></span><span style="margin-left:auto">file 1/9 · <span style="color:#6cc36b">+61</span> <span style="color:#e06c75">−12</span></span></div>
+  <div style="flex:1;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden">
+    <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px">@@ -36,9 +38,14 @@ public sealed class OrderService<span style="margin-left:auto;color:#6f7484">hunk 2 of 4</span></div>
+    <div style="padding:4px 0">
+      <div style="padding:0 8px;height:18px;color:#7c8090"><span style="color:#4d5260">36 38</span>       var order = await repo.GetAsync(id, ct);</div>
+      <div style="padding:0 8px;height:18px;background:#2b1f22"><span style="color:#4d5260">37   </span> <span style="color:#e06c75">-     if (order.PlacedAt &lt; DateTime.Now.AddDays(-30))</span></div>
+      <div style="padding:0 8px;height:18px;background:#2b1f22"><span style="color:#4d5260">38   </span> <span style="color:#e06c75">-         return Result.Rejected("too old");</span></div>
+      <div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#4d5260">   39</span> <span style="color:#6cc36b">+     var verdict = policy.Evaluate(order, DateTimeOffset.UtcNow);</span></div>
+      <div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#4d5260">   40</span> <span style="color:#6cc36b">+     if (!verdict.Allowed)</span></div>
+      <div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#4d5260">   41</span> <span style="color:#6cc36b">+         return Result.Rejected(verdict.Reason);</span></div>
+      <div style="padding:0 8px;height:18px;color:#7c8090"><span style="color:#4d5260">39 42</span>       order.MarkRefunded(verdict.Amount);</div>
+      <div style="padding:0 8px;height:18px;color:#4d5260">      …</div>
+    </div>
+    <div style="margin-top:auto;height:20px;display:flex;align-items:center;gap:10px;padding:0 8px;border-top:1px solid #23252e;color:#6f7484;font-size:11px"><span style="color:#d9a54a">⚑</span> touched by agent run #41 · 6 min ago<span style="margin-left:auto">↵ open code view at line 39</span></div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span style="color:#c586c0">DIFF · unified</span><span><span style="color:#56a8d6">]h</span> next hunk</span><span><span style="color:#56a8d6">c</span> code view</span><span><span style="color:#56a8d6">v</span> side-by-side</span><span><span style="color:#56a8d6">s</span> stage hunk</span><span><span style="color:#56a8d6">J</span> next file</span><span><span style="color:#56a8d6">esc</span> back</span></div>
+</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Changelog drill-down, in <a class="dv-oid" href="#1a">1a</a> geometry — commit → its changeset → diff, three breadcrumb levels deep.</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">Changelog list, searched — graph column, agent-authored commits marked</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:400px">
+  <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 4px;color:#8a8fa0;font-size:11px"><span><span style="color:#56a8d6">■</span> sidecar</span><span style="color:#3d4150">│</span><span style="color:#6f7484">Changelog</span><span style="margin-left:auto">main · 814 commits</span></div>
+  <div style="flex:1;display:flex;gap:6px;min-height:0">
+    <div style="width:290px;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden">
+      <div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#1b1d25;color:#56a8d6;border-bottom:1px solid #2f3340;font-size:11px"><span>[4] Changelog</span><span style="color:#6f7484">7 hits</span></div>
+      <div style="height:20px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid #23252e;color:#6f7484;font-size:11px">/ <span style="color:#c9ccd6">refund</span><span style="color:#3d4150">▏</span><span style="margin-left:auto">msg+path</span></div>
+      <div style="padding:4px 0">
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px;background:#243044;color:#e6e8ee">│ <span style="color:#d9a54a">a3f9c21</span> <span style="color:#56a8d6;text-decoration:underline">refund</span> policy split</div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ <span style="color:#d9a54a">7b21e04</span> <span style="color:#c586c0">⚑</span>extract validator</div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">├ <span style="color:#d9a54a">5c0aa17</span> merge #218</div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:6px">│ <span style="color:#d9a54a">1de8b93</span> <span style="color:#56a8d6;text-decoration:underline">refund</span> caps</div>
+        <div style="padding:0 8px;height:18px;color:#6f7484">│ … 3 more hits</div>
+      </div>
+      <div style="margin-top:auto;height:20px;padding:0 8px;border-top:1px solid #23252e;color:#6f7484;font-size:11px;display:flex;align-items:center"><span style="color:#c586c0">⚑</span> agent commit</div>
+    </div>
+    <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden">
+      <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px"><span style="color:#d9a54a">a3f9c21</span> refund policy split<span style="margin-left:auto"><span style="color:#6cc36b">+188</span> <span style="color:#e06c75">−64</span></span></div>
+      <div style="padding:4px 0;color:#7c8090"><div style="padding:0 8px;height:18px">S. Patel · 2026-08-27 14:02 · 5 files</div><div style="padding:0 8px;height:18px;color:#4d5260">─────────</div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:8px;color:#c9ccd6"><span style="color:#d9a54a">M</span> Orders/OrderService.cs<span style="margin-left:auto"><span style="color:#6cc36b">+61</span> <span style="color:#e06c75">−12</span></span></div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:8px;color:#c9ccd6"><span style="color:#6cc36b">A</span> Orders/RefundPolicy.cs<span style="margin-left:auto"><span style="color:#6cc36b">+88</span></span></div>
+        <div style="padding:0 8px;height:18px;display:flex;gap:8px;color:#c9ccd6"><span style="color:#e06c75">D</span> Legacy/RefundCalculator.cs<span style="margin-left:auto"><span style="color:#e06c75">−41</span></span></div>
+        <div style="padding:0 8px;height:18px;color:#6f7484">  … 2 more</div>
+      </div>
+    </div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span style="color:#56a8d6">CHANGELOG · filter "refund"</span><span><span style="color:#56a8d6">↵</span> enter changeset</span><span><span style="color:#56a8d6">y</span> copy sha</span><span><span style="color:#56a8d6">n/N</span> hit</span><span><span style="color:#56a8d6">esc</span> clear</span></div>
+</div>
+
+<div style="font:400 10px ui-monospace,monospace;color:rgba(0,0,0,.45)">Historic changeset → diff — breadcrumb: Changelog › a3f9c21 › file › diff; <span style="font-family:ui-monospace">⌫</span> pops one level</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:6px;height:400px">
+  <div style="height:20px;display:flex;align-items:center;gap:6px;padding:0 4px;color:#8a8fa0;font-size:11px"><span><span style="color:#56a8d6">■</span> sidecar</span><span style="color:#3d4150">│</span><span style="color:#6f7484">Changelog ›</span> <span style="color:#d9a54a">a3f9c21</span> <span style="color:#6f7484">›</span> Orders/OrderService.cs <span style="color:#6f7484">›</span> <span style="color:#c586c0">diff</span><span style="margin-left:auto;color:#6f7484">read-only history</span></div>
+  <div style="flex:1;display:flex;gap:6px;min-height:0">
+    <div style="width:230px;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden">
+      <div style="height:20px;display:flex;align-items:center;justify-content:space-between;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px"><span>a3f9c21 files</span><span style="color:#6f7484">5</span></div>
+      <div style="padding:4px 0"><div style="padding:0 8px;height:18px;display:flex;gap:6px;background:#243044;color:#e6e8ee"><span style="color:#d9a54a">M</span> OrderService.cs</div><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#6cc36b">A</span> RefundPolicy.cs</div><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#e06c75">D</span> RefundCalculator.cs</div><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#d9a54a">M</span> RefundsController.cs</div><div style="padding:0 8px;height:18px;display:flex;gap:6px"><span style="color:#d9a54a">M</span> RefundPolicyTests.cs</div></div>
+    </div>
+    <div style="flex:1;border:1px solid #56a8d6;display:flex;flex-direction:column;overflow:hidden">
+      <div style="height:20px;display:flex;align-items:center;gap:8px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px">@@ -36,9 +38,14 @@<span style="margin-left:auto;color:#6f7484">a3f9c21 vs a3f9c21^</span></div>
+      <div style="padding:4px 0"><div style="padding:0 8px;height:18px;color:#7c8090"><span style="color:#4d5260">36 38</span>       var order = await repo.GetAsync(id, ct);</div><div style="padding:0 8px;height:18px;background:#2b1f22"><span style="color:#4d5260">37   </span> <span style="color:#e06c75">-     if (order.PlacedAt &lt; DateTime.Now.AddDays(-30))</span></div><div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#4d5260">   39</span> <span style="color:#6cc36b">+     var verdict = policy.Evaluate(order, DateTimeOffset.UtcNow);</span></div><div style="padding:0 8px;height:18px;background:#1a2620"><span style="color:#4d5260">   40</span> <span style="color:#6cc36b">+     if (!verdict.Allowed) return Result.Rejected(verdict.Reason);</span></div><div style="padding:0 8px;height:18px;color:#7c8090"><span style="color:#4d5260">39 41</span>       order.MarkRefunded(verdict.Amount);</div><div style="padding:0 8px;height:18px;color:#4d5260">      …</div></div>
+    </div>
+  </div>
+  <div style="height:18px;display:flex;gap:14px;padding:0 4px;font-size:11px;color:#6f7484;border-top:1px solid #23252e;padding-top:4px"><span style="color:#c586c0">DIFF · historic</span><span><span style="color:#56a8d6">c</span> code at this commit</span><span><span style="color:#56a8d6">C</span> code at HEAD</span><span><span style="color:#56a8d6">]h</span> hunk</span><span><span style="color:#56a8d6">⌫</span> a3f9c21</span><span><span style="color:#56a8d6">esc esc</span> Changelog</span></div>
+</div>
+</div>
+
+<div class="dv-opt" id="1e">
+<div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Search placement — per-panel filter (left) vs. global command palette (right). Same three shortcut-bar treatments below.</div>
+<div class="dv-card" style="width:880px;background:#13141a;font:12px/18px 'JetBrains Mono',ui-monospace,monospace;color:#c9ccd6;padding:8px;display:flex;flex-direction:column;gap:10px;height:400px">
+  <div style="flex:1;display:flex;gap:8px;min-height:0">
+    <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden">
+      <div style="height:20px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px;display:flex;align-items:center">A · in-panel filter, narrows the tree in place</div>
+      <div style="height:20px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid #23252e;color:#6f7484;font-size:11px">/ <span style="color:#c9ccd6">refundpol</span><span style="color:#3d4150">▏</span><span style="margin-left:auto">fuzzy · 4 hits · n/N</span></div>
+      <div style="padding:4px 0"><div style="padding:0 8px;height:18px;display:flex;gap:6px;background:#243044;color:#e6e8ee"><span style="color:#6cc36b">A</span> Orders/<span style="color:#56a8d6;text-decoration:underline">RefundPol</span>icy.cs</div><div style="padding:0 8px;height:18px">   tests/<span style="color:#56a8d6;text-decoration:underline">RefundPol</span>icyTests.cs</div><div style="padding:0 8px;height:18px">   Abstractions/I<span style="color:#56a8d6;text-decoration:underline">RefundPol</span>icy.cs</div><div style="padding:0 8px;height:18px;color:#6f7484">   … 1 more</div><div style="padding:0 8px;height:18px;color:#4d5260">non-matching rows hidden, folds preserved</div></div>
+    </div>
+    <div style="flex:1;border:1px solid #2f3340;display:flex;flex-direction:column;overflow:hidden;position:relative">
+      <div style="height:20px;padding:0 8px;background:#1b1d25;color:#8a8fa0;border-bottom:1px solid #2f3340;font-size:11px;display:flex;align-items:center">B · global palette, crosses panels</div>
+      <div style="padding:4px 0;color:#3d4150"><div style="padding:0 8px;height:18px">▸ Acme.Orders.Domain</div><div style="padding:0 8px;height:18px">▸ Acme.Orders.Api</div></div>
+      <div style="position:absolute;left:24px;right:24px;top:44px;border:1px solid #56a8d6;background:#181a22">
+        <div style="height:22px;display:flex;align-items:center;gap:6px;padding:0 8px;border-bottom:1px solid #2f3340;color:#6f7484;font-size:11px">: <span style="color:#e6e8ee">refundpol</span><span style="color:#3d4150">▏</span></div>
+        <div style="padding:4px 0"><div style="padding:0 8px;height:18px;display:flex;gap:8px;background:#243044;color:#e6e8ee"><span style="color:#6f7484">file</span> RefundPolicy.cs<span style="margin-left:auto;color:#6f7484">Solution</span></div><div style="padding:0 8px;height:18px;display:flex;gap:8px"><span style="color:#6f7484">test</span> <span style="color:#e06c75">✗</span> RefundPolicyTests<span style="margin-left:auto;color:#6f7484">Tests</span></div><div style="padding:0 8px;height:18px;display:flex;gap:8px"><span style="color:#6f7484">diff</span> RefundPolicy.cs <span style="color:#6cc36b">+88</span><span style="margin-left:auto;color:#6f7484">Changeset</span></div><div style="padding:0 8px;height:18px;display:flex;gap:8px"><span style="color:#6f7484">cmd</span> Run tests for file<span style="margin-left:auto;color:#6f7484">action</span></div><div style="padding:0 8px;height:18px;color:#4d5260">↵ jumps and switches panel</div></div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px">
+    <div style="font-size:10px;color:#4d5260">status bar treatments</div>
+    <div style="border-top:1px solid #23252e;padding-top:4px;display:flex;gap:14px;font-size:11px;color:#6f7484"><span style="color:#56a8d6">i</span><span><span style="color:#56a8d6">↵</span> open</span><span><span style="color:#56a8d6">d</span> diff</span><span><span style="color:#56a8d6">t</span> tests</span><span><span style="color:#56a8d6">r</span> run</span><span><span style="color:#56a8d6">/</span> search</span><span><span style="color:#56a8d6">?</span> keys</span><span style="margin-left:auto;color:#4d5260">flat list, context keys only</span></div>
+    <div style="border-top:1px solid #23252e;padding-top:4px;display:flex;gap:10px;font-size:11px;align-items:center"><span style="background:#243044;color:#56a8d6;padding:0 6px">ii</span><span style="background:#1b2330;color:#c586c0;padding:0 6px">SOLUTION</span><span style="color:#6f7484"><span style="color:#56a8d6">↵</span> open <span style="color:#3d4150">│</span> <span style="color:#56a8d6">d</span> diff <span style="color:#3d4150">│</span> <span style="color:#56a8d6">t</span> tests <span style="color:#3d4150">│</span> <span style="color:#56a8d6">r</span> run</span><span style="margin-left:auto;color:#6cc36b">184✓</span><span style="color:#e06c75">3✗</span><span style="color:#6cc36b">+214</span><span style="color:#e06c75">−87</span></div>
+    <div style="border-top:1px solid #23252e;padding-top:4px;display:flex;flex-direction:column;gap:2px;font-size:11px;color:#6f7484"><div style="display:flex;gap:10px"><span style="color:#56a8d6">iii</span><span style="color:#c586c0">SOLUTION › OrderService.cs</span><span style="margin-left:auto;color:#d9a54a">agent run #41 writing…</span></div><div style="display:flex;gap:14px"><span><span style="color:#56a8d6">↵</span> open</span><span><span style="color:#56a8d6">d</span> diff</span><span><span style="color:#56a8d6">t</span> tests</span><span><span style="color:#56a8d6">g</span> blame</span><span><span style="color:#56a8d6">:</span> palette</span><span><span style="color:#56a8d6">?</span> all keys</span><span style="margin-left:auto;color:#4d5260">two rows: breadcrumb + keys</span></div></div>
+  </div>
+</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "build out <a class="dv-oid" href="#1a">1a</a> for every screen" · "<a class="dv-oid" href="#1c">1c</a> geometry but keep per-panel search from <a class="dv-oid" href="#1e">1e</a>A" · "status bar treatment iii everywhere"</p>
+</section>
+</x-dc>
+</body>
+</html>
