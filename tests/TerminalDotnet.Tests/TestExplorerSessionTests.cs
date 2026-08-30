@@ -258,6 +258,24 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task Expanding_a_class_after_a_run_restores_its_test_outcomes()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var session = new TestExplorerSession(new InMemoryTestBackend([test]));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+        await session.DispatchAsync(new ExplorerCommand.ToggleExpanded());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.ToggleExpanded());
+
+        // Assert
+        Assert.Equal(TestNodeOutcome.Passed, session.State.VisibleNodes[2].Outcome);
+    }
+
+    [Fact]
     public async Task Running_a_class_runs_every_test_beneath_the_selected_class()
     {
         // Arrange

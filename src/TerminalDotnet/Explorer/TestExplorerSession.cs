@@ -5,6 +5,7 @@ namespace TerminalDotnet.Explorer;
 public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? sourceProvider = null)
 {
     private readonly HashSet<string> collapsedNodes = [];
+    private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
     private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
 
@@ -162,7 +163,24 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
         .GroupBy(test => test.ProjectPath)
         .OrderBy(project => project.Key)
         .SelectMany(ProjectNodes)
+        .Select(NodeWithStoredOutcome)
         .ToArray();
+
+    private VisibleTestNode NodeWithStoredOutcome(VisibleTestNode node)
+    {
+        if (!node.Tests.All(completedOutcomes.ContainsKey))
+        {
+            return node;
+        }
+
+        var outcomes = node.Tests.Select(test => completedOutcomes[test]).ToArray();
+        var outcome = outcomes.Contains(TestNodeOutcome.Failed)
+            ? TestNodeOutcome.Failed
+            : outcomes.All(result => result == TestNodeOutcome.Skipped)
+                ? TestNodeOutcome.Skipped
+                : TestNodeOutcome.Passed;
+        return node with { Outcome = outcome };
+    }
 
     private IReadOnlyList<TestCase> TestsForSearch(string query) => discoveredTests
         .Where(test => MatchesSearch(test, query))
@@ -218,6 +236,11 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
         }
 
         var sourceContext = await ReadFailureSourceAsync(run, cancellationToken);
+        foreach (var (test, outcome) in CompletedOutcomes(tests, run))
+        {
+            completedOutcomes[test] = outcome;
+        }
+
         State = State with
         {
             Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
@@ -226,6 +249,28 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
             LastRun = run,
             SourceContext = sourceContext
         };
+    }
+
+    private static IReadOnlyDictionary<TestCase, TestNodeOutcome> CompletedOutcomes(
+        IReadOnlyList<TestCase> tests,
+        TestRun run)
+    {
+        if (run.Results.Count == 0)
+        {
+            return tests.ToDictionary(
+                test => test,
+                _ => run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed);
+        }
+
+        return run.Results
+            .GroupBy(result => result.Test)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Any(result => result.Outcome == TestOutcome.Failed)
+                    ? TestNodeOutcome.Failed
+                    : group.All(result => result.Outcome == TestOutcome.Skipped)
+                        ? TestNodeOutcome.Skipped
+                        : TestNodeOutcome.Passed);
     }
 
     private async Task<SourceContext?> ReadFailureSourceAsync(
