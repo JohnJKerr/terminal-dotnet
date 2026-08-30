@@ -120,14 +120,17 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
 
         if (command is ExplorerCommand.NextSearchMatch)
         {
-            var nextMatch = State.VisibleNodes
+            var matchIndices = State.VisibleNodes
                 .Select((node, index) => (node, index))
-                .FirstOrDefault(item =>
-                    item.index > State.SelectedIndex &&
-                    item.node.Kind == TestNodeKind.Test);
-            if (nextMatch.node is not null)
+                .Where(item => item.node.Kind == TestNodeKind.Test)
+                .Select(item => item.index)
+                .ToArray();
+            var nextMatch = matchIndices.FirstOrDefault(
+                index => index > State.SelectedIndex,
+                matchIndices.FirstOrDefault(-1));
+            if (nextMatch >= 0)
             {
-                State = State with { SelectedIndex = nextMatch.index };
+                State = State with { SelectedIndex = nextMatch };
             }
 
             return;
