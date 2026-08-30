@@ -52,7 +52,15 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
             var selected = State.VisibleNodes[State.SelectedIndex];
             if (selected.Kind != TestNodeKind.Test)
             {
-                collapsedNodes.Add(NodeId(selected));
+                if (selected.IsExpanded)
+                {
+                    collapsedNodes.Add(NodeId(selected));
+                }
+                else
+                {
+                    collapsedNodes.Remove(NodeId(selected));
+                }
+
                 State = State with { VisibleNodes = VisibleNodes(TestsForSearch(State.SearchQuery)) };
             }
 
