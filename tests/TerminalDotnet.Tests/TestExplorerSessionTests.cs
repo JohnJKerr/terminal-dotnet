@@ -74,6 +74,29 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task Searching_tests_keeps_case_insensitive_matches_with_their_ancestors()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.Search("ORDER"));
+
+        // Assert
+        Assert.Equal(
+        [
+            "node:0:Project:Shop.Tests",
+            "node:1:Class:OrderTests",
+            "node:2:Test:Submits order"
+        ], session.State.VisibleNodes.Select(node => $"node:{node.Depth}:{node.Kind}:{node.Name}"));
+    }
+
+    [Fact]
     public async Task Running_a_class_runs_every_test_beneath_the_selected_class()
     {
         // Arrange

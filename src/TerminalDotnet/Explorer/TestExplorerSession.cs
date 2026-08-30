@@ -4,6 +4,7 @@ namespace TerminalDotnet.Explorer;
 
 public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? sourceProvider = null)
 {
+    private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
 
     public ExplorerState State { get; private set; } =
@@ -12,17 +13,25 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
         var tests = await backend.DiscoverAsync(target, cancellationToken);
-        var nodes = tests
-            .GroupBy(test => test.ProjectPath)
-            .OrderBy(project => project.Key)
-            .SelectMany(ProjectNodes)
-            .ToArray();
+        discoveredTests = tests;
+        var nodes = VisibleNodes(tests);
 
         State = new ExplorerState(ExplorerStatus.Ready, nodes, 0, $"Ready — {tests.Count} tests discovered");
     }
 
     public async Task DispatchAsync(ExplorerCommand command, CancellationToken cancellationToken = default)
     {
+        if (command is ExplorerCommand.Search search)
+        {
+            var matchingTests = discoveredTests
+                .Where(test => test.FullyQualifiedName.Contains(
+                    search.Query,
+                    StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            State = State with { VisibleNodes = VisibleNodes(matchingTests), SelectedIndex = 0 };
+            return;
+        }
+
         if (command is ExplorerCommand.RunSelected && State.VisibleNodes.Count > 0)
         {
             await RunTestsAsync(State.VisibleNodes[State.SelectedIndex].Tests, cancellationToken);
@@ -59,6 +68,12 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
 
         State = State with { SelectedIndex = selectedIndex };
     }
+
+    private static IReadOnlyList<VisibleTestNode> VisibleNodes(IReadOnlyList<TestCase> tests) => tests
+        .GroupBy(test => test.ProjectPath)
+        .OrderBy(project => project.Key)
+        .SelectMany(ProjectNodes)
+        .ToArray();
 
     private async Task RunTestsAsync(
         IReadOnlyList<TestCase> tests,
