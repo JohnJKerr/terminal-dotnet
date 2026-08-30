@@ -23,6 +23,7 @@ public sealed class TestRunnerApplication(
     private IReadOnlyList<OutputLine> resultLines = [];
     private IReadOnlyList<VisibleTestNode> testNodes = [];
     private bool openSourceRequested;
+    private bool failureNavigationPending;
 
     public void Run()
     {
@@ -144,7 +145,7 @@ public sealed class TestRunnerApplication(
         Y = Pos.AnchorEnd(1),
         Width = Dim.Fill(1),
         Height = 1,
-        Text = "Tab pane  / search  ↑/k up  ↓/j down  Space fold  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
+        Text = "Tab pane  / search  ↑/k up  ↓/j down  Space fold  ]f next failure  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
     };
 
     private void HandleKey(
@@ -181,6 +182,30 @@ public sealed class TestRunnerApplication(
         {
             key.Handled = true;
             search.SetFocus();
+            return;
+        }
+
+        if (tests.HasFocus && failureNavigationPending)
+        {
+            failureNavigationPending = false;
+            if (Is(key, KeyCode.F))
+            {
+                key.Handled = true;
+                HandleCommand(
+                    application,
+                    new TerminalCommand(new ExplorerCommand.NextFailure()),
+                    search,
+                    tests,
+                    result,
+                    output);
+                return;
+            }
+        }
+
+        if (tests.HasFocus && Is(key, (KeyCode)']'))
+        {
+            key.Handled = true;
+            failureNavigationPending = true;
             return;
         }
 

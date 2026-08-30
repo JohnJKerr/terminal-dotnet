@@ -17,6 +17,7 @@ Keys:
 - `r` / `Enter`: run every test beneath the highlighted project, class, or test
 - `R`: rerun the previous test set
 - `F`: rerun failed tests
+- `]f`: select the next failed test
 - `c`: cancel the active run
 - `o`: open the current failure location in `$EDITOR`
 - `q` / `Esc`: quit
