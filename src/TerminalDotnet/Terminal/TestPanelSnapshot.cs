@@ -17,12 +17,14 @@ public sealed record TestPanelSnapshot(
     string Target,
     IReadOnlyList<VisibleTestNode> Tests,
     int SelectedIndex,
+    string SearchQuery,
     IReadOnlyList<OutputLine> OutputLines)
 {
     public static TestPanelSnapshot From(ExplorerState state, string target) => new(
         Path.GetFileName(target),
         state.VisibleNodes,
         state.SelectedIndex,
+        state.SearchQuery,
         state.Message
             .ReplaceLineEndings("\n")
             .Split('\n')

@@ -41,6 +41,24 @@ public class WhenCreatingATestPanelSnapshot
     }
 
     [Fact]
+    public void It_exposes_the_active_test_search()
+    {
+        // Arrange
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [],
+            0,
+            "Ready",
+            SearchQuery: "cart");
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal("cart", snapshot.SearchQuery);
+    }
+
+    [Fact]
     public void It_marks_failed_output_as_failure()
     {
         // Arrange

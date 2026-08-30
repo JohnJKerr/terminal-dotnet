@@ -39,14 +39,20 @@ public sealed class TestRunnerApplication(
 
         using var window = new Window { Title = "terminal-dotnet" };
         var panels = Panels();
-        var tests = Tests();
+        var search = Search();
+        var tests = Tests(search);
         var output = Output(tests);
         var shortcuts = Shortcuts();
 
-        window.Add(panels, tests, output, shortcuts);
+        window.Add(panels, search, tests, output, shortcuts);
+        search.ValueChanged += async (_, _) =>
+        {
+            await session.DispatchAsync(new ExplorerCommand.Search(search.Text));
+            Render(search, tests, output);
+        };
         application.Keyboard.KeyDown += (_, key) =>
-            HandleKey(application, key, panels, tests, output);
-        Render(tests, output);
+            HandleKey(application, key, panels, search, tests, output);
+        Render(search, tests, output);
         tests.SetFocus();
 
         application.Run(window);
@@ -73,13 +79,22 @@ public sealed class TestRunnerApplication(
         return panels;
     }
 
-    private ListView Tests()
+    private static TextField Search() => new()
+    {
+        Title = "Search",
+        X = WorkspaceX,
+        Y = ContentInset,
+        Width = Dim.Fill(ContentInset),
+        Height = 1
+    };
+
+    private ListView Tests(TextField search)
     {
         var tests = new ListView
         {
             Title = "Tests",
             X = WorkspaceX,
-            Y = ContentInset,
+            Y = Pos.Bottom(search),
             Width = Dim.Fill(ContentInset),
             Height = Dim.Percent(55),
             ShowMarks = false,
@@ -111,20 +126,37 @@ public sealed class TestRunnerApplication(
         Y = Pos.AnchorEnd(1),
         Width = Dim.Fill(1),
         Height = 1,
-        Text = "Tab pane  ↑/k up  ↓/j down  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
+        Text = "Tab pane  / search  ↑/k up  ↓/j down  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
     };
 
     private void HandleKey(
         IApplication application,
         Key key,
         ListView panels,
+        TextField search,
         ListView tests,
         ListView output)
     {
+        if (search.HasFocus && Is(key, KeyCode.Esc))
+        {
+            key.Handled = true;
+            search.Text = "";
+            _ = DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests, output);
+            tests.SetFocus();
+            return;
+        }
+
         if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))
         {
             key.Handled = true;
             application.RequestStop();
+            return;
+        }
+
+        if (tests.HasFocus && Is(key, (KeyCode)'/'))
+        {
+            key.Handled = true;
+            search.SetFocus();
             return;
         }
 
@@ -155,12 +187,13 @@ public sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        HandleCommand(application, command, tests, output);
+        HandleCommand(application, command, search, tests, output);
     }
 
     private void HandleCommand(
         IApplication application,
         TerminalCommand command,
+        TextField search,
         ListView tests,
         ListView output)
     {
@@ -170,28 +203,29 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        _ = DispatchAsync(application, command.ExplorerCommand!, tests, output);
+        _ = DispatchAsync(application, command.ExplorerCommand!, search, tests, output);
     }
 
     private async Task DispatchAsync(
         IApplication application,
         ExplorerCommand command,
+        TextField search,
         ListView tests,
         ListView output)
     {
         if (!RunsTests(command))
         {
             await session.DispatchAsync(command);
-            Render(tests, output);
+            Render(search, tests, output);
             return;
         }
 
         runCancellation?.Dispose();
         runCancellation = new CancellationTokenSource();
         var run = session.DispatchAsync(command, runCancellation.Token);
-        Render(tests, output);
+        Render(search, tests, output);
         await run;
-        application.Invoke(() => Render(tests, output));
+        application.Invoke(() => Render(search, tests, output));
     }
 
     private void RequestOpenSource(IApplication application)
@@ -213,10 +247,11 @@ public sealed class TestRunnerApplication(
             source.HighlightLine).GetAwaiter().GetResult();
     }
 
-    private void Render(ListView tests, ListView output)
+    private void Render(TextField search, ListView tests, ListView output)
     {
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Target}";
+        search.Text = snapshot.SearchQuery;
         testNodes = snapshot.Tests;
         tests.SetSource(new ObservableCollection<string>(snapshot.Tests.Select(TestRow)));
         outputLines = snapshot.OutputLines;

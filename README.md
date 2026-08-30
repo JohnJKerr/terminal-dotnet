@@ -12,6 +12,7 @@ Keys:
 
 - `↑` / `k`: move up
 - `↓` / `j`: move down
+- `/`: search tests; `Esc` clears the active search
 - `r` / `Enter`: run every test beneath the highlighted project, class, or test
 - `R`: rerun the previous test set
 - `F`: rerun failed tests
