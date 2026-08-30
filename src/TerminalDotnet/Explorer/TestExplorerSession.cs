@@ -32,6 +32,12 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
             return;
         }
 
+        if (command is ExplorerCommand.ClearSearch)
+        {
+            State = State with { VisibleNodes = VisibleNodes(discoveredTests), SelectedIndex = 0 };
+            return;
+        }
+
         if (command is ExplorerCommand.RunSelected && State.VisibleNodes.Count > 0)
         {
             await RunTestsAsync(State.VisibleNodes[State.SelectedIndex].Tests, cancellationToken);

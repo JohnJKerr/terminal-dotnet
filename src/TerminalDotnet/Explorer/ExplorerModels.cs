@@ -43,6 +43,7 @@ public sealed record ExplorerState(
 public abstract record ExplorerCommand
 {
     public sealed record Search(string Query) : ExplorerCommand;
+    public sealed record ClearSearch : ExplorerCommand;
     public sealed record MoveUp : ExplorerCommand;
     public sealed record MoveDown : ExplorerCommand;
     public sealed record RunSelected : ExplorerCommand;

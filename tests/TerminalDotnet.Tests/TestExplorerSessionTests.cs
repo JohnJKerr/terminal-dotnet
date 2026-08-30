@@ -97,6 +97,27 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task Clearing_search_restores_the_test_tree_with_a_valid_selection()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.Search("missing"));
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.ClearSearch());
+
+        // Assert
+        Assert.Equal(
+            (5, 0),
+            (session.State.VisibleNodes.Count, session.State.SelectedIndex));
+    }
+
+    [Fact]
     public async Task Running_a_class_runs_every_test_beneath_the_selected_class()
     {
         // Arrange
