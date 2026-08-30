@@ -199,6 +199,33 @@ public class WhenCreatingATestPanelSnapshot
         Assert.Equal("Shop.Tests › CartTests › Adds item", snapshot.Breadcrumb);
     }
 
+    [Fact]
+    public void It_summarizes_completed_test_outcomes()
+    {
+        // Arrange
+        var passed = new TestCase("Shop.Tests.CartTests.Passes", "Passes", "Shop.Tests.csproj");
+        var failed = new TestCase("Shop.Tests.CartTests.Fails", "Fails", "Shop.Tests.csproj");
+        var skipped = new TestCase("Shop.Tests.CartTests.Skips", "Skips", "Shop.Tests.csproj");
+        var run = new TestRun(false, "Finished",
+        [
+            new TestResult(passed, TestOutcome.Passed, TimeSpan.Zero, null, null, null, null),
+            new TestResult(failed, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null),
+            new TestResult(skipped, TestOutcome.Skipped, TimeSpan.Zero, null, null, null, null)
+        ]);
+        var state = new ExplorerState(
+            ExplorerStatus.Failed,
+            [new VisibleTestNode(0, TestNodeKind.Project, "Shop.Tests", [passed, failed, skipped])],
+            0,
+            "Finished",
+            run);
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Shop.slnx");
+
+        // Assert
+        Assert.Equal("1 passed · 1 failed · 1 skipped", snapshot.OutcomeSummary);
+    }
+
     [Theory]
     [InlineData("Passed! - Passed: 12", OutputLineTone.Success)]
     [InlineData("Skipped: 2", OutputLineTone.Skipped)]

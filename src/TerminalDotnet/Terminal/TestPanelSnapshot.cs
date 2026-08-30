@@ -23,6 +23,7 @@ public sealed record TestPanelSnapshot(
     int SelectedIndex,
     string SearchQuery,
     int SearchHitCount,
+    string OutcomeSummary,
     IReadOnlyList<OutputLine> ResultLines,
     IReadOnlyList<OutputLine> OutputLines)
 {
@@ -34,12 +35,26 @@ public sealed record TestPanelSnapshot(
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
+        OutcomeSummaryFrom(state),
         ResultLinesFrom(state),
         state.Message
             .ReplaceLineEndings("\n")
             .Split('\n')
             .Select(OutputLineFrom)
             .ToArray());
+
+    private static string OutcomeSummaryFrom(ExplorerState state)
+    {
+        if (state.LastRun is null)
+        {
+            return "";
+        }
+
+        var passed = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Passed);
+        var failed = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Failed);
+        var skipped = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Skipped);
+        return $"{passed} passed · {failed} failed · {skipped} skipped";
+    }
 
     private static string BreadcrumbFrom(ExplorerState state, string target)
     {

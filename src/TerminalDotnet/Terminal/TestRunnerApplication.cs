@@ -308,6 +308,9 @@ public sealed class TestRunnerApplication(
         search.Text = snapshot.SearchQuery;
         testNodes = snapshot.Tests;
         tests.SetSource(new ObservableCollection<string>(snapshot.TestRows));
+        result.Title = snapshot.OutcomeSummary.Length == 0
+            ? "Test Result"
+            : $"Test Result — {snapshot.OutcomeSummary}";
         resultLines = snapshot.ResultLines;
         result.SetSource(new ObservableCollection<string>(snapshot.ResultLines.Select(line => line.Text)));
         outputLines = snapshot.OutputLines;
