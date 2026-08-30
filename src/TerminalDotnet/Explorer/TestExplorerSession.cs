@@ -28,13 +28,23 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
                     search.Query,
                     StringComparison.OrdinalIgnoreCase))
                 .ToArray();
-            State = State with { VisibleNodes = VisibleNodes(matchingTests), SelectedIndex = 0 };
+            State = State with
+            {
+                VisibleNodes = VisibleNodes(matchingTests),
+                SelectedIndex = 0,
+                SearchQuery = search.Query
+            };
             return;
         }
 
         if (command is ExplorerCommand.ClearSearch)
         {
-            State = State with { VisibleNodes = VisibleNodes(discoveredTests), SelectedIndex = 0 };
+            State = State with
+            {
+                VisibleNodes = VisibleNodes(discoveredTests),
+                SelectedIndex = 0,
+                SearchQuery = ""
+            };
             return;
         }
 

@@ -118,6 +118,23 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task Searching_exposes_the_active_query()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.Search("cart"));
+
+        // Assert
+        Assert.Equal("cart", session.State.SearchQuery);
+    }
+
+    [Fact]
     public async Task Running_a_class_runs_every_test_beneath_the_selected_class()
     {
         // Arrange

@@ -38,7 +38,8 @@ public sealed record ExplorerState(
     int SelectedIndex,
     string Message,
     TestRun? LastRun = null,
-    SourceContext? SourceContext = null);
+    SourceContext? SourceContext = null,
+    string SearchQuery = "");
 
 public abstract record ExplorerCommand
 {
