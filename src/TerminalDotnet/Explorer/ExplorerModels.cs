@@ -30,7 +30,8 @@ public sealed record VisibleTestNode(
     TestNodeKind Kind,
     string Name,
     IReadOnlyList<TestCase> Tests,
-    TestNodeOutcome Outcome = TestNodeOutcome.NotRun);
+    TestNodeOutcome Outcome = TestNodeOutcome.NotRun,
+    bool IsExpanded = true);
 
 public sealed record ExplorerState(
     ExplorerStatus Status,
@@ -45,6 +46,7 @@ public abstract record ExplorerCommand
 {
     public sealed record Search(string Query) : ExplorerCommand;
     public sealed record ClearSearch : ExplorerCommand;
+    public sealed record ToggleExpanded : ExplorerCommand;
     public sealed record MoveUp : ExplorerCommand;
     public sealed record MoveDown : ExplorerCommand;
     public sealed record RunSelected : ExplorerCommand;

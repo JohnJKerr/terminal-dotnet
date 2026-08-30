@@ -4,6 +4,7 @@ namespace TerminalDotnet.Explorer;
 
 public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? sourceProvider = null)
 {
+    private readonly HashSet<string> collapsedNodes = [];
     private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
 
@@ -46,6 +47,18 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
             return;
         }
 
+        if (command is ExplorerCommand.ToggleExpanded && State.VisibleNodes.Count > 0)
+        {
+            var selected = State.VisibleNodes[State.SelectedIndex];
+            if (selected.Kind != TestNodeKind.Test)
+            {
+                collapsedNodes.Add(NodeId(selected));
+                State = State with { VisibleNodes = VisibleNodes(TestsForSearch(State.SearchQuery)) };
+            }
+
+            return;
+        }
+
         if (command is ExplorerCommand.RunSelected && State.VisibleNodes.Count > 0)
         {
             await RunTestsAsync(State.VisibleNodes[State.SelectedIndex].Tests, cancellationToken);
@@ -83,11 +96,18 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
         State = State with { SelectedIndex = selectedIndex };
     }
 
-    private static IReadOnlyList<VisibleTestNode> VisibleNodes(IReadOnlyList<TestCase> tests) => tests
+    private IReadOnlyList<VisibleTestNode> VisibleNodes(IReadOnlyList<TestCase> tests) => tests
         .GroupBy(test => test.ProjectPath)
         .OrderBy(project => project.Key)
         .SelectMany(ProjectNodes)
         .ToArray();
+
+    private IReadOnlyList<TestCase> TestsForSearch(string query) => discoveredTests
+        .Where(test => MatchesSearch(test, query))
+        .ToArray();
+
+    private static string NodeId(VisibleTestNode node) =>
+        $"{node.Tests[0].ProjectPath}:{node.Kind}:{node.Name}";
 
     private static bool MatchesSearch(TestCase test, string query) =>
         test.FullyQualifiedName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
@@ -206,7 +226,7 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
         return node with { Outcome = outcome };
     }
 
-    private static IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project)
+    private IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project)
     {
         var projectTests = project.ToArray();
         var projectNode = new VisibleTestNode(
@@ -214,22 +234,28 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
             TestNodeKind.Project,
             Path.GetFileNameWithoutExtension(project.Key),
             projectTests);
+        var projectCollapsed = collapsedNodes.Contains(NodeId(projectNode));
         var classNodes = projectTests
             .GroupBy(test => ClassName(test.FullyQualifiedName))
             .OrderBy(testClass => testClass.Key)
             .SelectMany(ClassNodes);
 
-        return [projectNode, .. classNodes];
+        return projectCollapsed
+            ? [projectNode with { IsExpanded = false }]
+            : [projectNode, .. classNodes];
     }
 
-    private static IEnumerable<VisibleTestNode> ClassNodes(IGrouping<string, TestCase> testClass)
+    private IEnumerable<VisibleTestNode> ClassNodes(IGrouping<string, TestCase> testClass)
     {
         var classTests = testClass.ToArray();
         var classNode = new VisibleTestNode(1, TestNodeKind.Class, testClass.Key, classTests);
+        var classCollapsed = collapsedNodes.Contains(NodeId(classNode));
         var testNodes = classTests
             .OrderBy(test => test.DisplayName)
             .Select(test => new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test]));
 
-        return [classNode, .. testNodes];
+        return classCollapsed
+            ? [classNode with { IsExpanded = false }]
+            : [classNode, .. testNodes];
     }
 }
