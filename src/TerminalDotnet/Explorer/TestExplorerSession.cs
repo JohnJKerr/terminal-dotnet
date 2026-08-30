@@ -142,8 +142,23 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
         $"{node.Tests[0].ProjectPath}:{node.Kind}:{node.Name}";
 
     private static bool MatchesSearch(TestCase test, string query) =>
-        test.FullyQualifiedName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-        test.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase);
+        IsOrderedMatch(test.FullyQualifiedName, query) ||
+        IsOrderedMatch(test.DisplayName, query);
+
+    private static bool IsOrderedMatch(string candidate, string query)
+    {
+        var queryIndex = 0;
+        foreach (var character in candidate)
+        {
+            if (queryIndex < query.Length &&
+                char.ToUpperInvariant(character) == char.ToUpperInvariant(query[queryIndex]))
+            {
+                queryIndex++;
+            }
+        }
+
+        return queryIndex == query.Length;
+    }
 
     private async Task RunTestsAsync(
         IReadOnlyList<TestCase> tests,

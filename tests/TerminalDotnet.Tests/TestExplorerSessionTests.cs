@@ -152,6 +152,26 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task Searching_tests_supports_ordered_fuzzy_matches()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase(
+                "Shop.Tests.RefundPolicyTests.Rejects_after_window",
+                "Rejects after window",
+                "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.Search("rfpt"));
+
+        // Assert
+        Assert.Equal("Rejects after window", session.State.VisibleNodes[2].Name);
+    }
+
+    [Fact]
     public async Task Collapsing_a_class_hides_its_tests()
     {
         // Arrange
