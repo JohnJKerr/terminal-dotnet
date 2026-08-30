@@ -99,15 +99,19 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
                 .Where(result => result.Outcome == TestOutcome.Failed)
                 .Select(result => result.Test)
                 .ToHashSet() ?? [];
-            var nextFailure = State.VisibleNodes
+            var failureIndices = State.VisibleNodes
                 .Select((node, index) => (node, index))
-                .FirstOrDefault(item =>
-                    item.index > State.SelectedIndex &&
+                .Where(item =>
                     item.node.Kind == TestNodeKind.Test &&
-                    item.node.Tests.Any(failedTests.Contains));
-            if (nextFailure.node is not null)
+                    item.node.Tests.Any(failedTests.Contains))
+                .Select(item => item.index)
+                .ToArray();
+            var nextFailure = failureIndices.FirstOrDefault(
+                index => index > State.SelectedIndex,
+                failureIndices.FirstOrDefault(-1));
+            if (nextFailure >= 0)
             {
-                State = State with { SelectedIndex = nextFailure.index };
+                State = State with { SelectedIndex = nextFailure };
             }
 
             return;

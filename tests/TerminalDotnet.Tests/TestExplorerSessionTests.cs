@@ -339,6 +339,30 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task Moving_past_the_last_failure_wraps_to_the_first_failure()
+    {
+        // Arrange
+        var first = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var second = new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj");
+        var run = new TestRun(false, "2 tests failed",
+        [
+            new TestResult(first, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null),
+            new TestResult(second, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null)
+        ]);
+        var session = new TestExplorerSession(new InMemoryTestBackend([first, second], run));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+        await session.DispatchAsync(new ExplorerCommand.NextFailure());
+        await session.DispatchAsync(new ExplorerCommand.NextFailure());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.NextFailure());
+
+        // Assert
+        Assert.Equal("Adds item", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+    }
+
+    [Fact]
     public async Task Rerunning_the_last_run_uses_the_previous_tests_after_selection_moves()
     {
         // Arrange
