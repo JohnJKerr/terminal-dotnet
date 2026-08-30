@@ -326,6 +326,7 @@ public sealed class TestRunnerApplication(
         {
             TestNodeOutcome.Failed => Color.BrightRed,
             TestNodeOutcome.Passed => Color.BrightGreen,
+            TestNodeOutcome.Skipped => Color.BrightYellow,
             TestNodeOutcome.Running => Color.BrightCyan,
             _ => Color.White
         };
@@ -379,6 +380,7 @@ public sealed class TestRunnerApplication(
             TestNodeOutcome.Running => "◌",
             TestNodeOutcome.Passed => "✓",
             TestNodeOutcome.Failed => "✗",
+            TestNodeOutcome.Skipped => "○",
             _ when node.Kind == TestNodeKind.Test => "•",
             _ when !node.IsExpanded => "▶",
             _ => "▼"

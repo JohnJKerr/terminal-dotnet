@@ -22,6 +22,7 @@ public enum TestNodeOutcome
     NotRun,
     Running,
     Passed,
+    Skipped,
     Failed
 }
 

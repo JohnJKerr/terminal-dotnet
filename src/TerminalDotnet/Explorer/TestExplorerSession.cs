@@ -254,7 +254,9 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
 
         var outcome = nodeResults.Any(result => result.Outcome == TestOutcome.Failed)
             ? TestNodeOutcome.Failed
-            : TestNodeOutcome.Passed;
+            : nodeResults.All(result => result.Outcome == TestOutcome.Skipped)
+                ? TestNodeOutcome.Skipped
+                : TestNodeOutcome.Passed;
         return node with { Outcome = outcome };
     }
 

@@ -257,6 +257,32 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task A_skipped_test_is_retained_as_skipped_in_the_tree()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Skips_item", "Skips item", "Shop.Tests.csproj");
+        var skipped = new TestResult(
+            test,
+            TestOutcome.Skipped,
+            TimeSpan.FromMilliseconds(2),
+            null,
+            null,
+            null,
+            null);
+        var session = new TestExplorerSession(
+            new InMemoryTestBackend([test], new TestRun(true, "Skipped: 1", [skipped])));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+
+        // Assert
+        Assert.Equal(TestNodeOutcome.Skipped, session.State.VisibleNodes[2].Outcome);
+    }
+
+    [Fact]
     public async Task A_failed_run_exposes_the_selected_tests_failure_details()
     {
         // Arrange
