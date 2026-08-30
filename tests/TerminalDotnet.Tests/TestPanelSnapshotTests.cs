@@ -1,5 +1,6 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Terminal;
+using TerminalDotnet.Testing;
 using Xunit;
 
 namespace TerminalDotnet.Tests;
@@ -73,6 +74,37 @@ public class WhenCreatingATestPanelSnapshot
 
         // Assert
         Assert.Equal(OutputLineTone.Failure, snapshot.OutputLines[0].Tone);
+    }
+
+    [Fact]
+    public void It_exposes_failure_details_separately_from_execution_output()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var failure = new TestResult(
+            test,
+            TestOutcome.Failed,
+            TimeSpan.FromMilliseconds(7),
+            "Expected total to be 10.",
+            null,
+            "/repo/CartTests.cs",
+            42);
+        var state = new ExplorerState(
+            ExplorerStatus.Failed,
+            [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test], TestNodeOutcome.Failed)],
+            0,
+            "raw dotnet output",
+            new TestRun(false, "raw dotnet output", [failure]));
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal(
+        [
+            "✗ Adds item — Expected total to be 10.",
+            "/repo/CartTests.cs:42"
+        ], snapshot.ResultLines.Select(line => line.Text));
     }
 
     [Theory]

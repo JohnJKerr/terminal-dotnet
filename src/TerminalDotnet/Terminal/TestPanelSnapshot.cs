@@ -1,4 +1,5 @@
 using TerminalDotnet.Explorer;
+using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Terminal;
 
@@ -18,6 +19,7 @@ public sealed record TestPanelSnapshot(
     IReadOnlyList<VisibleTestNode> Tests,
     int SelectedIndex,
     string SearchQuery,
+    IReadOnlyList<OutputLine> ResultLines,
     IReadOnlyList<OutputLine> OutputLines)
 {
     public static TestPanelSnapshot From(ExplorerState state, string target) => new(
@@ -25,11 +27,39 @@ public sealed record TestPanelSnapshot(
         state.VisibleNodes,
         state.SelectedIndex,
         state.SearchQuery,
+        ResultLinesFrom(state),
         state.Message
             .ReplaceLineEndings("\n")
             .Split('\n')
             .Select(OutputLineFrom)
             .ToArray());
+
+    private static IReadOnlyList<OutputLine> ResultLinesFrom(ExplorerState state)
+    {
+        if (state.LastRun is null || state.VisibleNodes.Count == 0)
+        {
+            return [];
+        }
+
+        var selectedTests = state.VisibleNodes[state.SelectedIndex].Tests.ToHashSet();
+        return state.LastRun.Results
+            .Where(result => selectedTests.Contains(result.Test) && result.Outcome == TestOutcome.Failed)
+            .SelectMany(FailureLines)
+            .ToArray();
+    }
+
+    private static IEnumerable<OutputLine> FailureLines(TestResult failure)
+    {
+        yield return new OutputLine(
+            $"✗ {failure.Test.DisplayName} — {failure.ErrorMessage ?? "Failed"}",
+            OutputLineTone.Failure);
+        if (failure.SourceFile is not null && failure.SourceLine is not null)
+        {
+            yield return new OutputLine(
+                $"{failure.SourceFile}:{failure.SourceLine}",
+                OutputLineTone.Neutral);
+        }
+    }
 
     private static OutputLine OutputLineFrom(string text) => new(text, ToneFrom(text.TrimStart()));
 

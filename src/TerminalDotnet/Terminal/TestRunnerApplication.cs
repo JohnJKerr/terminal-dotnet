@@ -20,6 +20,7 @@ public sealed class TestRunnerApplication(
 
     private CancellationTokenSource? runCancellation;
     private IReadOnlyList<OutputLine> outputLines = [];
+    private IReadOnlyList<OutputLine> resultLines = [];
     private IReadOnlyList<VisibleTestNode> testNodes = [];
     private bool openSourceRequested;
 
@@ -41,18 +42,19 @@ public sealed class TestRunnerApplication(
         var panels = Panels();
         var search = Search();
         var tests = Tests(search);
-        var output = Output(tests);
+        var result = Result(tests);
+        var output = Output(result);
         var shortcuts = Shortcuts();
 
-        window.Add(panels, search, tests, output, shortcuts);
+        window.Add(panels, search, tests, result, output, shortcuts);
         search.ValueChanged += async (_, _) =>
         {
             await session.DispatchAsync(new ExplorerCommand.Search(search.Text));
-            Render(search, tests, output);
+            Render(search, tests, result, output);
         };
         application.Keyboard.KeyDown += (_, key) =>
-            HandleKey(application, key, panels, search, tests, output);
-        Render(search, tests, output);
+            HandleKey(application, key, panels, search, tests, result, output);
+        Render(search, tests, result, output);
         tests.SetFocus();
 
         application.Run(window);
@@ -96,7 +98,7 @@ public sealed class TestRunnerApplication(
             X = WorkspaceX,
             Y = Pos.Bottom(search),
             Width = Dim.Fill(ContentInset),
-            Height = Dim.Percent(55),
+            Height = Dim.Percent(45),
             ShowMarks = false,
             KeystrokeNavigator = null
         };
@@ -104,13 +106,29 @@ public sealed class TestRunnerApplication(
         return tests;
     }
 
-    private ListView Output(ListView tests)
+    private ListView Result(ListView tests)
+    {
+        var result = new ListView
+        {
+            Title = "Test Result",
+            X = WorkspaceX,
+            Y = Pos.Bottom(tests),
+            Width = Dim.Fill(ContentInset),
+            Height = Dim.Percent(25),
+            ShowMarks = false,
+            KeystrokeNavigator = null
+        };
+        result.RowRender += (_, args) => ColorLine(result, resultLines, args);
+        return result;
+    }
+
+    private ListView Output(ListView result)
     {
         var output = new ListView
         {
             Title = "Execution Output",
             X = WorkspaceX,
-            Y = Pos.Bottom(tests),
+            Y = Pos.Bottom(result),
             Width = Dim.Fill(ContentInset),
             Height = Dim.Fill(2),
             ShowMarks = false,
@@ -135,13 +153,14 @@ public sealed class TestRunnerApplication(
         ListView panels,
         TextField search,
         ListView tests,
+        ListView result,
         ListView output)
     {
         if (search.HasFocus && Is(key, KeyCode.Esc))
         {
             key.Handled = true;
             search.Text = "";
-            _ = DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests, output);
+            _ = DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests, result, output);
             tests.SetFocus();
             return;
         }
@@ -179,7 +198,7 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        if (output.HasFocus && ScrollOutput(key, output))
+        if (result.HasFocus && ScrollOutput(key, result) || output.HasFocus && ScrollOutput(key, output))
         {
             key.Handled = true;
             return;
@@ -192,7 +211,7 @@ public sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        HandleCommand(application, command, search, tests, output);
+        HandleCommand(application, command, search, tests, result, output);
     }
 
     private void HandleCommand(
@@ -200,6 +219,7 @@ public sealed class TestRunnerApplication(
         TerminalCommand command,
         TextField search,
         ListView tests,
+        ListView result,
         ListView output)
     {
         if (command is CancelRun)
@@ -208,7 +228,7 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        _ = DispatchAsync(application, command.ExplorerCommand!, search, tests, output);
+        _ = DispatchAsync(application, command.ExplorerCommand!, search, tests, result, output);
     }
 
     private async Task DispatchAsync(
@@ -216,21 +236,22 @@ public sealed class TestRunnerApplication(
         ExplorerCommand command,
         TextField search,
         ListView tests,
+        ListView result,
         ListView output)
     {
         if (!RunsTests(command))
         {
             await session.DispatchAsync(command);
-            Render(search, tests, output);
+            Render(search, tests, result, output);
             return;
         }
 
         runCancellation?.Dispose();
         runCancellation = new CancellationTokenSource();
         var run = session.DispatchAsync(command, runCancellation.Token);
-        Render(search, tests, output);
+        Render(search, tests, result, output);
         await run;
-        application.Invoke(() => Render(search, tests, output));
+        application.Invoke(() => Render(search, tests, result, output));
     }
 
     private void RequestOpenSource(IApplication application)
@@ -252,13 +273,15 @@ public sealed class TestRunnerApplication(
             source.HighlightLine).GetAwaiter().GetResult();
     }
 
-    private void Render(TextField search, ListView tests, ListView output)
+    private void Render(TextField search, ListView tests, ListView result, ListView output)
     {
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Target}";
         search.Text = snapshot.SearchQuery;
         testNodes = snapshot.Tests;
         tests.SetSource(new ObservableCollection<string>(snapshot.Tests.Select(TestRow)));
+        resultLines = snapshot.ResultLines;
+        result.SetSource(new ObservableCollection<string>(snapshot.ResultLines.Select(line => line.Text)));
         outputLines = snapshot.OutputLines;
         output.SetSource(new ObservableCollection<string>(snapshot.OutputLines.Select(line => line.Text)));
         if (snapshot.Tests.Count > 0)
@@ -286,12 +309,20 @@ public sealed class TestRunnerApplication(
 
     private void ColorOutputRow(ListView output, ListViewRowEventArgs args)
     {
-        if (args.Row >= outputLines.Count || output.IsSelectedOrMarked(args.Row))
+        ColorLine(output, outputLines, args);
+    }
+
+    private static void ColorLine(
+        ListView list,
+        IReadOnlyList<OutputLine> lines,
+        ListViewRowEventArgs args)
+    {
+        if (args.Row >= lines.Count || list.IsSelectedOrMarked(args.Row))
         {
             return;
         }
 
-        var foreground = outputLines[args.Row].Tone switch
+        var foreground = lines[args.Row].Tone switch
         {
             OutputLineTone.Failure => Color.BrightRed,
             OutputLineTone.Success => Color.BrightGreen,
@@ -304,7 +335,7 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        SetRowForeground(output, args, foreground);
+        SetRowForeground(list, args, foreground);
     }
 
     private static void SetRowForeground(
