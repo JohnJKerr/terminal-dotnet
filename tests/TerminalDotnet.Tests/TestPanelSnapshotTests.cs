@@ -134,6 +134,28 @@ public class WhenCreatingATestPanelSnapshot
         Assert.Equal("    ✓ Adds item 7ms", snapshot.TestRows.Single());
     }
 
+    [Fact]
+    public void It_shows_the_test_count_for_a_test_group()
+    {
+        // Arrange
+        var tests = new[]
+        {
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj")
+        };
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [new VisibleTestNode(1, TestNodeKind.Class, "CartTests", tests)],
+            0,
+            "Ready");
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal("  ▼ CartTests 2", snapshot.TestRows.Single());
+    }
+
     [Theory]
     [InlineData("Passed! - Passed: 12", OutputLineTone.Success)]
     [InlineData("Skipped: 2", OutputLineTone.Skipped)]

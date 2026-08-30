@@ -61,10 +61,14 @@ public sealed record TestPanelSnapshot(
             _ when !node.IsExpanded => "▶",
             _ => "▼"
         };
-        var duration = node.Kind == TestNodeKind.Test && results.TryGetValue(node.Tests[0], out var result)
-            ? $" {result.Duration.TotalMilliseconds.ToString("0.#", CultureInfo.InvariantCulture)}ms"
-            : "";
-        return $"{new string(' ', node.Depth * 2)}{marker} {node.Name}{duration}";
+        var metadata = node.Kind switch
+        {
+            TestNodeKind.Test when results.TryGetValue(node.Tests[0], out var result) =>
+                $" {result.Duration.TotalMilliseconds.ToString("0.#", CultureInfo.InvariantCulture)}ms",
+            TestNodeKind.Test => "",
+            _ => $" {node.Tests.Count}"
+        };
+        return $"{new string(' ', node.Depth * 2)}{marker} {node.Name}{metadata}";
     }
 
     private static IReadOnlyList<OutputLine> ResultLinesFrom(ExplorerState state)
