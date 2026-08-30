@@ -17,6 +17,7 @@ public sealed record OutputLine(string Text, OutputLineTone Tone);
 
 public sealed record TestPanelSnapshot(
     string Target,
+    string Breadcrumb,
     IReadOnlyList<VisibleTestNode> Tests,
     IReadOnlyList<string> TestRows,
     int SelectedIndex,
@@ -27,6 +28,7 @@ public sealed record TestPanelSnapshot(
 {
     public static TestPanelSnapshot From(ExplorerState state, string target) => new(
         Path.GetFileName(target),
+        BreadcrumbFrom(state, target),
         state.VisibleNodes,
         TestRowsFrom(state),
         state.SelectedIndex,
@@ -38,6 +40,29 @@ public sealed record TestPanelSnapshot(
             .Split('\n')
             .Select(OutputLineFrom)
             .ToArray());
+
+    private static string BreadcrumbFrom(ExplorerState state, string target)
+    {
+        if (state.VisibleNodes.Count == 0)
+        {
+            return Path.GetFileName(target);
+        }
+
+        var selected = state.VisibleNodes[state.SelectedIndex];
+        var project = Path.GetFileNameWithoutExtension(selected.Tests[0].ProjectPath);
+        return selected.Kind switch
+        {
+            TestNodeKind.Project => project,
+            TestNodeKind.Class => $"{project} › {selected.Name}",
+            _ => $"{project} › {ClassName(selected.Tests[0])} › {selected.Name}"
+        };
+    }
+
+    private static string ClassName(TestCase test)
+    {
+        var parts = test.FullyQualifiedName.Split('.');
+        return parts.Length > 1 ? parts[^2] : test.FullyQualifiedName;
+    }
 
     private static IReadOnlyList<string> TestRowsFrom(ExplorerState state)
     {

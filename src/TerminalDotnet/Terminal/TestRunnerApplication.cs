@@ -301,7 +301,7 @@ public sealed class TestRunnerApplication(
     private void Render(TextField search, ListView tests, ListView result, ListView output)
     {
         var snapshot = TestPanelSnapshot.From(session.State, target);
-        tests.Title = $"Tests — {snapshot.Target}";
+        tests.Title = $"Tests — {snapshot.Breadcrumb}";
         search.Title = snapshot.SearchQuery.Length == 0
             ? "Search"
             : $"Search — {snapshot.SearchHitCount} hits";

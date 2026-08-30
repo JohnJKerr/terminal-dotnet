@@ -181,6 +181,24 @@ public class WhenCreatingATestPanelSnapshot
         Assert.Equal("  ▼ CartTests 2", snapshot.TestRows.Single());
     }
 
+    [Fact]
+    public void It_exposes_a_breadcrumb_for_the_selected_test()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test])],
+            0,
+            "Ready");
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "/repo/Shop.slnx");
+
+        // Assert
+        Assert.Equal("Shop.Tests › CartTests › Adds item", snapshot.Breadcrumb);
+    }
+
     [Theory]
     [InlineData("Passed! - Passed: 12", OutputLineTone.Success)]
     [InlineData("Skipped: 2", OutputLineTone.Skipped)]
