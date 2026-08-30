@@ -93,6 +93,26 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
             return;
         }
 
+        if (command is ExplorerCommand.NextFailure)
+        {
+            var failedTests = State.LastRun?.Results
+                .Where(result => result.Outcome == TestOutcome.Failed)
+                .Select(result => result.Test)
+                .ToHashSet() ?? [];
+            var nextFailure = State.VisibleNodes
+                .Select((node, index) => (node, index))
+                .FirstOrDefault(item =>
+                    item.index > State.SelectedIndex &&
+                    item.node.Kind == TestNodeKind.Test &&
+                    item.node.Tests.Any(failedTests.Contains));
+            if (nextFailure.node is not null)
+            {
+                State = State with { SelectedIndex = nextFailure.index };
+            }
+
+            return;
+        }
+
         var lastIndex = Math.Max(0, State.VisibleNodes.Count - 1);
         var selectedIndex = command switch
         {
