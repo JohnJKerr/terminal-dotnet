@@ -146,6 +146,11 @@ public sealed class TestRunnerApplication(
             return;
         }
 
+        if (search.HasFocus)
+        {
+            return;
+        }
+
         if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))
         {
             key.Handled = true;
