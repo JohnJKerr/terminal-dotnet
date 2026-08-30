@@ -24,9 +24,7 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
         if (command is ExplorerCommand.Search search)
         {
             var matchingTests = discoveredTests
-                .Where(test => test.FullyQualifiedName.Contains(
-                    search.Query,
-                    StringComparison.OrdinalIgnoreCase))
+                .Where(test => MatchesSearch(test, search.Query))
                 .ToArray();
             State = State with
             {
@@ -90,6 +88,10 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
         .OrderBy(project => project.Key)
         .SelectMany(ProjectNodes)
         .ToArray();
+
+    private static bool MatchesSearch(TestCase test, string query) =>
+        test.FullyQualifiedName.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+        test.DisplayName.Contains(query, StringComparison.OrdinalIgnoreCase);
 
     private async Task RunTestsAsync(
         IReadOnlyList<TestCase> tests,

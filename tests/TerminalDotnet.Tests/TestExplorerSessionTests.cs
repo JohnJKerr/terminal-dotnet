@@ -135,6 +135,23 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task Searching_tests_matches_the_displayed_test_name()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Empty_cart", "Empty cart has zero total", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.Search("zero total"));
+
+        // Assert
+        Assert.Equal("Empty cart has zero total", session.State.VisibleNodes[2].Name);
+    }
+
+    [Fact]
     public async Task Running_a_class_runs_every_test_beneath_the_selected_class()
     {
         // Arrange
