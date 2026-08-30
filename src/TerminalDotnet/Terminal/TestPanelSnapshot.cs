@@ -21,6 +21,7 @@ public sealed record TestPanelSnapshot(
     IReadOnlyList<string> TestRows,
     int SelectedIndex,
     string SearchQuery,
+    int SearchHitCount,
     IReadOnlyList<OutputLine> ResultLines,
     IReadOnlyList<OutputLine> OutputLines)
 {
@@ -30,6 +31,7 @@ public sealed record TestPanelSnapshot(
         TestRowsFrom(state),
         state.SelectedIndex,
         state.SearchQuery,
+        state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
         ResultLinesFrom(state),
         state.Message
             .ReplaceLineEndings("\n")

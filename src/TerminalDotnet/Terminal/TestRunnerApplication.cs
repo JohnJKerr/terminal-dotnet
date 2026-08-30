@@ -302,6 +302,9 @@ public sealed class TestRunnerApplication(
     {
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Target}";
+        search.Title = snapshot.SearchQuery.Length == 0
+            ? "Search"
+            : $"Search — {snapshot.SearchHitCount} hits";
         search.Text = snapshot.SearchQuery;
         testNodes = snapshot.Tests;
         tests.SetSource(new ObservableCollection<string>(snapshot.TestRows));

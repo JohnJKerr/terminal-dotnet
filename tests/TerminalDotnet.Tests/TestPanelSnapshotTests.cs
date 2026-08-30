@@ -60,6 +60,31 @@ public class WhenCreatingATestPanelSnapshot
     }
 
     [Fact]
+    public void It_counts_matching_tests_without_counting_ancestor_rows()
+    {
+        // Arrange
+        var first = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var second = new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj");
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+        [
+            new VisibleTestNode(0, TestNodeKind.Project, "Shop.Tests", [first, second]),
+            new VisibleTestNode(1, TestNodeKind.Class, "CartTests", [first, second]),
+            new VisibleTestNode(2, TestNodeKind.Test, first.DisplayName, [first]),
+            new VisibleTestNode(2, TestNodeKind.Test, second.DisplayName, [second])
+        ],
+            0,
+            "Ready",
+            SearchQuery: "item");
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal(2, snapshot.SearchHitCount);
+    }
+
+    [Fact]
     public void It_marks_failed_output_as_failure()
     {
         // Arrange
