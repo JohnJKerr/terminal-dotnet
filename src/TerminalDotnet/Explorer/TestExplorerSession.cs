@@ -132,6 +132,21 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
             return;
         }
 
+        if (command is ExplorerCommand.PreviousSearchMatch)
+        {
+            var previousMatch = State.VisibleNodes
+                .Select((node, index) => (node, index))
+                .LastOrDefault(item =>
+                    item.index < State.SelectedIndex &&
+                    item.node.Kind == TestNodeKind.Test);
+            if (previousMatch.node is not null)
+            {
+                State = State with { SelectedIndex = previousMatch.index };
+            }
+
+            return;
+        }
+
         var lastIndex = Math.Max(0, State.VisibleNodes.Count - 1);
         var selectedIndex = command switch
         {

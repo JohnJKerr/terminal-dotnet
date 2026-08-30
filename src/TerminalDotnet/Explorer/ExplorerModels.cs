@@ -55,4 +55,5 @@ public abstract record ExplorerCommand
     public sealed record RerunFailed : ExplorerCommand;
     public sealed record NextFailure : ExplorerCommand;
     public sealed record NextSearchMatch : ExplorerCommand;
+    public sealed record PreviousSearchMatch : ExplorerCommand;
 }

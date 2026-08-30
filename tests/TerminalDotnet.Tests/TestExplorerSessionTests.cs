@@ -191,6 +191,27 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
+    public async Task Moving_to_the_previous_search_match_selects_the_previous_matching_test()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.Search("item"));
+        await session.DispatchAsync(new ExplorerCommand.NextSearchMatch());
+        await session.DispatchAsync(new ExplorerCommand.NextSearchMatch());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.PreviousSearchMatch());
+
+        // Assert
+        Assert.Equal("Adds item", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+    }
+
+    [Fact]
     public async Task Collapsing_a_class_hides_its_tests()
     {
         // Arrange
