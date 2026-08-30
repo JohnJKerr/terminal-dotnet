@@ -166,6 +166,13 @@ public sealed class TestRunnerApplication(
             return;
         }
 
+        if (search.HasFocus && Is(key, KeyCode.Enter))
+        {
+            key.Handled = true;
+            tests.SetFocus();
+            return;
+        }
+
         if (search.HasFocus)
         {
             return;
@@ -182,6 +189,16 @@ public sealed class TestRunnerApplication(
         {
             key.Handled = true;
             search.SetFocus();
+            return;
+        }
+
+        if (tests.HasFocus && session.State.SearchQuery.Length > 0 && Is(key, KeyCode.N))
+        {
+            key.Handled = true;
+            var searchCommand = key.IsShift
+                ? (ExplorerCommand)new ExplorerCommand.PreviousSearchMatch()
+                : new ExplorerCommand.NextSearchMatch();
+            HandleCommand(application, new TerminalCommand(searchCommand), search, tests, result, output);
             return;
         }
 

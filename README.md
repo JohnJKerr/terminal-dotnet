@@ -12,7 +12,7 @@ Keys:
 
 - `↑` / `k`: move up
 - `↓` / `j`: move down
-- `/`: search tests; `Esc` clears the active search
+- `/`: search tests; `Enter` returns to the tree; `n` / `N` select matches; `Esc` clears the search
 - `Space`: collapse or expand the highlighted project or class
 - `r` / `Enter`: run every test beneath the highlighted project, class, or test
 - `R`: rerun the previous test set
