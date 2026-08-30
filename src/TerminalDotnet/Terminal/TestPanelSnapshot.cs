@@ -1,3 +1,4 @@
+using System.Globalization;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
 
@@ -17,6 +18,7 @@ public sealed record OutputLine(string Text, OutputLineTone Tone);
 public sealed record TestPanelSnapshot(
     string Target,
     IReadOnlyList<VisibleTestNode> Tests,
+    IReadOnlyList<string> TestRows,
     int SelectedIndex,
     string SearchQuery,
     IReadOnlyList<OutputLine> ResultLines,
@@ -25,6 +27,7 @@ public sealed record TestPanelSnapshot(
     public static TestPanelSnapshot From(ExplorerState state, string target) => new(
         Path.GetFileName(target),
         state.VisibleNodes,
+        TestRowsFrom(state),
         state.SelectedIndex,
         state.SearchQuery,
         ResultLinesFrom(state),
@@ -33,6 +36,36 @@ public sealed record TestPanelSnapshot(
             .Split('\n')
             .Select(OutputLineFrom)
             .ToArray());
+
+    private static IReadOnlyList<string> TestRowsFrom(ExplorerState state)
+    {
+        var results = state.LastRun?.Results
+            .GroupBy(result => result.Test)
+            .ToDictionary(group => group.Key, group => group.First()) ?? [];
+        return state.VisibleNodes
+            .Select(node => TestRow(node, results))
+            .ToArray();
+    }
+
+    private static string TestRow(
+        VisibleTestNode node,
+        IReadOnlyDictionary<TestCase, TestResult> results)
+    {
+        var marker = node.Outcome switch
+        {
+            TestNodeOutcome.Running => "◌",
+            TestNodeOutcome.Passed => "✓",
+            TestNodeOutcome.Skipped => "○",
+            TestNodeOutcome.Failed => "✗",
+            _ when node.Kind == TestNodeKind.Test => "•",
+            _ when !node.IsExpanded => "▶",
+            _ => "▼"
+        };
+        var duration = node.Kind == TestNodeKind.Test && results.TryGetValue(node.Tests[0], out var result)
+            ? $" {result.Duration.TotalMilliseconds.ToString("0.#", CultureInfo.InvariantCulture)}ms"
+            : "";
+        return $"{new string(' ', node.Depth * 2)}{marker} {node.Name}{duration}";
+    }
 
     private static IReadOnlyList<OutputLine> ResultLinesFrom(ExplorerState state)
     {

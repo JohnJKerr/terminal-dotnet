@@ -107,6 +107,33 @@ public class WhenCreatingATestPanelSnapshot
         ], snapshot.ResultLines.Select(line => line.Text));
     }
 
+    [Fact]
+    public void It_shows_a_completed_tests_duration()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var result = new TestResult(
+            test,
+            TestOutcome.Passed,
+            TimeSpan.FromMilliseconds(7),
+            null,
+            null,
+            null,
+            null);
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test], TestNodeOutcome.Passed)],
+            0,
+            "Passed",
+            new TestRun(true, "Passed", [result]));
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal("    ✓ Adds item 7ms", snapshot.TestRows.Single());
+    }
+
     [Theory]
     [InlineData("Passed! - Passed: 12", OutputLineTone.Success)]
     [InlineData("Skipped: 2", OutputLineTone.Skipped)]

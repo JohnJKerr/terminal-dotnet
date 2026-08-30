@@ -304,7 +304,7 @@ public sealed class TestRunnerApplication(
         tests.Title = $"Tests — {snapshot.Target}";
         search.Text = snapshot.SearchQuery;
         testNodes = snapshot.Tests;
-        tests.SetSource(new ObservableCollection<string>(snapshot.Tests.Select(TestRow)));
+        tests.SetSource(new ObservableCollection<string>(snapshot.TestRows));
         resultLines = snapshot.ResultLines;
         result.SetSource(new ObservableCollection<string>(snapshot.ResultLines.Select(line => line.Text)));
         outputLines = snapshot.OutputLines;
@@ -371,21 +371,6 @@ public sealed class TestRunnerApplication(
     {
         var background = list.GetAttributeForRole(VisualRole.Normal).Background;
         args.RowAttribute = new global::Terminal.Gui.Drawing.Attribute(foreground, background);
-    }
-
-    private static string TestRow(VisibleTestNode node)
-    {
-        var marker = node.Outcome switch
-        {
-            TestNodeOutcome.Running => "◌",
-            TestNodeOutcome.Passed => "✓",
-            TestNodeOutcome.Failed => "✗",
-            TestNodeOutcome.Skipped => "○",
-            _ when node.Kind == TestNodeKind.Test => "•",
-            _ when !node.IsExpanded => "▶",
-            _ => "▼"
-        };
-        return $"{new string(' ', node.Depth * 2)}{marker} {node.Name}";
     }
 
     private static bool ScrollOutput(Key key, ListView output)
