@@ -126,7 +126,7 @@ public sealed class TestRunnerApplication(
         Y = Pos.AnchorEnd(1),
         Width = Dim.Fill(1),
         Height = 1,
-        Text = "Tab pane  / search  ↑/k up  ↓/j down  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
+        Text = "Tab pane  / search  ↑/k up  ↓/j down  Space fold  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
     };
 
     private void HandleKey(
@@ -324,6 +324,7 @@ public sealed class TestRunnerApplication(
             TestNodeOutcome.Passed => "✓",
             TestNodeOutcome.Failed => "✗",
             _ when node.Kind == TestNodeKind.Test => "•",
+            _ when !node.IsExpanded => "▶",
             _ => "▼"
         };
         return $"{new string(' ', node.Depth * 2)}{marker} {node.Name}";
@@ -356,6 +357,11 @@ public sealed class TestRunnerApplication(
         if (Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J))
         {
             return new TerminalCommand(new ExplorerCommand.MoveDown());
+        }
+
+        if (Is(key, KeyCode.Space))
+        {
+            return new TerminalCommand(new ExplorerCommand.ToggleExpanded());
         }
 
         if (Is(key, KeyCode.Enter) || Is(key, KeyCode.R) && !key.IsShift)
