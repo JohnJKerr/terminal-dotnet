@@ -10,5 +10,10 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
 
 public sealed class PanelShell
 {
-    public PanelShellState State { get; } = new(["Explorer", "Tests"], PanelKind.Explorer);
+    public PanelShellState State { get; private set; } = new(["Explorer", "Tests"], PanelKind.Explorer);
+
+    public void Select(int index)
+    {
+        State = State with { ActivePanel = index == 0 ? PanelKind.Explorer : PanelKind.Tests };
+    }
 }

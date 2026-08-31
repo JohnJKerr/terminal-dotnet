@@ -17,4 +17,17 @@ public sealed class PanelShellTests
         // Assert
         Assert.Equal(("Explorer|Tests", PanelKind.Explorer), (string.Join('|', state.Panels), state.ActivePanel));
     }
+
+    [Fact]
+    public void SelectingTestsChangesTheActivePanel()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.Select(1);
+
+        // Assert
+        Assert.Equal(PanelKind.Tests, shell.State.ActivePanel);
+    }
 }
