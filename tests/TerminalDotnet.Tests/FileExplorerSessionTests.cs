@@ -94,6 +94,25 @@ public sealed class FileExplorerSessionTests
             (session.State.SearchQuery, session.State.VisibleNodes.Count(node => node.Kind == FileNodeKind.File)));
     }
 
+    [Fact]
+    public async Task NextSearchMatchSelectsMatchingFilesAndWraps()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/OrderHandler.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.Search("order"));
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.NextSearchMatch());
+        await session.DispatchAsync(new FileExplorerCommand.NextSearchMatch());
+        await session.DispatchAsync(new FileExplorerCommand.NextSearchMatch());
+
+        // Assert
+        Assert.Equal("Order.cs", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+    }
+
     private static FileExplorerSession SessionWithFiles(params FileEntry[] entries) =>
         new(new InMemoryFileExplorerBackend(entries));
 

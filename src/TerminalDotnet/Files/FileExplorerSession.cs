@@ -42,6 +42,20 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
             return Task.CompletedTask;
         }
 
+        if (command is FileExplorerCommand.NextSearchMatch)
+        {
+            var matchIndices = FileNodeIndices();
+            var nextMatch = matchIndices.FirstOrDefault(
+                index => index > State.SelectedIndex,
+                matchIndices.FirstOrDefault(-1));
+            if (nextMatch >= 0)
+            {
+                State = State with { SelectedIndex = nextMatch };
+            }
+
+            return Task.CompletedTask;
+        }
+
         if (command is FileExplorerCommand.ToggleExpanded && State.VisibleNodes.Count > 0)
         {
             var selected = State.VisibleNodes[State.SelectedIndex];
@@ -108,6 +122,12 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
 
         return queryIndex == query.Length;
     }
+
+    private int[] FileNodeIndices() => State.VisibleNodes
+        .Select((node, index) => (node, index))
+        .Where(item => item.node.Kind == FileNodeKind.File)
+        .Select(item => item.index)
+        .ToArray();
 
     private static IReadOnlyList<VisibleFileNode> NodesFrom(IReadOnlyList<FileEntry> files) => files
         .GroupBy(file => file.ProjectPath)

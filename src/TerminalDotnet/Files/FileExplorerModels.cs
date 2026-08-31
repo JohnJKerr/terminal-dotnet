@@ -39,6 +39,7 @@ public abstract record FileExplorerCommand
     public sealed record ToggleExpanded : FileExplorerCommand;
     public sealed record MoveUp : FileExplorerCommand;
     public sealed record MoveDown : FileExplorerCommand;
+    public sealed record NextSearchMatch : FileExplorerCommand;
 }
 
 public interface IFileExplorerBackend
