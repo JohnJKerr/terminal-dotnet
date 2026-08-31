@@ -1,15 +1,18 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Files;
 
-public sealed partial class FileSystemExplorerBackend : IFileExplorerBackend
+public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunner) : IFileExplorerBackend
 {
     public async Task<IReadOnlyList<FileEntry>> DiscoverAsync(
         string target,
         CancellationToken cancellationToken = default)
     {
         var projectPaths = ProjectPaths(target);
+        var workingDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
+        var gitStatuses = await GitStatusesAsync(workingDirectory, cancellationToken);
         var entries = new List<FileEntry>();
         foreach (var projectPath in projectPaths)
         {
@@ -25,11 +28,38 @@ public sealed partial class FileSystemExplorerBackend : IFileExplorerBackend
                     projectPath,
                     declaredNamespace.Success ? declaredNamespace.Groups[1].Value : "(global)",
                     path,
-                    FileGitStatus.Unchanged));
+                    gitStatuses.GetValueOrDefault(Path.GetFullPath(path), FileGitStatus.Unchanged)));
             }
         }
 
         return entries;
+    }
+
+    private async Task<IReadOnlyDictionary<string, FileGitStatus>> GitStatusesAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken)
+    {
+        var result = await commandRunner.RunAsync(
+            new CommandRequest(
+                "git",
+                ["status", "--porcelain=v1", "--untracked-files=all"],
+                workingDirectory),
+            cancellationToken);
+        if (result.ExitCode != 0)
+        {
+            return new Dictionary<string, FileGitStatus>();
+        }
+
+        return result.StandardOutput
+            .ReplaceLineEndings("\n")
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Where(line => line.Length > 3)
+            .ToDictionary(
+                line => Path.GetFullPath(line[3..], workingDirectory),
+                line => line.StartsWith("??", StringComparison.Ordinal) || line[0] == 'A'
+                    ? FileGitStatus.New
+                    : FileGitStatus.Modified,
+                StringComparer.Ordinal);
     }
 
     private static IReadOnlyList<string> ProjectPaths(string target)
