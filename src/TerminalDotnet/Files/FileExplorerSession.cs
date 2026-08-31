@@ -30,6 +30,18 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
             return Task.CompletedTask;
         }
 
+        if (command is FileExplorerCommand.ClearSearch)
+        {
+            allNodes = NodesFrom(discoveredFiles);
+            State = State with
+            {
+                VisibleNodes = VisibleNodes(),
+                SelectedIndex = 0,
+                SearchQuery = ""
+            };
+            return Task.CompletedTask;
+        }
+
         if (command is FileExplorerCommand.ToggleExpanded && State.VisibleNodes.Count > 0)
         {
             var selected = State.VisibleNodes[State.SelectedIndex];

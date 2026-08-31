@@ -75,6 +75,25 @@ public sealed class FileExplorerSessionTests
             session.State.VisibleNodes.Select(node => node.Name));
     }
 
+    [Fact]
+    public async Task ClearSearchRestoresAllFiles()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Customer.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.Search("order"));
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ClearSearch());
+
+        // Assert
+        Assert.Equal(
+            ("", 2),
+            (session.State.SearchQuery, session.State.VisibleNodes.Count(node => node.Kind == FileNodeKind.File)));
+    }
+
     private static FileExplorerSession SessionWithFiles(params FileEntry[] entries) =>
         new(new InMemoryFileExplorerBackend(entries));
 
