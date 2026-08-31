@@ -27,6 +27,24 @@ public sealed class FileExplorerSessionTests
         session.State.VisibleNodes.Select(node => (node.Depth, node.Kind, node.Name)));
     }
 
+    [Fact]
+    public async Task ToggleExpandedHidesSelectedProjectsDescendants()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ToggleExpanded());
+
+        // Assert
+        Assert.Equal(["App"], session.State.VisibleNodes.Select(node => node.Name));
+    }
+
+    private static FileExplorerSession SessionWithFiles(params FileEntry[] entries) =>
+        new(new InMemoryFileExplorerBackend(entries));
+
     private sealed class InMemoryFileExplorerBackend(IReadOnlyList<FileEntry> entries) : IFileExplorerBackend
     {
         public Task<IReadOnlyList<FileEntry>> DiscoverAsync(

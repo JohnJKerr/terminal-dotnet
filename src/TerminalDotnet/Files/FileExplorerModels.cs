@@ -32,6 +32,11 @@ public sealed record FileExplorerState(
     int SelectedIndex = 0,
     string SearchQuery = "");
 
+public abstract record FileExplorerCommand
+{
+    public sealed record ToggleExpanded : FileExplorerCommand;
+}
+
 public interface IFileExplorerBackend
 {
     Task<IReadOnlyList<FileEntry>> DiscoverAsync(

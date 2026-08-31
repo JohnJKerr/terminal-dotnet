@@ -2,13 +2,60 @@ namespace TerminalDotnet.Files;
 
 public sealed class FileExplorerSession(IFileExplorerBackend backend)
 {
+    private IReadOnlyList<VisibleFileNode> allNodes = [];
+    private readonly HashSet<string> collapsedNodes = [];
+
     public FileExplorerState State { get; private set; } = new([]);
 
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
         var files = await backend.DiscoverAsync(target, cancellationToken);
-        State = new FileExplorerState(NodesFrom(files));
+        allNodes = NodesFrom(files);
+        State = new FileExplorerState(allNodes);
     }
+
+    public Task DispatchAsync(FileExplorerCommand command)
+    {
+        if (command is FileExplorerCommand.ToggleExpanded && State.VisibleNodes.Count > 0)
+        {
+            var selected = State.VisibleNodes[State.SelectedIndex];
+            var key = NodeKey(selected);
+            if (!collapsedNodes.Add(key))
+            {
+                collapsedNodes.Remove(key);
+            }
+
+            State = State with { VisibleNodes = VisibleNodes(), SelectedIndex = 0 };
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private IReadOnlyList<VisibleFileNode> VisibleNodes()
+    {
+        var visible = new List<VisibleFileNode>();
+        int? hiddenBelowDepth = null;
+        foreach (var node in allNodes)
+        {
+            if (hiddenBelowDepth is not null && node.Depth > hiddenBelowDepth)
+            {
+                continue;
+            }
+
+            hiddenBelowDepth = null;
+            var isExpanded = !collapsedNodes.Contains(NodeKey(node));
+            visible.Add(node with { IsExpanded = isExpanded });
+            if (!isExpanded)
+            {
+                hiddenBelowDepth = node.Depth;
+            }
+        }
+
+        return visible;
+    }
+
+    private static string NodeKey(VisibleFileNode node) =>
+        $"{node.Kind}:{node.Files[0].ProjectPath}:{node.Name}";
 
     private static IReadOnlyList<VisibleFileNode> NodesFrom(IReadOnlyList<FileEntry> files) => files
         .GroupBy(file => file.ProjectPath)
