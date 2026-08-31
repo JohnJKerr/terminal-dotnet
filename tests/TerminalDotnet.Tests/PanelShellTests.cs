@@ -6,7 +6,7 @@ namespace TerminalDotnet.Tests;
 public sealed class PanelShellTests
 {
     [Fact]
-    public void ShellOffersExplorerAndTestsWithExplorerSelected()
+    public void It_offers_explorer_and_tests_with_explorer_selected()
     {
         // Arrange
         var shell = new PanelShell();
@@ -19,7 +19,7 @@ public sealed class PanelShellTests
     }
 
     [Fact]
-    public void SelectingTestsChangesTheActivePanel()
+    public void It_changes_the_active_panel_when_tests_is_selected()
     {
         // Arrange
         var shell = new PanelShell();

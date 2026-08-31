@@ -7,7 +7,7 @@ namespace TerminalDotnet.Tests;
 public sealed class FileSystemExplorerBackendTests
 {
     [Fact]
-    public async Task DiscoverFindsProjectFilesAndDeclaredNamespaces()
+    public async Task It_finds_project_files_and_their_declared_namespaces()
     {
         // Arrange
         var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
@@ -40,7 +40,7 @@ public sealed class FileSystemExplorerBackendTests
 
 
     [Fact]
-    public async Task DiscoverMarksModifiedAndNewFilesFromGitStatus()
+    public async Task It_marks_modified_and_new_files_from_git_status()
     {
         // Arrange
         var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");

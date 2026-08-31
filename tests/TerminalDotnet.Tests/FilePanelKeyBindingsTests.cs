@@ -4,21 +4,33 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
 using Xunit;
 
-namespace TerminalDotnet.Tests;
+namespace TerminalDotnet.Tests.WhenOpeningAFile;
 
 public sealed class FilePanelKeyBindingsTests
 {
-    [Theory]
-    [InlineData(KeyCode.Enter)]
-    [InlineData(KeyCode.O)]
-    public void FileActivationKeysOpenTheSelectedFile(KeyCode keyCode)
+    [Fact]
+    public void Pressing_enter_opens_it()
     {
         // Arrange
         var file = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
         var selected = new VisibleFileNode(2, FileNodeKind.File, "Order.cs", [file]);
 
         // Act
-        var action = FilePanelKeyBindings.ActionFor(new Key(keyCode), selected, searchActive: false);
+        var action = FilePanelKeyBindings.ActionFor(new Key(KeyCode.Enter), selected, searchActive: false);
+
+        // Assert
+        Assert.Equal(new FilePanelAction.OpenFile("Order.cs"), action);
+    }
+
+    [Fact]
+    public void Pressing_o_opens_it()
+    {
+        // Arrange
+        var file = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
+        var selected = new VisibleFileNode(2, FileNodeKind.File, "Order.cs", [file]);
+
+        // Act
+        var action = FilePanelKeyBindings.ActionFor(new Key(KeyCode.O), selected, searchActive: false);
 
         // Assert
         Assert.Equal(new FilePanelAction.OpenFile("Order.cs"), action);

@@ -7,7 +7,7 @@ namespace TerminalDotnet.Tests;
 public sealed class EditorLauncherTests
 {
     [Fact]
-    public async Task Opening_source_issues_the_configured_editor_command_at_the_failure_line()
+    public async Task It_issues_the_configured_editor_command_at_the_failure_line()
     {
         // Arrange
         var runner = new InMemoryCommandRunner();
@@ -31,7 +31,7 @@ public sealed class EditorLauncherTests
     }
 
     [Fact]
-    public async Task Opening_source_preserves_arguments_from_the_configured_editor_command()
+    public async Task It_preserves_arguments_from_the_configured_editor_command()
     {
         // Arrange
         var runner = new InMemoryCommandRunner();

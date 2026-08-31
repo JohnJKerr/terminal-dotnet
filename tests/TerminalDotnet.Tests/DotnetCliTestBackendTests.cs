@@ -6,7 +6,7 @@ namespace TerminalDotnet.Tests;
 public sealed class DotnetCliTestBackendTests
 {
     [Fact]
-    public async Task Discovery_issues_a_list_tests_command_and_returns_the_reported_tests()
+    public async Task It_issues_a_list_tests_command_and_returns_the_reported_tests_when_discovering()
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, """
@@ -38,7 +38,7 @@ public sealed class DotnetCliTestBackendTests
     }
 
     [Fact]
-    public async Task Running_tests_issues_one_exact_filter_command()
+    public async Task It_issues_one_exact_filter_command_when_running_tests()
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
@@ -71,7 +71,7 @@ public sealed class DotnetCliTestBackendTests
     }
 
     [Fact]
-    public async Task A_failed_run_returns_structured_failure_details()
+    public async Task It_returns_structured_failure_details_for_a_failed_run()
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(1, "1 test failed", ""));
@@ -110,7 +110,7 @@ public sealed class DotnetCliTestBackendTests
     }
 
     [Fact]
-    public async Task Discovery_retains_test_modules_and_normalizes_parameterized_test_identities()
+    public async Task It_retains_test_modules_and_normalizes_parameterized_identities_when_discovering()
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, """
@@ -140,7 +140,7 @@ public sealed class DotnetCliTestBackendTests
     [InlineData("Shop.Tests.PriceTests.Accepts_price(value: 1.50)", "Shop.Tests.PriceTests.Accepts_price|Accepts price(value: 1.50)")]
     [InlineData("Shop.Tests.PriceTests.Accepts_price(1.50)", "Shop.Tests.PriceTests.Accepts_price|Accepts price(1.50)")]
     [InlineData("Shop.Tests.PriceTests.Accepts_price (1.50)", "Shop.Tests.PriceTests.Accepts_price|Accepts price (1.50)")]
-    public async Task Discovery_preserves_parameter_values_in_the_display_name(
+    public async Task It_preserves_parameter_values_in_the_display_name_when_discovering(
         string reportedName,
         string expected)
     {
@@ -159,7 +159,7 @@ public sealed class DotnetCliTestBackendTests
     }
 
     [Fact]
-    public async Task A_discovered_test_run_targets_the_owning_project_instead_of_the_assembly()
+    public async Task It_targets_the_owning_project_instead_of_the_assembly()
     {
         // Arrange
         var runner = new QueuedCommandRunner(
@@ -180,7 +180,7 @@ public sealed class DotnetCliTestBackendTests
     }
 
     [Fact]
-    public async Task Parameterized_results_map_back_to_their_distinct_display_cases()
+    public async Task It_maps_parameterized_results_to_their_distinct_display_cases()
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));

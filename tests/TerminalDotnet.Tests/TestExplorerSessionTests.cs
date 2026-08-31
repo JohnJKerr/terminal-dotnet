@@ -7,7 +7,7 @@ namespace TerminalDotnet.Tests;
 public sealed class TestExplorerSessionTests
 {
     [Fact]
-    public async Task Loading_discovered_tests_produces_a_project_class_and_test_tree()
+    public async Task It_produces_a_project_class_and_test_tree_when_loaded()
     {
         // Arrange
         var backend = new InMemoryTestBackend(
@@ -36,7 +36,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Moving_down_stops_at_the_end_of_the_visible_tree()
+    public async Task It_stops_at_the_end_of_the_visible_tree_when_moving_down()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -55,7 +55,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Moving_up_selects_the_previous_visible_node()
+    public async Task It_selects_the_previous_visible_node_when_moving_up()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -74,7 +74,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Searching_tests_keeps_case_insensitive_matches_with_their_ancestors()
+    public async Task It_keeps_case_insensitive_search_matches_with_their_ancestors()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -97,7 +97,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Clearing_search_restores_the_test_tree_with_a_valid_selection()
+    public async Task It_restores_the_test_tree_with_a_valid_selection_when_search_is_cleared()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -118,7 +118,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Searching_exposes_the_active_query()
+    public async Task It_exposes_the_active_search_query()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -135,7 +135,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Searching_tests_matches_the_displayed_test_name()
+    public async Task It_matches_the_displayed_test_name_when_searching()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -152,7 +152,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Searching_tests_supports_ordered_fuzzy_matches()
+    public async Task It_supports_ordered_fuzzy_search_matches()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -172,7 +172,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Moving_to_the_next_search_match_selects_the_next_matching_test()
+    public async Task It_selects_the_next_matching_test_when_moving_to_the_next_search_match()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -191,7 +191,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Moving_to_the_previous_search_match_selects_the_previous_matching_test()
+    public async Task It_selects_the_previous_matching_test_when_moving_to_the_previous_search_match()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -212,7 +212,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Moving_past_the_last_search_match_wraps_to_the_first_match()
+    public async Task It_wraps_to_the_first_match_when_moving_past_the_last_search_match()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -233,7 +233,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Moving_before_the_first_search_match_wraps_to_the_last_match()
+    public async Task It_wraps_to_the_last_match_when_moving_before_the_first_search_match()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -252,7 +252,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Collapsing_a_class_hides_its_tests()
+    public async Task It_hides_a_classes_tests_when_collapsed()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -277,7 +277,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Expanding_a_collapsed_class_restores_its_tests()
+    public async Task It_restores_a_classes_tests_when_expanded()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -298,7 +298,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Expanding_a_class_after_a_run_restores_its_test_outcomes()
+    public async Task It_restores_test_outcomes_when_a_class_is_expanded_after_a_run()
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
@@ -316,7 +316,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Running_a_class_runs_every_test_beneath_the_selected_class()
+    public async Task It_runs_every_test_beneath_the_selected_class()
     {
         // Arrange
         var backend = new InMemoryTestBackend(
@@ -346,7 +346,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task A_completed_run_retains_outcomes_on_the_selected_subtree()
+    public async Task It_retains_completed_outcomes_on_the_selected_subtree()
     {
         // Arrange
         var backend = new InMemoryTestBackend(
@@ -375,7 +375,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task A_skipped_test_is_retained_as_skipped_in_the_tree()
+    public async Task It_retains_a_skipped_test_as_skipped_in_the_tree()
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Skips_item", "Skips item", "Shop.Tests.csproj");
@@ -401,7 +401,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task A_failed_run_exposes_the_selected_tests_failure_details()
+    public async Task It_exposes_the_selected_tests_failure_details_after_a_failed_run()
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
@@ -429,7 +429,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task A_failed_run_loads_source_context_around_the_failure_line()
+    public async Task It_loads_source_context_around_the_failure_line_after_a_failed_run()
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
@@ -461,7 +461,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Moving_to_the_next_failure_selects_the_first_failed_test()
+    public async Task It_selects_the_first_failed_test_when_moving_to_the_next_failure()
     {
         // Arrange
         var first = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
@@ -483,7 +483,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Moving_past_the_last_failure_wraps_to_the_first_failure()
+    public async Task It_wraps_to_the_first_failure_when_moving_past_the_last_failure()
     {
         // Arrange
         var first = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
@@ -507,7 +507,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Rerunning_the_last_run_uses_the_previous_tests_after_selection_moves()
+    public async Task It_uses_the_previous_tests_when_rerunning_after_selection_moves()
     {
         // Arrange
         var backend = new InMemoryTestBackend(
@@ -534,7 +534,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Rerunning_failures_runs_only_tests_that_failed_in_the_previous_run()
+    public async Task It_runs_only_previously_failed_tests_when_rerunning_failures()
     {
         // Arrange
         var failed = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
@@ -560,7 +560,7 @@ public sealed class TestExplorerSessionTests
     }
 
     [Fact]
-    public async Task Cancelling_an_active_run_restores_a_ready_not_run_state()
+    public async Task It_restores_a_ready_not_run_state_when_an_active_run_is_cancelled()
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");

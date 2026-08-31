@@ -7,7 +7,7 @@ namespace TerminalDotnet.Tests;
 public sealed class FilePanelSnapshotTests
 {
     [Fact]
-    public void FromHighlightsModifiedFilesBlueAndNewFilesGreen()
+    public void It_highlights_modified_files_blue_and_new_files_green()
     {
         // Arrange
         var modified = new FileEntry("App.csproj", "App", "Changed.cs", FileGitStatus.Modified);

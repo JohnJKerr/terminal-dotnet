@@ -6,7 +6,7 @@ namespace TerminalDotnet.Tests;
 public sealed class FileExplorerSessionTests
 {
     [Fact]
-    public async Task LoadShowsProjectsNamespacesAndFiles()
+    public async Task It_shows_projects_namespaces_and_files()
     {
         // Arrange
         var session = new FileExplorerSession(new InMemoryFileExplorerBackend(
@@ -28,7 +28,7 @@ public sealed class FileExplorerSessionTests
     }
 
     [Fact]
-    public async Task ToggleExpandedHidesSelectedProjectsDescendants()
+    public async Task It_hides_the_selected_projects_descendants_when_collapsed()
     {
         // Arrange
         var session = SessionWithFiles(
@@ -43,7 +43,7 @@ public sealed class FileExplorerSessionTests
     }
 
     [Fact]
-    public async Task MoveDownSelectsTheNextVisibleNode()
+    public async Task It_selects_the_next_visible_node_when_moving_down()
     {
         // Arrange
         var session = SessionWithFiles(
@@ -58,7 +58,7 @@ public sealed class FileExplorerSessionTests
     }
 
     [Fact]
-    public async Task SearchShowsFuzzyFileMatchesWithTheirAncestors()
+    public async Task It_shows_fuzzy_file_matches_with_their_ancestors()
     {
         // Arrange
         var session = SessionWithFiles(
@@ -76,7 +76,7 @@ public sealed class FileExplorerSessionTests
     }
 
     [Fact]
-    public async Task ClearSearchRestoresAllFiles()
+    public async Task It_restores_all_files_when_search_is_cleared()
     {
         // Arrange
         var session = SessionWithFiles(
@@ -95,7 +95,7 @@ public sealed class FileExplorerSessionTests
     }
 
     [Fact]
-    public async Task NextSearchMatchSelectsMatchingFilesAndWraps()
+    public async Task It_selects_matching_files_and_wraps_when_moving_forward()
     {
         // Arrange
         var session = SessionWithFiles(
@@ -114,7 +114,7 @@ public sealed class FileExplorerSessionTests
     }
 
     [Fact]
-    public async Task PreviousSearchMatchWrapsToTheLastMatchingFile()
+    public async Task It_wraps_to_the_last_matching_file_when_moving_backward()
     {
         // Arrange
         var session = SessionWithFiles(
