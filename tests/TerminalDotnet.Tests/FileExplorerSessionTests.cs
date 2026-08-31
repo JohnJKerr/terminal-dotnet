@@ -57,6 +57,24 @@ public sealed class FileExplorerSessionTests
         Assert.Equal("App.Domain", session.State.VisibleNodes[session.State.SelectedIndex].Name);
     }
 
+    [Fact]
+    public async Task SearchShowsFuzzyFileMatchesWithTheirAncestors()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/OrderRepository.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Customer.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.Search("odr"));
+
+        // Assert
+        Assert.Equal(
+            ["App", "App.Domain", "OrderRepository.cs"],
+            session.State.VisibleNodes.Select(node => node.Name));
+    }
+
     private static FileExplorerSession SessionWithFiles(params FileEntry[] entries) =>
         new(new InMemoryFileExplorerBackend(entries));
 

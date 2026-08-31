@@ -3,6 +3,7 @@ namespace TerminalDotnet.Files;
 public sealed class FileExplorerSession(IFileExplorerBackend backend)
 {
     private IReadOnlyList<VisibleFileNode> allNodes = [];
+    private IReadOnlyList<FileEntry> discoveredFiles = [];
     private readonly HashSet<string> collapsedNodes = [];
 
     public FileExplorerState State { get; private set; } = new([]);
@@ -10,12 +11,25 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
         var files = await backend.DiscoverAsync(target, cancellationToken);
+        discoveredFiles = files;
         allNodes = NodesFrom(files);
         State = new FileExplorerState(allNodes);
     }
 
     public Task DispatchAsync(FileExplorerCommand command)
     {
+        if (command is FileExplorerCommand.Search search)
+        {
+            allNodes = NodesFrom(discoveredFiles.Where(file => IsOrderedMatch(file.Path, search.Query)).ToArray());
+            State = State with
+            {
+                VisibleNodes = VisibleNodes(),
+                SelectedIndex = 0,
+                SearchQuery = search.Query
+            };
+            return Task.CompletedTask;
+        }
+
         if (command is FileExplorerCommand.ToggleExpanded && State.VisibleNodes.Count > 0)
         {
             var selected = State.VisibleNodes[State.SelectedIndex];
@@ -67,6 +81,21 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
 
     private static string NodeKey(VisibleFileNode node) =>
         $"{node.Kind}:{node.Files[0].ProjectPath}:{node.Name}";
+
+    private static bool IsOrderedMatch(string candidate, string query)
+    {
+        var queryIndex = 0;
+        foreach (var character in candidate)
+        {
+            if (queryIndex < query.Length &&
+                char.ToUpperInvariant(character) == char.ToUpperInvariant(query[queryIndex]))
+            {
+                queryIndex++;
+            }
+        }
+
+        return queryIndex == query.Length;
+    }
 
     private static IReadOnlyList<VisibleFileNode> NodesFrom(IReadOnlyList<FileEntry> files) => files
         .GroupBy(file => file.ProjectPath)
