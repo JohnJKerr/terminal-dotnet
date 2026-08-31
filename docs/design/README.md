@@ -13,6 +13,8 @@ variant 1b:
 - The outer window title is `terminal-dotnet`.
 - The layout has two columns: a full-height panel rail on the left and the
   selected panel workspace on the right.
+- The Explorer workspace is a searchable, collapsible project, namespace, and
+  file tree. Modified files are blue and new files are green.
 - The Tests workspace is split vertically into a scrollable test tree and a
   scrollable execution-output pane.
 - A one-cell inset separates content from the outer box, with a one-cell gutter
@@ -24,6 +26,5 @@ variant 1b:
   running cyan. Execution output uses red for failures, green for passes,
   yellow for skips, cyan for status, and the terminal theme for neutral lines.
 
-Only the Tests panel is implemented. Future panels should reuse the same
-two-column shell and replace the right-hand workspace rather than introducing
-a permanent third column.
+The Explorer and Tests panels reuse the same two-column shell and replace the
+right-hand workspace rather than introducing a permanent third column.

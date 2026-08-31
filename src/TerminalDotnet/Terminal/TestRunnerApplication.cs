@@ -6,11 +6,13 @@ using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using TerminalDotnet.Explorer;
+using TerminalDotnet.Files;
 
 namespace TerminalDotnet.Terminal;
 
 public sealed class TestRunnerApplication(
     TestExplorerSession session,
+    FileExplorerSession fileSession,
     string target,
     EditorLauncher? editorLauncher = null)
 {
@@ -22,20 +24,26 @@ public sealed class TestRunnerApplication(
     private IReadOnlyList<OutputLine> outputLines = [];
     private IReadOnlyList<OutputLine> resultLines = [];
     private IReadOnlyList<VisibleTestNode> testNodes = [];
+    private IReadOnlyList<FilePanelRow> fileRows = [];
+    private readonly PanelShell shell = new();
     private bool openSourceRequested;
+    private string? openPath;
+    private int openLine = 1;
     private bool failureNavigationPending;
 
     public void Run()
     {
         while (RunTerminal())
         {
-            OpenSource();
+            OpenRequestedFile();
         }
     }
 
     private bool RunTerminal()
     {
         openSourceRequested = false;
+        openPath = null;
+        openLine = 1;
         using IApplication application = Application.Create();
         application.Init();
 
@@ -50,12 +58,20 @@ public sealed class TestRunnerApplication(
         window.Add(panels, search, tests, result, output, shortcuts);
         search.ValueChanged += async (_, _) =>
         {
-            await session.DispatchAsync(new ExplorerCommand.Search(search.Text));
+            if (shell.State.ActivePanel == PanelKind.Explorer)
+            {
+                await fileSession.DispatchAsync(new FileExplorerCommand.Search(search.Text));
+            }
+            else
+            {
+                await session.DispatchAsync(new ExplorerCommand.Search(search.Text));
+            }
             Render(search, tests, result, output);
         };
         application.Keyboard.KeyDown += (_, key) =>
             HandleKey(application, key, panels, search, tests, result, output);
         Render(search, tests, result, output);
+        panels.SelectedItem = shell.State.ActivePanel == PanelKind.Explorer ? 0 : 1;
         tests.SetFocus();
 
         application.Run(window);
@@ -77,7 +93,7 @@ public sealed class TestRunnerApplication(
             ShowMarks = false,
             KeystrokeNavigator = null
         };
-        panels.SetSource(new ObservableCollection<string>(["Tests"]));
+        panels.SetSource(new ObservableCollection<string>(["Explorer", "Tests"]));
         panels.SelectedItem = 0;
         return panels;
     }
@@ -103,7 +119,7 @@ public sealed class TestRunnerApplication(
             ShowMarks = false,
             KeystrokeNavigator = null
         };
-        tests.RowRender += (_, args) => ColorTestRow(tests, args);
+        tests.RowRender += (_, args) => ColorTreeRow(tests, args);
         return tests;
     }
 
@@ -145,7 +161,7 @@ public sealed class TestRunnerApplication(
         Y = Pos.AnchorEnd(1),
         Width = Dim.Fill(1),
         Height = 1,
-        Text = "Tab pane  / search  ↑/k up  ↓/j down  Space fold  ]f next failure  Enter/r run  R rerun  F failures  c cancel  o source  q quit"
+        Text = "Tab pane  / search  ↑/k up  ↓/j down  Space fold  n/N match  Enter open/run  o open/source  R rerun  F failures  c cancel  q quit"
     };
 
     private void HandleKey(
@@ -161,7 +177,14 @@ public sealed class TestRunnerApplication(
         {
             key.Handled = true;
             search.Text = "";
-            _ = DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests, result, output);
+            if (shell.State.ActivePanel == PanelKind.Explorer)
+            {
+                _ = DispatchFileAsync(new FileExplorerCommand.ClearSearch(), search, tests, result, output);
+            }
+            else
+            {
+                _ = DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests, result, output);
+            }
             tests.SetFocus();
             return;
         }
@@ -189,6 +212,21 @@ public sealed class TestRunnerApplication(
         {
             key.Handled = true;
             search.SetFocus();
+            return;
+        }
+
+        if (panels.HasFocus && Is(key, KeyCode.Enter))
+        {
+            key.Handled = true;
+            shell.Select(panels.SelectedItem ?? 0);
+            Render(search, tests, result, output);
+            tests.SetFocus();
+            return;
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Explorer)
+        {
+            HandleFileKey(application, key, tests, search, result, output);
             return;
         }
 
@@ -233,13 +271,6 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        if (panels.HasFocus && Is(key, KeyCode.Enter))
-        {
-            key.Handled = true;
-            tests.SetFocus();
-            return;
-        }
-
         if (result.HasFocus && ScrollOutput(key, result) || output.HasFocus && ScrollOutput(key, output))
         {
             key.Handled = true;
@@ -273,6 +304,71 @@ public sealed class TestRunnerApplication(
         _ = DispatchAsync(application, command.ExplorerCommand!, search, tests, result, output);
     }
 
+    private void HandleFileKey(
+        IApplication application,
+        Key key,
+        ListView files,
+        TextField search,
+        ListView result,
+        ListView output)
+    {
+        if (!files.HasFocus || fileSession.State.VisibleNodes.Count == 0)
+        {
+            return;
+        }
+
+        var selected = fileSession.State.VisibleNodes[fileSession.State.SelectedIndex];
+        var action = FilePanelKeyBindings.ActionFor(key, selected, search.HasFocus);
+        if (action is FilePanelAction.OpenFile open)
+        {
+            key.Handled = true;
+            openPath = open.Path;
+            openLine = 1;
+            openSourceRequested = true;
+            application.RequestStop();
+            return;
+        }
+
+        FileExplorerCommand? command = null;
+        if (fileSession.State.SearchQuery.Length > 0 && Is(key, KeyCode.N))
+        {
+            command = key.IsShift
+                ? new FileExplorerCommand.PreviousSearchMatch()
+                : new FileExplorerCommand.NextSearchMatch();
+        }
+        else if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
+        {
+            command = new FileExplorerCommand.MoveUp();
+        }
+        else if (Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J))
+        {
+            command = new FileExplorerCommand.MoveDown();
+        }
+        else if (Is(key, KeyCode.Space) || Is(key, KeyCode.Enter))
+        {
+            command = new FileExplorerCommand.ToggleExpanded();
+        }
+
+        if (command is null)
+        {
+            return;
+        }
+
+        key.Handled = true;
+        _ = DispatchFileAsync(command, search, files, result, output);
+    }
+
+    private async Task DispatchFileAsync(
+        FileExplorerCommand command,
+        TextField search,
+        ListView files,
+        ListView result,
+        ListView output)
+    {
+        await fileSession.DispatchAsync(command);
+        Render(search, files, result, output);
+    }
+
     private async Task DispatchAsync(
         IApplication application,
         ExplorerCommand command,
@@ -303,20 +399,30 @@ public sealed class TestRunnerApplication(
             return;
         }
 
+        openPath = session.State.SourceContext.Path;
+        openLine = session.State.SourceContext.HighlightLine;
         openSourceRequested = true;
         application.RequestStop();
     }
 
-    private void OpenSource()
+    private void OpenRequestedFile()
     {
-        var source = session.State.SourceContext!;
         editorLauncher!.OpenAsync(
-            source.Path,
-            source.HighlightLine).GetAwaiter().GetResult();
+            openPath!,
+            openLine).GetAwaiter().GetResult();
     }
 
     private void Render(TextField search, ListView tests, ListView result, ListView output)
     {
+        if (shell.State.ActivePanel == PanelKind.Explorer)
+        {
+            RenderFiles(search, tests, result, output);
+            return;
+        }
+
+        result.Visible = true;
+        output.Visible = true;
+        tests.Height = Dim.Percent(45);
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Breadcrumb}";
         search.Title = snapshot.SearchQuery.Length == 0
@@ -335,6 +441,55 @@ public sealed class TestRunnerApplication(
         if (snapshot.Tests.Count > 0)
         {
             tests.SelectedItem = snapshot.SelectedIndex;
+        }
+    }
+
+    private void RenderFiles(TextField search, ListView files, ListView result, ListView output)
+    {
+        var snapshot = FilePanelSnapshot.From(fileSession.State);
+        files.Title = "Explorer";
+        search.Title = snapshot.SearchQuery.Length == 0
+            ? "Search"
+            : $"Search — {snapshot.SearchHitCount} hits";
+        search.Text = snapshot.SearchQuery;
+        fileRows = snapshot.Rows;
+        files.SetSource(new ObservableCollection<string>(snapshot.Rows.Select(row => row.Text)));
+        files.Height = Dim.Fill(2);
+        result.Visible = false;
+        output.Visible = false;
+        if (snapshot.Nodes.Count > 0)
+        {
+            files.SelectedItem = snapshot.SelectedIndex;
+        }
+    }
+
+    private void ColorTreeRow(ListView tree, ListViewRowEventArgs args)
+    {
+        if (shell.State.ActivePanel == PanelKind.Explorer)
+        {
+            ColorFileRow(tree, args);
+            return;
+        }
+
+        ColorTestRow(tree, args);
+    }
+
+    private void ColorFileRow(ListView files, ListViewRowEventArgs args)
+    {
+        if (args.Row >= fileRows.Count || files.IsSelectedOrMarked(args.Row))
+        {
+            return;
+        }
+
+        var foreground = fileRows[args.Row].Tone switch
+        {
+            FileRowTone.Modified => Color.BrightBlue,
+            FileRowTone.New => Color.BrightGreen,
+            _ => Color.None
+        };
+        if (foreground != Color.None)
+        {
+            SetRowForeground(files, args, foreground);
         }
     }
 

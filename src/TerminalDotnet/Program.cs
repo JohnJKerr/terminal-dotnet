@@ -1,4 +1,5 @@
 using TerminalDotnet.Explorer;
+using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 
@@ -10,11 +11,13 @@ if (target is null)
 }
 
 var commandRunner = new ProcessCommandRunner();
+var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandRunner));
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
     new FileSourceProvider());
 try
 {
+    await fileSession.LoadAsync(target);
     await session.LoadAsync(target);
 }
 catch (Exception exception)
@@ -23,11 +26,11 @@ catch (Exception exception)
     return 1;
 }
 
-var editor = Environment.GetEnvironmentVariable("EDITOR");
-var editorLauncher = string.IsNullOrWhiteSpace(editor)
-    ? null
-    : new EditorLauncher(editor, commandRunner);
-new TestRunnerApplication(session, target, editorLauncher).Run();
+var editor = Environment.GetEnvironmentVariable("VISUAL") ??
+    Environment.GetEnvironmentVariable("EDITOR") ??
+    "omarchy-launch-editor";
+var editorLauncher = new EditorLauncher(editor, commandRunner);
+new TestRunnerApplication(session, fileSession, target, editorLauncher).Run();
 return 0;
 
 static string? FindTarget(string directory)
