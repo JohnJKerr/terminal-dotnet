@@ -113,6 +113,23 @@ public sealed class FileExplorerSessionTests
         Assert.Equal("Order.cs", session.State.VisibleNodes[session.State.SelectedIndex].Name);
     }
 
+    [Fact]
+    public async Task PreviousSearchMatchWrapsToTheLastMatchingFile()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/OrderHandler.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.Search("order"));
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.PreviousSearchMatch());
+
+        // Assert
+        Assert.Equal("OrderHandler.cs", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+    }
+
     private static FileExplorerSession SessionWithFiles(params FileEntry[] entries) =>
         new(new InMemoryFileExplorerBackend(entries));
 

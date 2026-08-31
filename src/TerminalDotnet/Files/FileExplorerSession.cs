@@ -56,6 +56,20 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
             return Task.CompletedTask;
         }
 
+        if (command is FileExplorerCommand.PreviousSearchMatch)
+        {
+            var matchIndices = FileNodeIndices();
+            var previousMatch = matchIndices.LastOrDefault(
+                index => index < State.SelectedIndex,
+                matchIndices.LastOrDefault(-1));
+            if (previousMatch >= 0)
+            {
+                State = State with { SelectedIndex = previousMatch };
+            }
+
+            return Task.CompletedTask;
+        }
+
         if (command is FileExplorerCommand.ToggleExpanded && State.VisibleNodes.Count > 0)
         {
             var selected = State.VisibleNodes[State.SelectedIndex];
