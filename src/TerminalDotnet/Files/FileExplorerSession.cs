@@ -28,6 +28,17 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
             State = State with { VisibleNodes = VisibleNodes(), SelectedIndex = 0 };
         }
 
+        var lastIndex = Math.Max(0, State.VisibleNodes.Count - 1);
+        State = State with
+        {
+            SelectedIndex = command switch
+            {
+                FileExplorerCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
+                FileExplorerCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+                _ => State.SelectedIndex
+            }
+        };
+
         return Task.CompletedTask;
     }
 

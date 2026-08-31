@@ -35,6 +35,8 @@ public sealed record FileExplorerState(
 public abstract record FileExplorerCommand
 {
     public sealed record ToggleExpanded : FileExplorerCommand;
+    public sealed record MoveUp : FileExplorerCommand;
+    public sealed record MoveDown : FileExplorerCommand;
 }
 
 public interface IFileExplorerBackend

@@ -42,6 +42,21 @@ public sealed class FileExplorerSessionTests
         Assert.Equal(["App"], session.State.VisibleNodes.Select(node => node.Name));
     }
 
+    [Fact]
+    public async Task MoveDownSelectsTheNextVisibleNode()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.MoveDown());
+
+        // Assert
+        Assert.Equal("App.Domain", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+    }
+
     private static FileExplorerSession SessionWithFiles(params FileEntry[] entries) =>
         new(new InMemoryFileExplorerBackend(entries));
 
