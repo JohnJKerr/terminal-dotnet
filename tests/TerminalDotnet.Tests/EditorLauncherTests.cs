@@ -2,9 +2,9 @@ using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using Xunit;
 
-namespace TerminalDotnet.Tests;
+namespace TerminalDotnet.Tests.Terminal;
 
-public sealed class EditorLauncherTests
+public sealed class WhenOpeningSource
 {
     [Fact]
     public async Task It_issues_the_configured_editor_command_at_the_failure_line()

@@ -2,9 +2,9 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Testing;
 using Xunit;
 
-namespace TerminalDotnet.Tests;
+namespace TerminalDotnet.Tests.Explorer;
 
-public sealed class FileSystemExplorerBackendTests
+public sealed class WhenDiscoveringProjectFiles
 {
     [Fact]
     public async Task It_finds_project_files_and_their_declared_namespaces()

@@ -4,9 +4,9 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
 using Xunit;
 
-namespace TerminalDotnet.Tests.WhenOpeningAFile;
+namespace TerminalDotnet.Tests.Explorer;
 
-public sealed class FilePanelKeyBindingsTests
+public sealed class WhenOpeningAFile
 {
     [Fact]
     public void Pressing_enter_opens_it()

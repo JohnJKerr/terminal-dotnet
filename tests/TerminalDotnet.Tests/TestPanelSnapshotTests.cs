@@ -3,7 +3,7 @@ using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using Xunit;
 
-namespace TerminalDotnet.Tests;
+namespace TerminalDotnet.Tests.Testing;
 
 public class WhenCreatingATestPanelSnapshot
 {

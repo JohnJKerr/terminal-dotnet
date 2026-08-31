@@ -2,9 +2,9 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
 using Xunit;
 
-namespace TerminalDotnet.Tests;
+namespace TerminalDotnet.Tests.Explorer;
 
-public sealed class FilePanelSnapshotTests
+public sealed class WhenCreatingAFilePanelSnapshot
 {
     [Fact]
     public void It_highlights_modified_files_blue_and_new_files_green()

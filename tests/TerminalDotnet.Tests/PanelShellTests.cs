@@ -1,9 +1,9 @@
 using TerminalDotnet.Terminal;
 using Xunit;
 
-namespace TerminalDotnet.Tests;
+namespace TerminalDotnet.Tests.Terminal;
 
-public sealed class PanelShellTests
+public sealed class WhenUsingThePanelShell
 {
     [Fact]
     public void It_offers_explorer_and_tests_with_explorer_selected()

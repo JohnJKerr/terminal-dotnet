@@ -2,9 +2,9 @@ using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
 using Xunit;
 
-namespace TerminalDotnet.Tests;
+namespace TerminalDotnet.Tests.Testing;
 
-public sealed class TestExplorerSessionTests
+public sealed class WhenUsingTheTestExplorer
 {
     [Fact]
     public async Task It_produces_a_project_class_and_test_tree_when_loaded()

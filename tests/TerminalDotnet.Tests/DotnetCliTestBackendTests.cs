@@ -1,9 +1,9 @@
 using TerminalDotnet.Testing;
 using Xunit;
 
-namespace TerminalDotnet.Tests;
+namespace TerminalDotnet.Tests.Testing;
 
-public sealed class DotnetCliTestBackendTests
+public sealed class WhenUsingTheDotnetCliTestBackend
 {
     [Fact]
     public async Task It_issues_a_list_tests_command_and_returns_the_reported_tests_when_discovering()
