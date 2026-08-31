@@ -33,9 +33,9 @@ Keep terminal framework types and process details outside the explorer module.
 - Replace external processes with an in-memory `ICommandRunner`; the unit suite must not launch live `dotnet test` processes.
 - Follow vertical TDD slices: one failing behavior, its minimal implementation, then the next behavior.
 
-## Prototype scope
+## Product scope
 
-This remains a throwaway vertical slice for validating tree navigation and subtree execution. Keep files, Git views, persistence, and editor integration out until the interaction is validated.
+The tree interaction has been validated and the project is now moving into the actual implementation. The Tests and Explorer panels share the two-column shell and common interaction conventions. Files, Git status, and editor integration are in scope.
 
 ## Commits
 
