@@ -23,7 +23,7 @@ public sealed class WhenDiscoveringProjectFiles
         try
         {
             // Act
-            var files = await new FileSystemExplorerBackend(new InMemoryCommandRunner("")).DiscoverAsync(
+            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, "")).DiscoverAsync(
                 Path.Combine(root, "TerminalDotnet.slnx"));
 
             // Assert
@@ -56,7 +56,7 @@ public sealed class WhenDiscoveringProjectFiles
         try
         {
             // Act
-            var files = await new FileSystemExplorerBackend(new InMemoryCommandRunner(gitStatus))
+            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, gitStatus))
                 .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
 
             // Assert
@@ -70,11 +70,40 @@ public sealed class WhenDiscoveringProjectFiles
         }
     }
 
-    private sealed class InMemoryCommandRunner(string output) : ICommandRunner
+    [Fact]
+    public async Task It_resolves_git_paths_from_the_repository_root()
+    {
+        // Arrange
+        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
+        var projectDirectory = Path.Combine(root, "samples", "App");
+        Directory.CreateDirectory(projectDirectory);
+        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "App.csproj"), "<Project />");
+        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "Changed.cs"), "namespace App;");
+        var runner = new RepositoryCommandRunner(root, " M samples/App/Changed.cs\n");
+
+        try
+        {
+            // Act
+            var files = await new FileSystemExplorerBackend(runner)
+                .DiscoverAsync(Path.Combine(projectDirectory, "App.csproj"));
+
+            // Assert
+            Assert.Equal(FileGitStatus.Modified, files[0].GitStatus);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private sealed class RepositoryCommandRunner(string root, string status) : ICommandRunner
     {
         public Task<CommandResult> RunAsync(
             CommandRequest request,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new CommandResult(0, output, ""));
+            CancellationToken cancellationToken = default)
+        {
+            var output = request.Arguments.Contains("--show-toplevel") ? root : status;
+            return Task.FromResult(new CommandResult(0, output, ""));
+        }
     }
 }

@@ -39,11 +39,20 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         string workingDirectory,
         CancellationToken cancellationToken)
     {
+        var rootResult = await commandRunner.RunAsync(
+            new CommandRequest("git", ["rev-parse", "--show-toplevel"], workingDirectory),
+            cancellationToken);
+        if (rootResult.ExitCode != 0)
+        {
+            return new Dictionary<string, FileGitStatus>();
+        }
+
+        var repositoryRoot = rootResult.StandardOutput.Trim();
         var result = await commandRunner.RunAsync(
             new CommandRequest(
                 "git",
                 ["status", "--porcelain=v1", "--untracked-files=all"],
-                workingDirectory),
+                repositoryRoot),
             cancellationToken);
         if (result.ExitCode != 0)
         {
@@ -55,7 +64,7 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Where(line => line.Length > 3)
             .ToDictionary(
-                line => Path.GetFullPath(line[3..], workingDirectory),
+                line => Path.GetFullPath(line[3..], repositoryRoot),
                 line => line.StartsWith("??", StringComparison.Ordinal) || line[0] == 'A'
                     ? FileGitStatus.New
                     : FileGitStatus.Modified,
