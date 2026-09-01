@@ -2,7 +2,12 @@ using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Terminal;
 
-public sealed class EditorLauncher
+public interface IFileOpener
+{
+    Task OpenAsync(string path, int line, CancellationToken cancellationToken = default);
+}
+
+public sealed class EditorLauncher : IFileOpener
 {
     private readonly string executable;
     private readonly IReadOnlyList<string> configuredArguments;

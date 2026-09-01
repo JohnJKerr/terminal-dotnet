@@ -14,7 +14,7 @@ public sealed class TestRunnerApplication(
     TestExplorerSession session,
     FileExplorerSession fileSession,
     string target,
-    EditorLauncher? editorLauncher = null)
+    IFileOpener? editorLauncher = null)
 {
     private const int ContentInset = 1;
     private const int PanelWidth = 20;
@@ -407,7 +407,7 @@ public sealed class TestRunnerApplication(
 
     private void OpenRequestedFile()
     {
-        editorLauncher!.OpenAsync(
+        new ExplorerEditorWorkflow(fileSession, editorLauncher!, target).OpenAsync(
             openPath!,
             openLine).GetAwaiter().GetResult();
     }
