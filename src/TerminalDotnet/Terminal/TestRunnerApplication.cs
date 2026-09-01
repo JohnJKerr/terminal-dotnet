@@ -476,21 +476,16 @@ public sealed class TestRunnerApplication(
 
     private void ColorFileRow(ListView files, ListViewRowEventArgs args)
     {
-        if (args.Row >= fileRows.Count || files.IsSelectedOrMarked(args.Row))
+        if (args.Row >= fileRows.Count)
         {
             return;
         }
 
-        var foreground = fileRows[args.Row].Tone switch
-        {
-            FileRowTone.Modified => Color.BrightBlue,
-            FileRowTone.New => Color.BrightGreen,
-            _ => Color.None
-        };
-        if (foreground != Color.None)
-        {
-            SetRowForeground(files, args, foreground);
-        }
+        args.RowAttribute = FileRowAppearance.For(
+            fileRows[args.Row].Tone,
+            files.IsSelectedOrMarked(args.Row),
+            files.GetAttributeForRole(VisualRole.Normal),
+            files.GetAttributeForRole(VisualRole.Focus));
     }
 
     private void ColorTestRow(ListView tests, ListViewRowEventArgs args)

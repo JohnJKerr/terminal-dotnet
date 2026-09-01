@@ -1,4 +1,5 @@
 using TerminalDotnet.Files;
+using Terminal.Gui.Drawing;
 
 namespace TerminalDotnet.Terminal;
 
@@ -10,6 +11,25 @@ public enum FileRowTone
 }
 
 public sealed record FilePanelRow(string Text, FileRowTone Tone);
+
+public static class FileRowAppearance
+{
+    public static global::Terminal.Gui.Drawing.Attribute For(
+        FileRowTone tone,
+        bool isSelected,
+        global::Terminal.Gui.Drawing.Attribute normal,
+        global::Terminal.Gui.Drawing.Attribute selected)
+    {
+        var baseAppearance = isSelected ? selected : normal;
+        var foreground = tone switch
+        {
+            FileRowTone.Modified => Color.BrightBlue,
+            FileRowTone.New => Color.BrightGreen,
+            _ => baseAppearance.Foreground
+        };
+        return new global::Terminal.Gui.Drawing.Attribute(foreground, baseAppearance.Background);
+    }
+}
 
 public sealed record FilePanelSnapshot(
     IReadOnlyList<VisibleFileNode> Nodes,
