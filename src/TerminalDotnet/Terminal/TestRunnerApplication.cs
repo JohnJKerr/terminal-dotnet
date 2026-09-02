@@ -274,14 +274,14 @@ public sealed class TestRunnerApplication(
         if (Is(key, KeyCode.E))
         {
             key.Handled = true;
-            RequestOpenSource(application);
+            RequestTestSource(application, preview: false);
             return;
         }
 
         if (Is(key, KeyCode.P))
         {
             key.Handled = true;
-            PreviewTestSource(application);
+            RequestTestSource(application, preview: true);
             return;
         }
 
@@ -413,27 +413,37 @@ public sealed class TestRunnerApplication(
         application.Invoke(() => Render(search, tests, result, output));
     }
 
-    private void RequestOpenSource(IApplication application)
+    private void RequestTestSource(IApplication application, bool preview)
     {
-        if (editorLauncher is null || session.State.SourceContext is null)
+        _ = RequestTestSourceAsync(application, preview);
+    }
+
+    private async Task RequestTestSourceAsync(IApplication application, bool preview)
+    {
+        if (!preview && editorLauncher is null)
         {
             return;
         }
 
-        openPath = session.State.SourceContext.Path;
-        openLine = session.State.SourceContext.HighlightLine;
-        openSourceRequested = true;
-        application.RequestStop();
-    }
-
-    private void PreviewTestSource(IApplication application)
-    {
+        await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
         if (session.State.SourceContext is not { } source)
         {
             return;
         }
 
-        ShowPreview(application, source.Path, source.HighlightLine);
+        application.Invoke(() =>
+        {
+            if (preview)
+            {
+                ShowPreview(application, source.Path, source.HighlightLine);
+                return;
+            }
+
+            openPath = source.Path;
+            openLine = source.HighlightLine;
+            openSourceRequested = true;
+            application.RequestStop();
+        });
     }
 
     private void ShowPreview(IApplication application, string path, int line)
@@ -449,33 +459,63 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        using var dialog = new Dialog
+        using var preview = new Window
         {
-            Title = $"Preview — {Path.GetFileName(path)}:{line}",
-            Width = Dim.Percent(90),
-            Height = Dim.Percent(90)
+            Title = $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  Esc close",
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            ShadowStyle = ShadowStyles.None
         };
         var code = new Code
         {
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill(1),
+            Height = Dim.Fill(),
             Text = text,
             Language = LanguageFrom(path),
             SyntaxHighlighter = new TextMateSyntaxHighlighter(ThemeName.DarkPlus)
         };
-        dialog.Add(code);
-        dialog.AddButton(new Button { Title = "Close" });
+        code.GettingAttributeForRole += (_, args) =>
+        {
+            var background = args.Result?.Background ?? Color.Black;
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(
+                PreviewCodeAppearance.ForegroundFor(args.Role),
+                background);
+            args.Handled = true;
+        };
+        code.KeyDown += (_, key) => ScrollPreview(code, key);
+        preview.Add(code);
         previewVisible = true;
         try
         {
-            application.Run(dialog);
+            application.Run(preview);
         }
         finally
         {
             previewVisible = false;
         }
+    }
+
+    private static void ScrollPreview(Code code, Key key)
+    {
+        var rows = key.NoShift.KeyCode switch
+        {
+            KeyCode.CursorUp or KeyCode.K => -1,
+            KeyCode.CursorDown or KeyCode.J => 1,
+            KeyCode.PageUp => -Math.Max(1, code.Viewport.Height - 1),
+            KeyCode.PageDown => Math.Max(1, code.Viewport.Height - 1),
+            _ => 0
+        };
+        if (rows == 0)
+        {
+            return;
+        }
+
+        code.ScrollVertical(rows);
+        key.Handled = true;
     }
 
     private static string LanguageFrom(string path) => Path.GetExtension(path).ToLowerInvariant() switch

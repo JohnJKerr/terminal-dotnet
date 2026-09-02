@@ -2,7 +2,10 @@ using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Explorer;
 
-public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? sourceProvider = null)
+public sealed class TestExplorerSession(
+    ITestBackend backend,
+    ISourceProvider? sourceProvider = null,
+    ITestSourceLocator? testSourceLocator = null)
 {
     private readonly HashSet<string> collapsedNodes = [];
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
@@ -23,6 +26,16 @@ public sealed class TestExplorerSession(ITestBackend backend, ISourceProvider? s
 
     public async Task DispatchAsync(ExplorerCommand command, CancellationToken cancellationToken = default)
     {
+        if (command is ExplorerCommand.LoadSelectedSource &&
+            State.VisibleNodes.Count > 0 &&
+            testSourceLocator is not null)
+        {
+            var selected = State.VisibleNodes[State.SelectedIndex];
+            var source = await testSourceLocator.LocateAsync(selected.Tests[0], cancellationToken);
+            State = State with { SourceContext = source };
+            return;
+        }
+
         if (command is ExplorerCommand.Search search)
         {
             var matchingTests = discoveredTests

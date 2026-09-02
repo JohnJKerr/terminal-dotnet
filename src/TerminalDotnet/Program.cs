@@ -12,9 +12,11 @@ if (target is null)
 
 var commandRunner = new ProcessCommandRunner();
 var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandRunner));
+var sourceProvider = new FileSourceProvider();
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
-    new FileSourceProvider());
+    sourceProvider,
+    new FileTestSourceLocator(sourceProvider));
 try
 {
     await fileSession.LoadAsync(target);

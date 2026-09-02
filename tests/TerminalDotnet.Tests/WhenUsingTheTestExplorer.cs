@@ -7,6 +7,26 @@ namespace TerminalDotnet.Tests.Testing;
 public sealed class WhenUsingTheTestExplorer
 {
     [Fact]
+    public async Task It_loads_the_selected_test_source_before_any_test_has_run()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var source = new SourceContext("CartTests.cs", 1, 5, ["public void Adds_item()"]);
+        var session = new TestExplorerSession(
+            new InMemoryTestBackend([test]),
+            testSourceLocator: new InMemoryTestSourceLocator(source));
+        await session.LoadAsync("Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
+
+        // Assert
+        Assert.Same(source, session.State.SourceContext);
+    }
+
+    [Fact]
     public async Task It_produces_a_project_class_and_test_tree_when_loaded()
     {
         // Arrange
@@ -607,6 +627,13 @@ public sealed class WhenUsingTheTestExplorer
             string path,
             int line,
             CancellationToken cancellationToken = default) => Task.FromResult(source);
+    }
+
+    private sealed class InMemoryTestSourceLocator(SourceContext source) : ITestSourceLocator
+    {
+        public Task<SourceContext?> LocateAsync(
+            TestCase test,
+            CancellationToken cancellationToken = default) => Task.FromResult<SourceContext?>(source);
     }
 
     private sealed class CancellableTestBackend(TestCase test) : ITestBackend
