@@ -7,6 +7,7 @@ using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TextMateSharp.Grammars;
 
 namespace TerminalDotnet.Terminal;
 
@@ -30,6 +31,7 @@ public sealed class TestRunnerApplication(
     private string? openPath;
     private int openLine = 1;
     private bool failureNavigationPending;
+    private bool previewVisible;
 
     public void Run()
     {
@@ -161,7 +163,7 @@ public sealed class TestRunnerApplication(
         Y = Pos.AnchorEnd(1),
         Width = Dim.Fill(1),
         Height = 1,
-        Text = "Tab pane  / search  ↑/k up  ↓/j down  Space fold  n/N match  Enter open/run  o open/source  R rerun  F failures  c cancel  q quit"
+        Text = "Tab pane  / search  ↑/k up  ↓/j down  Space fold  n/N match  Enter edit/run  e edit  p preview  R rerun  F failures  c cancel  q quit"
     };
 
     private void HandleKey(
@@ -173,6 +175,11 @@ public sealed class TestRunnerApplication(
         ListView result,
         ListView output)
     {
+        if (previewVisible)
+        {
+            return;
+        }
+
         if (search.HasFocus && Is(key, KeyCode.Esc))
         {
             key.Handled = true;
@@ -264,10 +271,17 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        if (Is(key, KeyCode.O))
+        if (Is(key, KeyCode.E))
         {
             key.Handled = true;
             RequestOpenSource(application);
+            return;
+        }
+
+        if (Is(key, KeyCode.P))
+        {
+            key.Handled = true;
+            PreviewTestSource(application);
             return;
         }
 
@@ -326,6 +340,13 @@ public sealed class TestRunnerApplication(
             openLine = 1;
             openSourceRequested = true;
             application.RequestStop();
+            return;
+        }
+
+        if (action is FilePanelAction.PreviewFile preview)
+        {
+            key.Handled = true;
+            ShowPreview(application, preview.Path, 1);
             return;
         }
 
@@ -404,6 +425,71 @@ public sealed class TestRunnerApplication(
         openSourceRequested = true;
         application.RequestStop();
     }
+
+    private void PreviewTestSource(IApplication application)
+    {
+        if (session.State.SourceContext is not { } source)
+        {
+            return;
+        }
+
+        ShowPreview(application, source.Path, source.HighlightLine);
+    }
+
+    private void ShowPreview(IApplication application, string path, int line)
+    {
+        string text;
+        try
+        {
+            text = File.ReadAllText(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.ErrorQuery(application, "Preview", exception.Message, "Ok");
+            return;
+        }
+
+        using var dialog = new Dialog
+        {
+            Title = $"Preview — {Path.GetFileName(path)}:{line}",
+            Width = Dim.Percent(90),
+            Height = Dim.Percent(90)
+        };
+        var code = new Code
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(1),
+            Text = text,
+            Language = LanguageFrom(path),
+            SyntaxHighlighter = new TextMateSyntaxHighlighter(ThemeName.DarkPlus)
+        };
+        dialog.Add(code);
+        dialog.AddButton(new Button { Title = "Close" });
+        previewVisible = true;
+        try
+        {
+            application.Run(dialog);
+        }
+        finally
+        {
+            previewVisible = false;
+        }
+    }
+
+    private static string LanguageFrom(string path) => Path.GetExtension(path).ToLowerInvariant() switch
+    {
+        ".cs" => "csharp",
+        ".fs" => "fsharp",
+        ".vb" => "vb",
+        ".json" => "json",
+        ".xml" or ".csproj" or ".fsproj" or ".vbproj" => "xml",
+        ".md" => "markdown",
+        ".yml" or ".yaml" => "yaml",
+        ".sh" => "shellscript",
+        _ => "plaintext"
+    };
 
     private void OpenRequestedFile()
     {
