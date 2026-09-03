@@ -10,4 +10,18 @@ public sealed class FailureDemoTests
         // Assert
         Assert.Fail("Intentional demo failure: press 'p' in TerminalDotnet to preview this line.");
     }
+
+    [Fact]
+    public void Displaying_a_second_failure()
+    {
+        // Assert
+        Assert.Fail("Intentional second demo failure.");
+    }
+
+    [Fact]
+    public void Displaying_a_passing_test()
+    {
+        // Assert
+        Assert.True(true);
+    }
 }
