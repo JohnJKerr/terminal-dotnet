@@ -20,8 +20,8 @@ variant 1b:
 - A one-cell inset separates content from the outer box, with a one-cell gutter
   between the rail and workspace.
 - Keyboard shortcuts remain visible along the bottom.
-- `Tab` moves focus between panes. Arrow keys and `j`/`k` scroll the focused
-  pane.
+- `Tab` and `←` / `→` move focus directly between the panel rail and
+  workspace. `s` focuses search; `↑` / `↓` and `j` / `k` scroll the focused pane.
 - Test outcomes are coloured: failed red, passed green, not run white, and
   running cyan. Execution output uses red for failures, green for passes,
   yellow for skips, cyan for status, and the terminal theme for neutral lines.

@@ -106,7 +106,8 @@ public sealed class TestRunnerApplication(
         X = WorkspaceX,
         Y = ContentInset,
         Width = Dim.Fill(ContentInset),
-        Height = 1
+        Height = 1,
+        TabStop = TabBehavior.NoStop
     };
 
     private ListView Tests(TextField search)
@@ -163,7 +164,7 @@ public sealed class TestRunnerApplication(
         Y = Pos.AnchorEnd(1),
         Width = Dim.Fill(1),
         Height = 1,
-        Text = "Tab pane  / search  ↑/k up  ↓/j down  Space fold  n/N match  Enter edit/run  e edit  p preview  R rerun  F failures  c cancel  q quit"
+        Text = "Tab pane  s search  ↑/k up  ↓/j down  Space fold  n/N match  Enter edit/run  e edit  p preview  R rerun  F failures  c cancel  q quit"
     };
 
     private void HandleKey(
@@ -215,10 +216,24 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        if (tests.HasFocus && Is(key, (KeyCode)'/'))
+        if (Is(key, KeyCode.S))
         {
             key.Handled = true;
             search.SetFocus();
+            return;
+        }
+
+        if (panels.HasFocus && Is(key, KeyCode.CursorRight))
+        {
+            key.Handled = true;
+            tests.SetFocus();
+            return;
+        }
+
+        if (!panels.HasFocus && Is(key, KeyCode.CursorLeft))
+        {
+            key.Handled = true;
+            panels.SetFocus();
             return;
         }
 

@@ -12,7 +12,8 @@ Keys:
 
 - `↑` / `k`: move up
 - `↓` / `j`: move down
-- `/`: search tests; `Enter` returns to the tree; `n` / `N` select matches; `Esc` clears the search
+- `s`: search the active panel; `Enter` returns to the tree; `n` / `N` select matches; `Esc` clears the search
+- `←` / `→`: move directly between the panel rail and workspace
 - `Space`: collapse or expand the highlighted project or class
 - `r` / `Enter`: run every test beneath the highlighted project, class, or test
 - `R`: rerun the previous test set
