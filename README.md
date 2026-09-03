@@ -20,7 +20,7 @@ Keys:
 - `F`: rerun failed tests
 - `]f`: select the next failed test
 - `c`: cancel the active run
-- `o`: open the current failure location in `$EDITOR`
+- `p`: preview the current test or failure location
 - `q` / `Esc`: quit
 
 Run the prototype's tests with:
@@ -46,7 +46,7 @@ cd samples/TerminalDotnet.DemoTests
 EDITOR=nvim dotnet run --project ../../src/TerminalDotnet/TerminalDotnet.csproj
 ```
 
-Run `Opening a failure in the configured editor`, wait for the `Source:` excerpt, then press `o`. The editor should open `FailureDemoTests.cs` at the failing assertion.
+Run `Opening a failure in the configured editor`, wait for the `Source:` excerpt, then press `p`. The preview should open `FailureDemoTests.cs` at the failing assertion.
 
 To verify the fixture without the terminal UI, run this from the repository root. A failed test at `FailureDemoTests.cs:line 11` is the expected result:
 

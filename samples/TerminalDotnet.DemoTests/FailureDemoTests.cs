@@ -8,6 +8,6 @@ public sealed class FailureDemoTests
     public void Opening_a_failure_in_the_configured_editor()
     {
         // Assert
-        Assert.Fail("Intentional demo failure: press 'o' in TerminalDotnet to open this line.");
+        Assert.Fail("Intentional demo failure: press 'p' in TerminalDotnet to preview this line.");
     }
 }
