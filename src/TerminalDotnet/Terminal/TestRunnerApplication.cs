@@ -31,6 +31,7 @@ public sealed class TestRunnerApplication(
     private bool failureNavigationPending;
     private bool previewVisible;
     private Label? testStatus;
+    private Label? shortcuts;
 
     public void Run()
     {
@@ -61,7 +62,7 @@ public sealed class TestRunnerApplication(
                 background);
             args.Handled = true;
         };
-        var shortcuts = Shortcuts();
+        shortcuts = Shortcuts();
 
         window.Add(panels, search, tests, testStatus, shortcuts);
         search.ValueChanged += async (_, _) =>
@@ -145,8 +146,7 @@ public sealed class TestRunnerApplication(
         X = 1,
         Y = Pos.AnchorEnd(1),
         Width = Dim.Fill(1),
-        Height = 1,
-        Text = "Tab pane  s search  ↑/k up  ↓/j down  Space fold  n/N match  Enter edit/run  e edit  p preview  o output  R rerun  F failures  c cancel  q quit"
+        Height = 1
     };
 
     private void HandleKey(
@@ -580,6 +580,7 @@ public sealed class TestRunnerApplication(
 
     private void Render(TextField search, ListView tests)
     {
+        shortcuts!.Text = PanelShortcuts.For(shell.State.ActivePanel, fileSession.State, session.State);
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
             RenderFiles(search, tests);
