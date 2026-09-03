@@ -58,6 +58,7 @@ public sealed class TestRunnerApplication(
         var shortcuts = Shortcuts();
 
         window.Add(panels, search, tests, result, output, shortcuts);
+        output.ViewportChanged += (_, _) => Render(search, tests, result, output);
         search.ValueChanged += async (_, _) =>
         {
             if (shell.State.ActivePanel == PanelKind.Explorer)
@@ -564,7 +565,8 @@ public sealed class TestRunnerApplication(
         result.Visible = true;
         output.Visible = true;
         tests.Height = Dim.Percent(45);
-        var snapshot = TestPanelSnapshot.From(session.State, target);
+        var lineWidth = output.Viewport.Width > 0 ? output.Viewport.Width : int.MaxValue;
+        var snapshot = TestPanelSnapshot.From(session.State, target, lineWidth);
         tests.Title = $"Tests — {snapshot.Breadcrumb}";
         search.Title = snapshot.SearchQuery.Length == 0
             ? "Search"

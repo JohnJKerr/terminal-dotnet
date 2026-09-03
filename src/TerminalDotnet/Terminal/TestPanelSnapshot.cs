@@ -1,4 +1,5 @@
 using System.Globalization;
+using Terminal.Gui.Text;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
 
@@ -27,7 +28,7 @@ public sealed record TestPanelSnapshot(
     IReadOnlyList<OutputLine> ResultLines,
     IReadOnlyList<OutputLine> OutputLines)
 {
-    public static TestPanelSnapshot From(ExplorerState state, string target) => new(
+    public static TestPanelSnapshot From(ExplorerState state, string target, int lineWidth = int.MaxValue) => new(
         Path.GetFileName(target),
         BreadcrumbFrom(state, target),
         state.VisibleNodes,
@@ -36,12 +37,34 @@ public sealed record TestPanelSnapshot(
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
         OutcomeSummaryFrom(state),
-        ResultLinesFrom(state),
+        Wrap(ResultLinesFrom(state), lineWidth),
         state.Message
             .ReplaceLineEndings("\n")
             .Split('\n')
             .Select(OutputLineFrom)
+            .SelectMany(line => Wrapped(line, lineWidth))
             .ToArray());
+
+    private static IReadOnlyList<OutputLine> Wrap(IEnumerable<OutputLine> lines, int width) =>
+        lines.SelectMany(line => Wrapped(line, width)).ToArray();
+
+    private static IEnumerable<OutputLine> Wrapped(OutputLine line, int width)
+    {
+        if (width == int.MaxValue || line.Text.Length == 0)
+        {
+            return [line];
+        }
+
+        var wrapped = TextFormatter.WordWrapText(
+            line.Text,
+            Math.Max(1, width),
+            false,
+            4,
+            TextDirection.LeftRight_TopBottom,
+            new TextFormatter(),
+            false);
+        return wrapped.Select(text => line with { Text = text });
+    }
 
     private static string OutcomeSummaryFrom(ExplorerState state)
     {

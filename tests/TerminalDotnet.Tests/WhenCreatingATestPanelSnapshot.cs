@@ -25,6 +25,67 @@ public class WhenCreatingATestPanelSnapshot
     }
 
     [Fact]
+    public void It_wraps_execution_output_to_the_available_width()
+    {
+        // Arrange
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [],
+            0,
+            "A long output line");
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx", 8);
+
+        // Assert
+        Assert.Equal(["A long", "output", "line"], snapshot.OutputLines.Select(line => line.Text));
+    }
+
+    [Fact]
+    public void It_hard_wraps_output_that_has_no_word_boundaries()
+    {
+        // Arrange
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [],
+            0,
+            "/repository/EspeciallyLongTestFile.cs:42");
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx", 10);
+
+        // Assert
+        Assert.All(snapshot.OutputLines, line => Assert.InRange(line.Text.Length, 1, 10));
+    }
+
+    [Fact]
+    public void It_wraps_test_failure_details_to_the_available_width()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var failure = new TestResult(
+            test,
+            TestOutcome.Failed,
+            TimeSpan.Zero,
+            "Expected a larger total",
+            null,
+            null,
+            null);
+        var state = new ExplorerState(
+            ExplorerStatus.Failed,
+            [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test])],
+            0,
+            "Failed",
+            new TestRun(false, "Failed", [failure]));
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx", 12);
+
+        // Assert
+        Assert.All(snapshot.ResultLines, line => Assert.InRange(line.Text.Length, 1, 12));
+    }
+
+    [Fact]
     public void It_preserves_the_explorer_selection()
     {
         // Arrange
