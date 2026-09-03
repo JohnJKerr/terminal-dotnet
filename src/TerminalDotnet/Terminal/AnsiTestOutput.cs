@@ -9,20 +9,27 @@ public static partial class AnsiTestOutput
         .ReplaceLineEndings("\n")
         .Split('\n')
         .Select(line => (Raw: line, Clean: CleanControlSequences(line)))
-        .Where(line => line.Raw.Length == 0 || !IsTransientProgress(line.Clean))
+        .Where(line => line.Raw.Length == 0 || IsTestOutput(line.Clean))
         .Select(line => StyledCells(line.Clean))
         .ToList();
 
     private static string CleanControlSequences(string line) =>
         OscSequence().Replace(NonStyleCsiSequence().Replace(line, ""), "");
 
-    private static bool IsTransientProgress(string line)
+    private static bool IsTestOutput(string line)
     {
         var plain = StyleSequence().Replace(line, "").Trim();
-        return plain.Length == 0 || DurationOnly().IsMatch(plain) ||
-            plain.EndsWith("Testing", StringComparison.Ordinal) ||
-            ProgressStatus().IsMatch(plain);
+        if (plain.Length == 0)
+        {
+            return false;
+        }
+
+        return ReportsAFailure(plain) || !BuildStopwatch().IsMatch(plain);
     }
+
+    private static bool ReportsAFailure(string line) =>
+        line.Contains("fail", StringComparison.OrdinalIgnoreCase) ||
+        line.Contains("error", StringComparison.OrdinalIgnoreCase);
 
     private static List<Cell> StyledCells(string line)
     {
@@ -111,9 +118,6 @@ public static partial class AnsiTestOutput
     [GeneratedRegex(@"\x1B\].*?(?:\x07|\x1B\\)")]
     private static partial Regex OscSequence();
 
-    [GeneratedRegex(@"^\(\d+(?:\.\d+)?s\)$")]
-    private static partial Regex DurationOnly();
-
-    [GeneratedRegex(@"\s(?:Restore|Testing|[A-Za-z]+\s+\(\d+(?:\.\d+)?s\))$")]
-    private static partial Regex ProgressStatus();
+    [GeneratedRegex(@"(?:\(\d+(?:\.\d+)?s\)(?:\s*\u2192.*)?|\sRestore|\sTesting)$")]
+    private static partial Regex BuildStopwatch();
 }

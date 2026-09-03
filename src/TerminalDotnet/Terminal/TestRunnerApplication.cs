@@ -497,26 +497,16 @@ public sealed class TestRunnerApplication(
             Height = Dim.Fill(),
             ShadowStyle = ShadowStyles.None
         };
-#pragma warning disable CS0618
-        var text = new TextView
+        var text = new TestOutputView
         {
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            ReadOnly = true,
-            WordWrap = true
+            Height = Dim.Fill()
         };
-#pragma warning restore CS0618
         text.Load(AnsiTestOutput.ToCells(snapshot.SelectedOutput));
         SetBlackBackground(dialog);
         SetBlackBackground(text);
-        text.DrawReadOnlyColor += (_, args) =>
-        {
-            var appearance = args.Line[args.Col].Attribute ??
-                new global::Terminal.Gui.Drawing.Attribute(Color.White, Color.Black);
-            text.SetAttribute(appearance);
-        };
         dialog.Add(text);
         previewVisible = true;
         try
