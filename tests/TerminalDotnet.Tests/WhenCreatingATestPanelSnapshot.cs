@@ -8,84 +8,6 @@ namespace TerminalDotnet.Tests.Testing;
 public class WhenCreatingATestPanelSnapshot
 {
     [Fact]
-    public void It_exposes_execution_output_as_scrollable_lines()
-    {
-        // Arrange
-        var state = new ExplorerState(
-            ExplorerStatus.Ready,
-            [],
-            0,
-            "first line\nsecond line");
-
-        // Act
-        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
-
-        // Assert
-        Assert.Equal(["first line", "second line"], snapshot.OutputLines.Select(line => line.Text));
-    }
-
-    [Fact]
-    public void It_wraps_execution_output_to_the_available_width()
-    {
-        // Arrange
-        var state = new ExplorerState(
-            ExplorerStatus.Ready,
-            [],
-            0,
-            "A long output line");
-
-        // Act
-        var snapshot = TestPanelSnapshot.From(state, "Example.slnx", 8);
-
-        // Assert
-        Assert.Equal(["A long", "output", "line"], snapshot.OutputLines.Select(line => line.Text));
-    }
-
-    [Fact]
-    public void It_hard_wraps_output_that_has_no_word_boundaries()
-    {
-        // Arrange
-        var state = new ExplorerState(
-            ExplorerStatus.Ready,
-            [],
-            0,
-            "/repository/EspeciallyLongTestFile.cs:42");
-
-        // Act
-        var snapshot = TestPanelSnapshot.From(state, "Example.slnx", 10);
-
-        // Assert
-        Assert.All(snapshot.OutputLines, line => Assert.InRange(line.Text.Length, 1, 10));
-    }
-
-    [Fact]
-    public void It_wraps_test_failure_details_to_the_available_width()
-    {
-        // Arrange
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var failure = new TestResult(
-            test,
-            TestOutcome.Failed,
-            TimeSpan.Zero,
-            "Expected a larger total",
-            null,
-            null,
-            null);
-        var state = new ExplorerState(
-            ExplorerStatus.Failed,
-            [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test])],
-            0,
-            "Failed",
-            new TestRun(false, "Failed", [failure]));
-
-        // Act
-        var snapshot = TestPanelSnapshot.From(state, "Example.slnx", 12);
-
-        // Assert
-        Assert.All(snapshot.ResultLines, line => Assert.InRange(line.Text.Length, 1, 12));
-    }
-
-    [Fact]
     public void It_preserves_the_explorer_selection()
     {
         // Arrange
@@ -143,54 +65,6 @@ public class WhenCreatingATestPanelSnapshot
 
         // Assert
         Assert.Equal(2, snapshot.SearchHitCount);
-    }
-
-    [Fact]
-    public void It_marks_failed_output_as_failure()
-    {
-        // Arrange
-        var state = new ExplorerState(
-            ExplorerStatus.Failed,
-            [],
-            0,
-            "Failed! - Failed: 1, Passed: 0");
-
-        // Act
-        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
-
-        // Assert
-        Assert.Equal(OutputLineTone.Failure, snapshot.OutputLines[0].Tone);
-    }
-
-    [Fact]
-    public void It_exposes_failure_details_separately_from_execution_output()
-    {
-        // Arrange
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var failure = new TestResult(
-            test,
-            TestOutcome.Failed,
-            TimeSpan.FromMilliseconds(7),
-            "Expected total to be 10.",
-            null,
-            "/repo/CartTests.cs",
-            42);
-        var state = new ExplorerState(
-            ExplorerStatus.Failed,
-            [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test], TestNodeOutcome.Failed)],
-            0,
-            "raw dotnet output",
-            new TestRun(false, "raw dotnet output", [failure]));
-
-        // Act
-        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
-
-        // Assert
-        Assert.Equal(
-        [
-            "✗ Adds item — Expected total to be 10.",
-            "/repo/CartTests.cs:42"
-        ], snapshot.ResultLines.Select(line => line.Text));
     }
 
     [Fact]
@@ -284,26 +158,51 @@ public class WhenCreatingATestPanelSnapshot
         var snapshot = TestPanelSnapshot.From(state, "Shop.slnx");
 
         // Assert
-        Assert.Equal("1 passed · 1 failed · 1 skipped", snapshot.OutcomeSummary);
+        Assert.Equal("1 Failed, 1 Passed, 1 Skipped", snapshot.StatusLine);
     }
 
-    [Theory]
-    [InlineData("Passed! - Passed: 12", OutputLineTone.Success)]
-    [InlineData("Skipped: 2", OutputLineTone.Skipped)]
-    [InlineData("Running 12 tests...", OutputLineTone.Status)]
-    public void It_marks_test_status_output_with_its_tone(string output, OutputLineTone expectedTone)
+    [Fact]
+    public void It_shows_test_discovery_progress_before_a_run()
     {
         // Arrange
         var state = new ExplorerState(
             ExplorerStatus.Ready,
             [],
             0,
-            output);
+            "Ready — 12 tests discovered");
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Shop.slnx");
+
+        // Assert
+        Assert.Equal("Ready — 12 tests discovered", snapshot.StatusLine);
+    }
+
+    [Fact]
+    public void It_exposes_the_selected_tests_captured_output()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var result = new TestResult(
+            test,
+            TestOutcome.Passed,
+            TimeSpan.Zero,
+            null,
+            null,
+            null,
+            null,
+            "Cart total: 10");
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test])],
+            0,
+            "Passed",
+            new TestRun(true, "1 test passed", [result]));
 
         // Act
         var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
 
         // Assert
-        Assert.Equal(expectedTone, snapshot.OutputLines[0].Tone);
+        Assert.Equal("1 test passed", snapshot.SelectedOutput);
     }
 }

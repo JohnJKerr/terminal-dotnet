@@ -1,20 +1,8 @@
 using System.Globalization;
-using Terminal.Gui.Text;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Terminal;
-
-public enum OutputLineTone
-{
-    Neutral,
-    Failure,
-    Success,
-    Skipped,
-    Status
-}
-
-public sealed record OutputLine(string Text, OutputLineTone Tone);
 
 public sealed record TestPanelSnapshot(
     string Target,
@@ -24,11 +12,11 @@ public sealed record TestPanelSnapshot(
     int SelectedIndex,
     string SearchQuery,
     int SearchHitCount,
-    string OutcomeSummary,
-    IReadOnlyList<OutputLine> ResultLines,
-    IReadOnlyList<OutputLine> OutputLines)
+    string StatusLine,
+    string SelectedOutputTitle,
+    string SelectedOutput)
 {
-    public static TestPanelSnapshot From(ExplorerState state, string target, int lineWidth = int.MaxValue) => new(
+    public static TestPanelSnapshot From(ExplorerState state, string target) => new(
         Path.GetFileName(target),
         BreadcrumbFrom(state, target),
         state.VisibleNodes,
@@ -36,47 +24,21 @@ public sealed record TestPanelSnapshot(
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
-        OutcomeSummaryFrom(state),
-        Wrap(ResultLinesFrom(state), lineWidth),
-        state.Message
-            .ReplaceLineEndings("\n")
-            .Split('\n')
-            .Select(OutputLineFrom)
-            .SelectMany(line => Wrapped(line, lineWidth))
-            .ToArray());
+        StatusLineFrom(state),
+        SelectedOutputTitleFrom(state),
+        SelectedOutputFrom(state));
 
-    private static IReadOnlyList<OutputLine> Wrap(IEnumerable<OutputLine> lines, int width) =>
-        lines.SelectMany(line => Wrapped(line, width)).ToArray();
-
-    private static IEnumerable<OutputLine> Wrapped(OutputLine line, int width)
+    private static string StatusLineFrom(ExplorerState state)
     {
-        if (width == int.MaxValue || line.Text.Length == 0)
+        if (state.LastRun is null || state.Status == ExplorerStatus.Running)
         {
-            return [line];
-        }
-
-        var wrapped = TextFormatter.WordWrapText(
-            line.Text,
-            Math.Max(1, width),
-            false,
-            4,
-            TextDirection.LeftRight_TopBottom,
-            new TextFormatter(),
-            false);
-        return wrapped.Select(text => line with { Text = text });
-    }
-
-    private static string OutcomeSummaryFrom(ExplorerState state)
-    {
-        if (state.LastRun is null)
-        {
-            return "";
+            return state.Message;
         }
 
         var passed = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Passed);
         var failed = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Failed);
         var skipped = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Skipped);
-        return $"{passed} passed · {failed} failed · {skipped} skipped";
+        return $"{failed} Failed, {passed} Passed, {skipped} Skipped";
     }
 
     private static string BreadcrumbFrom(ExplorerState state, string target)
@@ -136,56 +98,23 @@ public sealed record TestPanelSnapshot(
         return $"{new string(' ', node.Depth * 2)}{marker} {node.Name}{metadata}";
     }
 
-    private static IReadOnlyList<OutputLine> ResultLinesFrom(ExplorerState state)
+    private static string SelectedOutputTitleFrom(ExplorerState state)
     {
         if (state.LastRun is null || state.VisibleNodes.Count == 0)
         {
-            return [];
+            return "Test Output";
         }
 
-        var selectedTests = state.VisibleNodes[state.SelectedIndex].Tests.ToHashSet();
-        return state.LastRun.Results
-            .Where(result => selectedTests.Contains(result.Test) && result.Outcome == TestOutcome.Failed)
-            .SelectMany(FailureLines)
-            .ToArray();
+        return $"Test Output — {state.VisibleNodes[state.SelectedIndex].Name}";
     }
 
-    private static IEnumerable<OutputLine> FailureLines(TestResult failure)
+    private static string SelectedOutputFrom(ExplorerState state)
     {
-        yield return new OutputLine(
-            $"✗ {failure.Test.DisplayName} — {failure.ErrorMessage ?? "Failed"}",
-            OutputLineTone.Failure);
-        if (failure.SourceFile is not null && failure.SourceLine is not null)
+        if (state.LastRun is null || state.VisibleNodes.Count == 0)
         {
-            yield return new OutputLine(
-                $"{failure.SourceFile}:{failure.SourceLine}",
-                OutputLineTone.Neutral);
-        }
-    }
-
-    private static OutputLine OutputLineFrom(string text) => new(text, ToneFrom(text.TrimStart()));
-
-    private static OutputLineTone ToneFrom(string text)
-    {
-        if (text.StartsWith("Failed", StringComparison.OrdinalIgnoreCase) ||
-            text.StartsWith("Error Message:", StringComparison.OrdinalIgnoreCase) ||
-            text.Contains("[FAIL]", StringComparison.OrdinalIgnoreCase))
-        {
-            return OutputLineTone.Failure;
+            return "No test output available.";
         }
 
-        if (text.StartsWith("Passed", StringComparison.OrdinalIgnoreCase))
-        {
-            return OutputLineTone.Success;
-        }
-
-        if (text.StartsWith("Skipped", StringComparison.OrdinalIgnoreCase))
-        {
-            return OutputLineTone.Skipped;
-        }
-
-        return text.StartsWith("Running", StringComparison.OrdinalIgnoreCase)
-            ? OutputLineTone.Status
-            : OutputLineTone.Neutral;
+        return state.LastRun.Output;
     }
 }

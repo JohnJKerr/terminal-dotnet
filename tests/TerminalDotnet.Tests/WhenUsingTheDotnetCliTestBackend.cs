@@ -61,7 +61,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             "argument:--logger",
             "argument:trx;LogFileName=/tmp/terminal-dotnet.trx",
             "argument:--nologo",
-            "argument:--tl:off",
+            "argument:--tl:on",
             "passed:True",
             "output:2 tests passed"
         ],
@@ -80,6 +80,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
               <Results>
                 <UnitTestResult testId="test-1" testName="Adds_item" outcome="Failed" duration="00:00:00.012">
                   <Output>
+                    <StdOut>Cart total: 9</StdOut>
                     <ErrorInfo>
                       <Message>Expected total to be 10.</Message>
                       <StackTrace>at Shop.Tests.CartTests.Adds_item() in /repo/CartTests.cs:line 42</StackTrace>
@@ -105,8 +106,8 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         // Assert
         var failure = run.Results.Single();
         Assert.Equal(
-            (TestOutcome.Failed, "Expected total to be 10.", "/repo/CartTests.cs", 42, TimeSpan.FromMilliseconds(12)),
-            (failure.Outcome, failure.ErrorMessage, failure.SourceFile, failure.SourceLine, failure.Duration));
+            (TestOutcome.Failed, "Expected total to be 10.", "/repo/CartTests.cs", 42, TimeSpan.FromMilliseconds(12), "Cart total: 9"),
+            (failure.Outcome, failure.ErrorMessage, failure.SourceFile, failure.SourceLine, failure.Duration, failure.Output));
     }
 
     [Fact]

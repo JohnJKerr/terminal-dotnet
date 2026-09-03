@@ -118,7 +118,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
                     "--logger",
                     $"trx;LogFileName={resultPath}",
                     "--nologo",
-                    "--tl:off"
+                    "--tl:on"
                 ],
                 Path.GetDirectoryName(Path.GetFullPath(target))!),
             cancellationToken);
@@ -188,7 +188,8 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             result.Descendants().SingleOrDefault(element => element.Name.LocalName == "Message")?.Value,
             stackTrace,
             source?.Success == true ? source.Groups["file"].Value : null,
-            source?.Success == true ? int.Parse(source.Groups["line"].Value) : null);
+            source?.Success == true ? int.Parse(source.Groups["line"].Value) : null,
+            result.Descendants().SingleOrDefault(element => element.Name.LocalName == "StdOut")?.Value);
     }
 
     [GeneratedRegex(@" in (?<file>.+):line (?<line>\d+)")]

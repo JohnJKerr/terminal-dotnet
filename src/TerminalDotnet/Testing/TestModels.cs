@@ -16,7 +16,8 @@ public sealed record TestResult(
     string? ErrorMessage,
     string? StackTrace,
     string? SourceFile,
-    int? SourceLine);
+    int? SourceLine,
+    string? Output = null);
 
 public sealed record TestRun(bool Passed, string Output, IReadOnlyList<TestResult> Results)
 {

@@ -22,8 +22,6 @@ public sealed class TestRunnerApplication(
     private const int WorkspaceX = ContentInset + PanelWidth + 1;
 
     private CancellationTokenSource? runCancellation;
-    private IReadOnlyList<OutputLine> outputLines = [];
-    private IReadOnlyList<OutputLine> resultLines = [];
     private IReadOnlyList<VisibleTestNode> testNodes = [];
     private IReadOnlyList<FilePanelRow> fileRows = [];
     private readonly PanelShell shell = new();
@@ -32,6 +30,7 @@ public sealed class TestRunnerApplication(
     private int openLine = 1;
     private bool failureNavigationPending;
     private bool previewVisible;
+    private Label? testStatus;
 
     public void Run()
     {
@@ -53,12 +52,18 @@ public sealed class TestRunnerApplication(
         var panels = Panels();
         var search = Search();
         var tests = Tests(search);
-        var result = Result(tests);
-        var output = Output(result);
+        testStatus = TestStatus();
+        testStatus.GettingAttributeForRole += (_, args) =>
+        {
+            var background = args.Result?.Background ?? Color.Black;
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(
+                TestStatusAppearance.ForegroundFor(session.State),
+                background);
+            args.Handled = true;
+        };
         var shortcuts = Shortcuts();
 
-        window.Add(panels, search, tests, result, output, shortcuts);
-        output.ViewportChanged += (_, _) => Render(search, tests, result, output);
+        window.Add(panels, search, tests, testStatus, shortcuts);
         search.ValueChanged += async (_, _) =>
         {
             if (shell.State.ActivePanel == PanelKind.Explorer)
@@ -69,11 +74,11 @@ public sealed class TestRunnerApplication(
             {
                 await session.DispatchAsync(new ExplorerCommand.Search(search.Text));
             }
-            Render(search, tests, result, output);
+            Render(search, tests);
         };
         application.Keyboard.KeyDown += (_, key) =>
-            HandleKey(application, key, panels, search, tests, result, output);
-        Render(search, tests, result, output);
+            HandleKey(application, key, panels, search, tests);
+        Render(search, tests);
         panels.SelectedItem = shell.State.ActivePanel == PanelKind.Explorer ? 0 : 1;
         tests.SetFocus();
 
@@ -101,6 +106,14 @@ public sealed class TestRunnerApplication(
         return panels;
     }
 
+    private static Label TestStatus() => new()
+    {
+        X = WorkspaceX,
+        Y = Pos.AnchorEnd(2),
+        Width = Dim.Fill(ContentInset),
+        Height = 1
+    };
+
     private static TextField Search() => new()
     {
         Title = "Search",
@@ -119,44 +132,12 @@ public sealed class TestRunnerApplication(
             X = WorkspaceX,
             Y = Pos.Bottom(search),
             Width = Dim.Fill(ContentInset),
-            Height = Dim.Percent(45),
+            Height = Dim.Fill(3),
             ShowMarks = false,
             KeystrokeNavigator = null
         };
         tests.RowRender += (_, args) => ColorTreeRow(tests, args);
         return tests;
-    }
-
-    private ListView Result(ListView tests)
-    {
-        var result = new ListView
-        {
-            Title = "Test Result",
-            X = WorkspaceX,
-            Y = Pos.Bottom(tests),
-            Width = Dim.Fill(ContentInset),
-            Height = Dim.Percent(25),
-            ShowMarks = false,
-            KeystrokeNavigator = null
-        };
-        result.RowRender += (_, args) => ColorLine(result, resultLines, args);
-        return result;
-    }
-
-    private ListView Output(ListView result)
-    {
-        var output = new ListView
-        {
-            Title = "Execution Output",
-            X = WorkspaceX,
-            Y = Pos.Bottom(result),
-            Width = Dim.Fill(ContentInset),
-            Height = Dim.Fill(2),
-            ShowMarks = false,
-            KeystrokeNavigator = null
-        };
-        output.RowRender += (_, args) => ColorOutputRow(output, args);
-        return output;
     }
 
     private static Label Shortcuts() => new()
@@ -165,7 +146,7 @@ public sealed class TestRunnerApplication(
         Y = Pos.AnchorEnd(1),
         Width = Dim.Fill(1),
         Height = 1,
-        Text = "Tab pane  s search  ↑/k up  ↓/j down  Space fold  n/N match  Enter edit/run  e edit  p preview  R rerun  F failures  c cancel  q quit"
+        Text = "Tab pane  s search  ↑/k up  ↓/j down  Space fold  n/N match  Enter edit/run  e edit  p preview  o output  R rerun  F failures  c cancel  q quit"
     };
 
     private void HandleKey(
@@ -173,9 +154,7 @@ public sealed class TestRunnerApplication(
         Key key,
         ListView panels,
         TextField search,
-        ListView tests,
-        ListView result,
-        ListView output)
+        ListView tests)
     {
         if (previewVisible)
         {
@@ -188,11 +167,11 @@ public sealed class TestRunnerApplication(
             search.Text = "";
             if (shell.State.ActivePanel == PanelKind.Explorer)
             {
-                _ = DispatchFileAsync(new FileExplorerCommand.ClearSearch(), search, tests, result, output);
+                _ = DispatchFileAsync(new FileExplorerCommand.ClearSearch(), search, tests);
             }
             else
             {
-                _ = DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests, result, output);
+                _ = DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests);
             }
             tests.SetFocus();
             return;
@@ -242,14 +221,14 @@ public sealed class TestRunnerApplication(
         {
             key.Handled = true;
             shell.Select(panels.SelectedItem ?? 0);
-            Render(search, tests, result, output);
+            Render(search, tests);
             tests.SetFocus();
             return;
         }
 
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
-            HandleFileKey(application, key, tests, search, result, output);
+            HandleFileKey(application, key, tests, search);
             return;
         }
 
@@ -259,7 +238,7 @@ public sealed class TestRunnerApplication(
             var searchCommand = key.IsShift
                 ? (ExplorerCommand)new ExplorerCommand.PreviousSearchMatch()
                 : new ExplorerCommand.NextSearchMatch();
-            HandleCommand(application, new TerminalCommand(searchCommand), search, tests, result, output);
+            HandleCommand(application, new TerminalCommand(searchCommand), search, tests);
             return;
         }
 
@@ -273,9 +252,7 @@ public sealed class TestRunnerApplication(
                     application,
                     new TerminalCommand(new ExplorerCommand.NextFailure()),
                     search,
-                    tests,
-                    result,
-                    output);
+                    tests);
                 return;
             }
         }
@@ -301,9 +278,10 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        if (result.HasFocus && ScrollOutput(key, result) || output.HasFocus && ScrollOutput(key, output))
+        if (Is(key, KeyCode.O))
         {
             key.Handled = true;
+            ShowTestOutput(application);
             return;
         }
 
@@ -314,16 +292,14 @@ public sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        HandleCommand(application, command, search, tests, result, output);
+        HandleCommand(application, command, search, tests);
     }
 
     private void HandleCommand(
         IApplication application,
         TerminalCommand command,
         TextField search,
-        ListView tests,
-        ListView result,
-        ListView output)
+        ListView tests)
     {
         if (command is CancelRun)
         {
@@ -331,16 +307,14 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        _ = DispatchAsync(application, command.ExplorerCommand!, search, tests, result, output);
+        _ = DispatchAsync(application, command.ExplorerCommand!, search, tests);
     }
 
     private void HandleFileKey(
         IApplication application,
         Key key,
         ListView files,
-        TextField search,
-        ListView result,
-        ListView output)
+        TextField search)
     {
         if (!files.HasFocus || fileSession.State.VisibleNodes.Count == 0)
         {
@@ -392,41 +366,37 @@ public sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        _ = DispatchFileAsync(command, search, files, result, output);
+        _ = DispatchFileAsync(command, search, files);
     }
 
     private async Task DispatchFileAsync(
         FileExplorerCommand command,
         TextField search,
-        ListView files,
-        ListView result,
-        ListView output)
+        ListView files)
     {
         await fileSession.DispatchAsync(command);
-        Render(search, files, result, output);
+        Render(search, files);
     }
 
     private async Task DispatchAsync(
         IApplication application,
         ExplorerCommand command,
         TextField search,
-        ListView tests,
-        ListView result,
-        ListView output)
+        ListView tests)
     {
         if (!RunsTests(command))
         {
             await session.DispatchAsync(command);
-            Render(search, tests, result, output);
+            Render(search, tests);
             return;
         }
 
         runCancellation?.Dispose();
         runCancellation = new CancellationTokenSource();
         var run = session.DispatchAsync(command, runCancellation.Token);
-        Render(search, tests, result, output);
+        Render(search, tests);
         await run;
-        application.Invoke(() => Render(search, tests, result, output));
+        application.Invoke(() => Render(search, tests));
     }
 
     private void RequestTestSource(IApplication application, bool preview)
@@ -515,6 +485,60 @@ public sealed class TestRunnerApplication(
         }
     }
 
+    private void ShowTestOutput(IApplication application)
+    {
+        var snapshot = TestPanelSnapshot.From(session.State, target);
+        using var dialog = new Window
+        {
+            Title = $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close",
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            ShadowStyle = ShadowStyles.None
+        };
+#pragma warning disable CS0618
+        var text = new TextView
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            ReadOnly = true,
+            WordWrap = true
+        };
+#pragma warning restore CS0618
+        text.Load(AnsiTestOutput.ToCells(snapshot.SelectedOutput));
+        SetBlackBackground(dialog);
+        SetBlackBackground(text);
+        text.DrawReadOnlyColor += (_, args) =>
+        {
+            var appearance = args.Line[args.Col].Attribute ??
+                new global::Terminal.Gui.Drawing.Attribute(Color.White, Color.Black);
+            text.SetAttribute(appearance);
+        };
+        dialog.Add(text);
+        previewVisible = true;
+        try
+        {
+            application.Run(dialog);
+        }
+        finally
+        {
+            previewVisible = false;
+        }
+    }
+
+    private static void SetBlackBackground(View view)
+    {
+        view.GettingAttributeForRole += (_, args) =>
+        {
+            var foreground = args.Result?.Foreground ?? Color.White;
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(foreground, Color.Black);
+            args.Handled = true;
+        };
+    }
+
     private static void ScrollPreview(Code code, Key key)
     {
         var rows = key.NoShift.KeyCode switch
@@ -554,40 +578,32 @@ public sealed class TestRunnerApplication(
             openLine).GetAwaiter().GetResult();
     }
 
-    private void Render(TextField search, ListView tests, ListView result, ListView output)
+    private void Render(TextField search, ListView tests)
     {
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
-            RenderFiles(search, tests, result, output);
+            RenderFiles(search, tests);
             return;
         }
 
-        result.Visible = true;
-        output.Visible = true;
-        tests.Height = Dim.Percent(45);
-        var lineWidth = output.Viewport.Width > 0 ? output.Viewport.Width : int.MaxValue;
-        var snapshot = TestPanelSnapshot.From(session.State, target, lineWidth);
+        var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Breadcrumb}";
+        tests.Height = Dim.Fill(3);
+        testStatus!.Visible = true;
+        testStatus.Text = snapshot.StatusLine;
         search.Title = snapshot.SearchQuery.Length == 0
             ? "Search"
             : $"Search — {snapshot.SearchHitCount} hits";
         search.Text = snapshot.SearchQuery;
         testNodes = snapshot.Tests;
         tests.SetSource(new ObservableCollection<string>(snapshot.TestRows));
-        result.Title = snapshot.OutcomeSummary.Length == 0
-            ? "Test Result"
-            : $"Test Result — {snapshot.OutcomeSummary}";
-        resultLines = snapshot.ResultLines;
-        result.SetSource(new ObservableCollection<string>(snapshot.ResultLines.Select(line => line.Text)));
-        outputLines = snapshot.OutputLines;
-        output.SetSource(new ObservableCollection<string>(snapshot.OutputLines.Select(line => line.Text)));
         if (snapshot.Tests.Count > 0)
         {
             tests.SelectedItem = snapshot.SelectedIndex;
         }
     }
 
-    private void RenderFiles(TextField search, ListView files, ListView result, ListView output)
+    private void RenderFiles(TextField search, ListView files)
     {
         var snapshot = FilePanelSnapshot.From(fileSession.State);
         files.Title = "Explorer";
@@ -598,8 +614,7 @@ public sealed class TestRunnerApplication(
         fileRows = snapshot.Rows;
         files.SetSource(new ObservableCollection<string>(snapshot.Rows.Select(row => row.Text)));
         files.Height = Dim.Fill(2);
-        result.Visible = false;
-        output.Visible = false;
+        testStatus!.Visible = false;
         if (snapshot.Nodes.Count > 0)
         {
             files.SelectedItem = snapshot.SelectedIndex;
@@ -649,37 +664,6 @@ public sealed class TestRunnerApplication(
         SetRowForeground(tests, args, foreground);
     }
 
-    private void ColorOutputRow(ListView output, ListViewRowEventArgs args)
-    {
-        ColorLine(output, outputLines, args);
-    }
-
-    private static void ColorLine(
-        ListView list,
-        IReadOnlyList<OutputLine> lines,
-        ListViewRowEventArgs args)
-    {
-        if (args.Row >= lines.Count || list.IsSelectedOrMarked(args.Row))
-        {
-            return;
-        }
-
-        var foreground = lines[args.Row].Tone switch
-        {
-            OutputLineTone.Failure => Color.BrightRed,
-            OutputLineTone.Success => Color.BrightGreen,
-            OutputLineTone.Skipped => Color.BrightYellow,
-            OutputLineTone.Status => Color.BrightCyan,
-            _ => Color.None
-        };
-        if (foreground == Color.None)
-        {
-            return;
-        }
-
-        SetRowForeground(list, args, foreground);
-    }
-
     private static void SetRowForeground(
         ListView list,
         ListViewRowEventArgs args,
@@ -687,23 +671,6 @@ public sealed class TestRunnerApplication(
     {
         var background = list.GetAttributeForRole(VisualRole.Normal).Background;
         args.RowAttribute = new global::Terminal.Gui.Drawing.Attribute(foreground, background);
-    }
-
-    private static bool ScrollOutput(Key key, ListView output)
-    {
-        if (Is(key, KeyCode.K))
-        {
-            output.MoveUp(false);
-            return true;
-        }
-
-        if (Is(key, KeyCode.J))
-        {
-            output.MoveDown(false);
-            return true;
-        }
-
-        return false;
     }
 
     private static TerminalCommand? CommandFor(Key key)
