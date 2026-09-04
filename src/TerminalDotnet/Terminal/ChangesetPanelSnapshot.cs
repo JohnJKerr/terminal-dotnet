@@ -11,7 +11,8 @@ public sealed record ChangesetPanelSnapshot(
     int SearchHitCount,
     IReadOnlyList<FileStatusSegment> StatusSegments,
     string DiffTitle,
-    IReadOnlyList<DiffLine> DiffLines)
+    IReadOnlyList<DiffLine> DiffLines,
+    string EmptyMessage)
 {
     public static ChangesetPanelSnapshot From(ChangesetState state) => new(
         state.Files.Select(RowFrom).ToArray(),
@@ -20,7 +21,8 @@ public sealed record ChangesetPanelSnapshot(
         state.Files.Count,
         StatusSegmentsFrom(state.Summary),
         state.Diff?.DisplayPath ?? "",
-        DiffAppearance.LinesFrom(state.Diff?.Diff ?? ""));
+        DiffAppearance.LinesFrom(state.Diff?.Diff ?? ""),
+        PanelEmptyState.For("changes", state.Files.Count, state.SearchQuery));
 
     private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(ChangesetSummary summary) =>
     [

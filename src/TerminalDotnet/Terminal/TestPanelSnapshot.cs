@@ -14,7 +14,8 @@ public sealed record TestPanelSnapshot(
     int SearchHitCount,
     string StatusLine,
     string SelectedOutputTitle,
-    string SelectedOutput)
+    string SelectedOutput,
+    string EmptyMessage)
 {
     public static TestPanelSnapshot From(ExplorerState state, string target) => new(
         Path.GetFileName(target),
@@ -26,7 +27,8 @@ public sealed record TestPanelSnapshot(
         state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
         StatusLineFrom(state),
         SelectedOutputTitleFrom(state),
-        SelectedOutputFrom(state));
+        SelectedOutputFrom(state),
+        PanelEmptyState.For("tests", state.VisibleNodes.Count, state.SearchQuery));
 
     private static string StatusLineFrom(ExplorerState state)
     {

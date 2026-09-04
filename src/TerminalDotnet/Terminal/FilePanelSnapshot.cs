@@ -44,7 +44,8 @@ public sealed record FilePanelSnapshot(
     int SelectedIndex,
     string SearchQuery,
     int SearchHitCount,
-    IReadOnlyList<FileStatusSegment> StatusSegments)
+    IReadOnlyList<FileStatusSegment> StatusSegments,
+    string EmptyMessage)
 {
     public static FilePanelSnapshot From(FileExplorerState state) => new(
         state.VisibleNodes,
@@ -52,7 +53,8 @@ public sealed record FilePanelSnapshot(
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == FileNodeKind.File),
-        StatusSegmentsFrom(state.Changes));
+        StatusSegmentsFrom(state.Changes),
+        PanelEmptyState.For("files", state.VisibleNodes.Count, state.SearchQuery));
 
     private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(FileChangeSummary changes) =>
     [

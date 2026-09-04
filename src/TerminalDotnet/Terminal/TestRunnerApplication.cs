@@ -38,6 +38,7 @@ public sealed class TestRunnerApplication(
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
     private IReadOnlyList<FileStatusSegment> statusSegments = [];
+    private Label? emptyState;
     private Label? shortcuts;
 
     public void Run()
@@ -70,9 +71,10 @@ public sealed class TestRunnerApplication(
             args.Handled = true;
         };
         segmentLabels = StatusSegmentLabels();
+        emptyState = EmptyState(tests);
         shortcuts = Shortcuts();
 
-        window.Add(panels, search, tests, testStatus, shortcuts);
+        window.Add(panels, search, tests, emptyState, testStatus, shortcuts);
         window.Add([.. segmentLabels]);
         search.ValueChanged += async (_, _) =>
         {
@@ -171,6 +173,15 @@ public sealed class TestRunnerApplication(
         tests.RowRender += (_, args) => ColorTreeRow(tests, args);
         return tests;
     }
+
+    private static Label EmptyState(ListView list) => new()
+    {
+        X = WorkspaceX,
+        Y = Pos.Top(list),
+        Width = Dim.Fill(ContentInset),
+        Height = 1,
+        Visible = false
+    };
 
     private static Label Shortcuts() => new()
     {
@@ -767,6 +778,7 @@ public sealed class TestRunnerApplication(
         tests.Title = $"Tests — {snapshot.Breadcrumb}";
         tests.Height = Dim.Fill(3);
         HideSegments();
+        ShowEmptyState(snapshot.EmptyMessage);
         testStatus!.Visible = true;
         testStatus.Text = snapshot.StatusLine;
         search.Title = snapshot.SearchQuery.Length == 0
@@ -792,7 +804,8 @@ public sealed class TestRunnerApplication(
             snapshot.SearchHitCount,
             snapshot.Rows.Select(row => (row.Text, row.Tone)).ToArray(),
             snapshot.SelectedIndex,
-            snapshot.StatusSegments);
+            snapshot.StatusSegments,
+            snapshot.EmptyMessage);
     }
 
     private void RenderChanges(TextField search, ListView files)
@@ -806,7 +819,8 @@ public sealed class TestRunnerApplication(
             snapshot.SearchHitCount,
             snapshot.Rows.Select(row => (row.Text, row.Tone)).ToArray(),
             snapshot.SelectedIndex,
-            snapshot.StatusSegments);
+            snapshot.StatusSegments,
+            snapshot.EmptyMessage);
     }
 
     private void RenderRows(
@@ -816,7 +830,8 @@ public sealed class TestRunnerApplication(
         int searchHitCount,
         IReadOnlyList<(string Text, FileRowTone Tone)> rows,
         int selectedIndex,
-        IReadOnlyList<FileStatusSegment> segments)
+        IReadOnlyList<FileStatusSegment> segments,
+        string emptyMessage)
     {
         search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
         search.Text = searchQuery;
@@ -825,10 +840,17 @@ public sealed class TestRunnerApplication(
         files.Height = Dim.Fill(3);
         testStatus!.Visible = false;
         ShowSegments(segments);
+        ShowEmptyState(emptyMessage);
         if (rows.Count > 0)
         {
             files.SelectedItem = selectedIndex;
         }
+    }
+
+    private void ShowEmptyState(string message)
+    {
+        emptyState!.Text = message;
+        emptyState.Visible = message.Length > 0;
     }
 
     private void ShowSegments(IReadOnlyList<FileStatusSegment> segments)

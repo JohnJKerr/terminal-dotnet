@@ -8,9 +8,9 @@ Run it from a directory containing one `.sln`, `.slnx`, or `.csproj` file:
 dotnet run --project /path/to/terminal-dotnet/src/TerminalDotnet
 ```
 
-Panels: `Explorer` lists the solution's source files, `Changes` lists the files git reports as
-added, modified, or deleted beneath the directory you started in, and `Tests` lists the discovered
-tests.
+Panels: `Explorer` lists the solution's source files, `Tests` lists the discovered tests, and
+`Changes` lists the files git reports as added, modified, or deleted beneath the directory you
+started in. A panel with nothing to list says so in place of its rows.
 
 Keys:
 
