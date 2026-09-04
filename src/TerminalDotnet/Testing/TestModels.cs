@@ -1,6 +1,16 @@
 namespace TerminalDotnet.Testing;
 
-public sealed record TestCase(string FullyQualifiedName, string DisplayName, string ProjectPath);
+public sealed record TestCase(string FullyQualifiedName, string DisplayName, string ProjectPath)
+{
+    public string ClassName
+    {
+        get
+        {
+            var parts = FullyQualifiedName.Split('.');
+            return parts.Length > 1 ? parts[^2] : FullyQualifiedName;
+        }
+    }
+}
 
 public enum TestOutcome
 {

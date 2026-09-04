@@ -56,14 +56,8 @@ public sealed record TestPanelSnapshot(
         {
             TestNodeKind.Project => project,
             TestNodeKind.Class => $"{project} › {selected.Name}",
-            _ => $"{project} › {ClassName(selected.Tests[0])} › {selected.Name}"
+            _ => $"{project} › {selected.Tests[0].ClassName} › {selected.Name}"
         };
-    }
-
-    private static string ClassName(TestCase test)
-    {
-        var parts = test.FullyQualifiedName.Split('.');
-        return parts.Length > 1 ? parts[^2] : test.FullyQualifiedName;
     }
 
     private static IReadOnlyList<string> TestRowsFrom(ExplorerState state)

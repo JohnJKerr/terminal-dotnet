@@ -1,3 +1,4 @@
+using TerminalDotnet.Search;
 using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Explorer;
@@ -24,159 +25,144 @@ public sealed class TestExplorerSession(
         State = new ExplorerState(ExplorerStatus.Ready, nodes, 0, $"Ready — {tests.Count} tests discovered");
     }
 
-    public async Task DispatchAsync(ExplorerCommand command, CancellationToken cancellationToken = default)
-    {
-        if (command is ExplorerCommand.LoadSelectedSource &&
-            State.VisibleNodes.Count > 0 &&
-            testSourceLocator is not null)
+    public Task DispatchAsync(ExplorerCommand command, CancellationToken cancellationToken = default) =>
+        command switch
         {
-            var selected = State.VisibleNodes[State.SelectedIndex];
-            var source = await testSourceLocator.LocateAsync(selected.Tests[0], cancellationToken);
-            State = State with { SourceContext = source };
-            return;
-        }
-
-        if (command is ExplorerCommand.Search search)
-        {
-            var matchingTests = discoveredTests
-                .Where(test => MatchesSearch(test, search.Query))
-                .ToArray();
-            State = State with
-            {
-                VisibleNodes = VisibleNodes(matchingTests),
-                SelectedIndex = 0,
-                SearchQuery = search.Query
-            };
-            return;
-        }
-
-        if (command is ExplorerCommand.ClearSearch)
-        {
-            State = State with
-            {
-                VisibleNodes = VisibleNodes(discoveredTests),
-                SelectedIndex = 0,
-                SearchQuery = ""
-            };
-            return;
-        }
-
-        if (command is ExplorerCommand.ToggleExpanded && State.VisibleNodes.Count > 0)
-        {
-            var selected = State.VisibleNodes[State.SelectedIndex];
-            if (selected.Kind != TestNodeKind.Test)
-            {
-                if (selected.IsExpanded)
-                {
-                    collapsedNodes.Add(NodeId(selected));
-                }
-                else
-                {
-                    collapsedNodes.Remove(NodeId(selected));
-                }
-
-                State = State with { VisibleNodes = VisibleNodes(TestsForSearch(State.SearchQuery)) };
-            }
-
-            return;
-        }
-
-        if (command is ExplorerCommand.RunSelected && State.VisibleNodes.Count > 0)
-        {
-            await RunTestsAsync(State.VisibleNodes[State.SelectedIndex].Tests, cancellationToken);
-            return;
-        }
-
-        if (command is ExplorerCommand.RerunLast && lastRunTests.Count > 0)
-        {
-            await RunTestsAsync(lastRunTests, cancellationToken);
-            return;
-        }
-
-        if (command is ExplorerCommand.RerunFailed)
-        {
-            var failedTests = State.LastRun?.Results
-                .Where(result => result.Outcome == TestOutcome.Failed)
-                .Select(result => result.Test)
-                .ToArray() ?? [];
-            if (failedTests.Length > 0)
-            {
-                await RunTestsAsync(failedTests, cancellationToken);
-            }
-
-            return;
-        }
-
-        if (command is ExplorerCommand.NextFailure)
-        {
-            var failedTests = State.LastRun?.Results
-                .Where(result => result.Outcome == TestOutcome.Failed)
-                .Select(result => result.Test)
-                .ToHashSet() ?? [];
-            var failureIndices = State.VisibleNodes
-                .Select((node, index) => (node, index))
-                .Where(item =>
-                    item.node.Kind == TestNodeKind.Test &&
-                    item.node.Tests.Any(failedTests.Contains))
-                .Select(item => item.index)
-                .ToArray();
-            var nextFailure = failureIndices.FirstOrDefault(
-                index => index > State.SelectedIndex,
-                failureIndices.FirstOrDefault(-1));
-            if (nextFailure >= 0)
-            {
-                State = State with { SelectedIndex = nextFailure };
-            }
-
-            return;
-        }
-
-        if (command is ExplorerCommand.NextSearchMatch)
-        {
-            var matchIndices = State.VisibleNodes
-                .Select((node, index) => (node, index))
-                .Where(item => item.node.Kind == TestNodeKind.Test)
-                .Select(item => item.index)
-                .ToArray();
-            var nextMatch = matchIndices.FirstOrDefault(
-                index => index > State.SelectedIndex,
-                matchIndices.FirstOrDefault(-1));
-            if (nextMatch >= 0)
-            {
-                State = State with { SelectedIndex = nextMatch };
-            }
-
-            return;
-        }
-
-        if (command is ExplorerCommand.PreviousSearchMatch)
-        {
-            var matchIndices = State.VisibleNodes
-                .Select((node, index) => (node, index))
-                .Where(item => item.node.Kind == TestNodeKind.Test)
-                .Select(item => item.index)
-                .ToArray();
-            var previousMatch = matchIndices.LastOrDefault(
-                index => index < State.SelectedIndex,
-                matchIndices.LastOrDefault(-1));
-            if (previousMatch >= 0)
-            {
-                State = State with { SelectedIndex = previousMatch };
-            }
-
-            return;
-        }
-
-        var lastIndex = Math.Max(0, State.VisibleNodes.Count - 1);
-        var selectedIndex = command switch
-        {
-            ExplorerCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-            ExplorerCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
-            _ => State.SelectedIndex
+            ExplorerCommand.LoadSelectedSource => LoadSelectedSourceAsync(cancellationToken),
+            ExplorerCommand.Search search => Applied(() => ApplySearch(search.Query)),
+            ExplorerCommand.ClearSearch => Applied(() => ApplySearch("")),
+            ExplorerCommand.ToggleExpanded => Applied(ToggleSelectedExpansion),
+            ExplorerCommand.RunSelected => RunSelectedAsync(cancellationToken),
+            ExplorerCommand.RerunLast => RerunLastAsync(cancellationToken),
+            ExplorerCommand.RerunFailed => RerunFailedAsync(cancellationToken),
+            ExplorerCommand.NextFailure => Applied(() => SelectNext(FailedTestIndices())),
+            ExplorerCommand.NextSearchMatch => Applied(() => SelectNext(TestIndices())),
+            ExplorerCommand.PreviousSearchMatch => Applied(() => SelectPrevious(TestIndices())),
+            _ => Applied(() => MoveSelection(command))
         };
 
-        State = State with { SelectedIndex = selectedIndex };
+    private static Task Applied(Action change)
+    {
+        change();
+        return Task.CompletedTask;
     }
+
+    private async Task LoadSelectedSourceAsync(CancellationToken cancellationToken)
+    {
+        if (State.VisibleNodes.Count == 0 || testSourceLocator is null)
+        {
+            return;
+        }
+
+        var selected = State.VisibleNodes[State.SelectedIndex];
+        var source = await testSourceLocator.LocateAsync(selected.Tests[0], cancellationToken);
+        State = State with { SourceContext = source };
+    }
+
+    private void ApplySearch(string query)
+    {
+        State = State with
+        {
+            VisibleNodes = VisibleNodes(TestsMatching(query)),
+            SelectedIndex = 0,
+            SearchQuery = query
+        };
+    }
+
+    private void ToggleSelectedExpansion()
+    {
+        if (State.VisibleNodes.Count == 0)
+        {
+            return;
+        }
+
+        var selected = State.VisibleNodes[State.SelectedIndex];
+        if (selected.Kind == TestNodeKind.Test)
+        {
+            return;
+        }
+
+        Collapse(selected, !selected.IsExpanded);
+        State = State with { VisibleNodes = VisibleNodes(TestsMatching(State.SearchQuery)) };
+    }
+
+    private void Collapse(VisibleTestNode node, bool isExpanded)
+    {
+        if (isExpanded)
+        {
+            collapsedNodes.Remove(NodeId(node));
+            return;
+        }
+
+        collapsedNodes.Add(NodeId(node));
+    }
+
+    private Task RunSelectedAsync(CancellationToken cancellationToken) => State.VisibleNodes.Count == 0
+        ? Task.CompletedTask
+        : RunTestsAsync(State.VisibleNodes[State.SelectedIndex].Tests, cancellationToken);
+
+    private Task RerunLastAsync(CancellationToken cancellationToken) => lastRunTests.Count == 0
+        ? Task.CompletedTask
+        : RunTestsAsync(lastRunTests, cancellationToken);
+
+    private Task RerunFailedAsync(CancellationToken cancellationToken)
+    {
+        var failedTests = FailedTests();
+        return failedTests.Count == 0
+            ? Task.CompletedTask
+            : RunTestsAsync(failedTests, cancellationToken);
+    }
+
+    private void MoveSelection(ExplorerCommand command)
+    {
+        var lastIndex = Math.Max(0, State.VisibleNodes.Count - 1);
+        State = State with
+        {
+            SelectedIndex = command switch
+            {
+                ExplorerCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
+                ExplorerCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+                _ => State.SelectedIndex
+            }
+        };
+    }
+
+    private void SelectNext(IReadOnlyList<int> indices) => Select(
+        indices.FirstOrDefault(index => index > State.SelectedIndex, indices.FirstOrDefault(-1)));
+
+    private void SelectPrevious(IReadOnlyList<int> indices) => Select(
+        indices.LastOrDefault(index => index < State.SelectedIndex, indices.LastOrDefault(-1)));
+
+    private void Select(int index)
+    {
+        if (index < 0)
+        {
+            return;
+        }
+
+        State = State with { SelectedIndex = index };
+    }
+
+    private IReadOnlyList<int> TestIndices() => IndicesOf(node => node.Kind == TestNodeKind.Test);
+
+    private IReadOnlyList<int> FailedTestIndices()
+    {
+        var failedTests = FailedTests().ToHashSet();
+        return IndicesOf(node =>
+            node.Kind == TestNodeKind.Test &&
+            node.Tests.Any(failedTests.Contains));
+    }
+
+    private IReadOnlyList<int> IndicesOf(Func<VisibleTestNode, bool> matches) => State.VisibleNodes
+        .Select((node, index) => (node, index))
+        .Where(item => matches(item.node))
+        .Select(item => item.index)
+        .ToArray();
+
+    private IReadOnlyList<TestCase> FailedTests() => State.LastRun?.Results
+        .Where(result => result.Outcome == TestOutcome.Failed)
+        .Select(result => result.Test)
+        .ToArray() ?? [];
 
     private IReadOnlyList<VisibleTestNode> VisibleNodes(IReadOnlyList<TestCase> tests) => tests
         .GroupBy(test => test.ProjectPath)
@@ -192,16 +178,10 @@ public sealed class TestExplorerSession(
             return node;
         }
 
-        var outcomes = node.Tests.Select(test => completedOutcomes[test]).ToArray();
-        var outcome = outcomes.Contains(TestNodeOutcome.Failed)
-            ? TestNodeOutcome.Failed
-            : outcomes.All(result => result == TestNodeOutcome.Skipped)
-                ? TestNodeOutcome.Skipped
-                : TestNodeOutcome.Passed;
-        return node with { Outcome = outcome };
+        return node with { Outcome = NodeOutcomeFrom(node.Tests.Select(test => completedOutcomes[test])) };
     }
 
-    private IReadOnlyList<TestCase> TestsForSearch(string query) => discoveredTests
+    private IReadOnlyList<TestCase> TestsMatching(string query) => discoveredTests
         .Where(test => MatchesSearch(test, query))
         .ToArray();
 
@@ -209,23 +189,8 @@ public sealed class TestExplorerSession(
         $"{node.Tests[0].ProjectPath}:{node.Kind}:{node.Name}";
 
     private static bool MatchesSearch(TestCase test, string query) =>
-        IsOrderedMatch(test.FullyQualifiedName, query) ||
-        IsOrderedMatch(test.DisplayName, query);
-
-    private static bool IsOrderedMatch(string candidate, string query)
-    {
-        var queryIndex = 0;
-        foreach (var character in candidate)
-        {
-            if (queryIndex < query.Length &&
-                char.ToUpperInvariant(character) == char.ToUpperInvariant(query[queryIndex]))
-            {
-                queryIndex++;
-            }
-        }
-
-        return queryIndex == query.Length;
-    }
+        FuzzyMatch.Matches(test.FullyQualifiedName, query) ||
+        FuzzyMatch.Matches(test.DisplayName, query);
 
     private async Task RunTestsAsync(
         IReadOnlyList<TestCase> tests,
@@ -276,20 +241,14 @@ public sealed class TestExplorerSession(
     {
         if (run.Results.Count == 0)
         {
-            return tests.ToDictionary(
-                test => test,
-                _ => run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed);
+            return tests.ToDictionary(test => test, _ => OutcomeFor(run));
         }
 
         return run.Results
             .GroupBy(result => result.Test)
             .ToDictionary(
                 group => group.Key,
-                group => group.Any(result => result.Outcome == TestOutcome.Failed)
-                    ? TestNodeOutcome.Failed
-                    : group.All(result => result.Outcome == TestOutcome.Skipped)
-                        ? TestNodeOutcome.Skipped
-                        : TestNodeOutcome.Passed);
+                group => NodeOutcomeFrom(group.Select(result => NodeOutcomeFor(result.Outcome))));
     }
 
     private async Task<SourceContext?> ReadFailureSourceAsync(
@@ -311,12 +270,6 @@ public sealed class TestExplorerSession(
             cancellationToken);
     }
 
-    private static string ClassName(string fullyQualifiedName)
-    {
-        var parts = fullyQualifiedName.Split('.');
-        return parts.Length > 1 ? parts[^2] : fullyQualifiedName;
-    }
-
     private IReadOnlyList<VisibleTestNode> WithOutcome(
         IReadOnlyList<TestCase> selectedTests,
         TestNodeOutcome outcome)
@@ -333,9 +286,7 @@ public sealed class TestExplorerSession(
     {
         if (run.Results.Count == 0)
         {
-            return WithOutcome(
-                selectedTests,
-                run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed);
+            return WithOutcome(selectedTests, OutcomeFor(run));
         }
 
         var results = run.Results
@@ -361,12 +312,33 @@ public sealed class TestExplorerSession(
             return node;
         }
 
-        var outcome = nodeResults.Any(result => result.Outcome == TestOutcome.Failed)
-            ? TestNodeOutcome.Failed
-            : nodeResults.All(result => result.Outcome == TestOutcome.Skipped)
-                ? TestNodeOutcome.Skipped
-                : TestNodeOutcome.Passed;
-        return node with { Outcome = outcome };
+        return node with
+        {
+            Outcome = NodeOutcomeFrom(nodeResults.Select(result => NodeOutcomeFor(result.Outcome)))
+        };
+    }
+
+    private static TestNodeOutcome OutcomeFor(TestRun run) =>
+        run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed;
+
+    private static TestNodeOutcome NodeOutcomeFor(TestOutcome outcome) => outcome switch
+    {
+        TestOutcome.Failed => TestNodeOutcome.Failed,
+        TestOutcome.Skipped => TestNodeOutcome.Skipped,
+        _ => TestNodeOutcome.Passed
+    };
+
+    private static TestNodeOutcome NodeOutcomeFrom(IEnumerable<TestNodeOutcome> outcomes)
+    {
+        var nodeOutcomes = outcomes.ToArray();
+        if (nodeOutcomes.Contains(TestNodeOutcome.Failed))
+        {
+            return TestNodeOutcome.Failed;
+        }
+
+        return nodeOutcomes.All(outcome => outcome == TestNodeOutcome.Skipped)
+            ? TestNodeOutcome.Skipped
+            : TestNodeOutcome.Passed;
     }
 
     private IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project)
@@ -379,7 +351,7 @@ public sealed class TestExplorerSession(
             projectTests);
         var projectCollapsed = collapsedNodes.Contains(NodeId(projectNode));
         var classNodes = projectTests
-            .GroupBy(test => ClassName(test.FullyQualifiedName))
+            .GroupBy(test => test.ClassName)
             .OrderBy(testClass => testClass.Key)
             .SelectMany(ClassNodes);
 
