@@ -21,6 +21,7 @@ public sealed class TestRunnerApplication(
     private const int PanelWidth = 20;
     private const int WorkspaceX = ContentInset + PanelWidth + 1;
     private const int SegmentGap = 2;
+    private const int SearchGap = 1;
 
     private CancellationTokenSource? runCancellation;
     private IReadOnlyList<VisibleTestNode> testNodes = [];
@@ -165,7 +166,7 @@ public sealed class TestRunnerApplication(
         {
             Title = "Tests",
             X = WorkspaceX,
-            Y = Pos.Bottom(search),
+            Y = Pos.Bottom(search) + SearchGap,
             Width = Dim.Fill(ContentInset),
             Height = Dim.Fill(3),
             ShowMarks = false,
