@@ -825,20 +825,24 @@ public sealed class TestRunnerApplication(
     private void ShowSegments(IReadOnlyList<FileStatusSegment> segments)
     {
         statusSegments = segments;
-        var column = WorkspaceX;
-        foreach (var (label, index) in segmentLabels.Select((label, index) => (label, index)))
+        var placed = StatusSegmentLayout.Place(segments, WorkspaceX, SegmentGap);
+        for (var index = 0; index < segmentLabels.Count; index++)
         {
-            label.Visible = index < segments.Count;
-            if (!label.Visible)
-            {
-                continue;
-            }
-
-            label.X = column;
-            label.Width = segments[index].Text.Length;
-            label.Text = segments[index].Text;
-            column += segments[index].Text.Length + SegmentGap;
+            Show(segmentLabels[index], index < placed.Count ? placed[index] : null);
         }
+    }
+
+    private static void Show(Label label, PlacedStatusSegment? segment)
+    {
+        label.Visible = segment is not null;
+        if (segment is null)
+        {
+            return;
+        }
+
+        label.X = segment.Column;
+        label.Width = segment.Text.Length;
+        label.Text = segment.Text;
     }
 
     private void HideSegments()

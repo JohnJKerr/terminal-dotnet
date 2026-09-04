@@ -15,6 +15,27 @@ public sealed record FilePanelRow(string Text, FileRowTone Tone);
 
 public sealed record FileStatusSegment(string Text, FileRowTone Tone);
 
+public sealed record PlacedStatusSegment(string Text, FileRowTone Tone, int Column);
+
+public static class StatusSegmentLayout
+{
+    public static IReadOnlyList<PlacedStatusSegment> Place(
+        IReadOnlyList<FileStatusSegment> segments,
+        int firstColumn,
+        int gap)
+    {
+        var column = firstColumn;
+        var placed = new List<PlacedStatusSegment>();
+        foreach (var segment in segments)
+        {
+            placed.Add(new PlacedStatusSegment(segment.Text, segment.Tone, column));
+            column += segment.Text.Length + gap;
+        }
+
+        return placed;
+    }
+}
+
 public static class FileRowAppearance
 {
     public static global::Terminal.Gui.Drawing.Attribute For(
@@ -64,20 +85,33 @@ public sealed record FilePanelSnapshot(
         new($"{changes.Deleted} Deleted", FileRowTone.Deleted)
     ];
 
-    private static FilePanelRow RowFrom(VisibleFileNode node)
+    private static FilePanelRow RowFrom(VisibleFileNode node) => new(
+        $"{new string(' ', node.Depth * 2)}{MarkerFor(node)} {node.Name}",
+        ToneFor(node));
+
+    private static string MarkerFor(VisibleFileNode node)
     {
-        var marker = node.Kind == FileNodeKind.File
-            ? "•"
-            : node.IsExpanded ? "▼" : "▶";
-        var tone = node.Kind == FileNodeKind.File
-            ? node.Files[0].GitStatus switch
-            {
-                FileGitStatus.Modified => FileRowTone.Modified,
-                FileGitStatus.New => FileRowTone.New,
-                FileGitStatus.Deleted => FileRowTone.Deleted,
-                _ => FileRowTone.Neutral
-            }
-            : FileRowTone.Neutral;
-        return new FilePanelRow($"{new string(' ', node.Depth * 2)}{marker} {node.Name}", tone);
+        if (node.Kind == FileNodeKind.File)
+        {
+            return "•";
+        }
+
+        return node.IsExpanded ? "▼" : "▶";
+    }
+
+    private static FileRowTone ToneFor(VisibleFileNode node)
+    {
+        if (node.Kind != FileNodeKind.File)
+        {
+            return FileRowTone.Neutral;
+        }
+
+        return node.Files[0].GitStatus switch
+        {
+            FileGitStatus.Modified => FileRowTone.Modified,
+            FileGitStatus.New => FileRowTone.New,
+            FileGitStatus.Deleted => FileRowTone.Deleted,
+            _ => FileRowTone.Neutral
+        };
     }
 }

@@ -11,126 +11,95 @@ public static class PanelShortcuts
         PanelKind panel,
         FileExplorerState fileState,
         ChangesetState changesetState,
-        ExplorerState testState)
+        ExplorerState testState) => string.Join(
+        "  ",
+        ["Tab pane", "s search", .. PanelShortcutsFor(panel, fileState, changesetState, testState), "q quit"]);
+
+    private static IReadOnlyList<string> PanelShortcutsFor(
+        PanelKind panel,
+        FileExplorerState fileState,
+        ChangesetState changesetState,
+        ExplorerState testState) => panel switch
     {
-        var shortcuts = new List<string> { "Tab pane", "s search" };
+        PanelKind.Explorer => ExplorerShortcuts(fileState),
+        PanelKind.Changes => ChangesetShortcuts(changesetState),
+        _ => TestShortcuts(testState)
+    };
 
-        if (panel == PanelKind.Explorer)
+    private static IReadOnlyList<string> ExplorerShortcuts(FileExplorerState state)
+    {
+        if (state.VisibleNodes.Count == 0)
         {
-            AddExplorerShortcuts(shortcuts, fileState);
-        }
-        else if (panel == PanelKind.Changes)
-        {
-            AddChangesetShortcuts(shortcuts, changesetState);
-        }
-        else
-        {
-            AddTestShortcuts(shortcuts, testState);
+            return [];
         }
 
-        shortcuts.Add("q quit");
-        return string.Join("  ", shortcuts);
+        var navigation = Navigation(state.SearchQuery);
+        return state.VisibleNodes[state.SelectedIndex].Kind == FileNodeKind.File
+            ? [.. navigation, "Enter/e edit", "p preview"]
+            : [.. navigation, "Space/Enter fold"];
     }
 
-    private static void AddChangesetShortcuts(
-        ICollection<string> shortcuts,
-        ChangesetState state)
+    private static IReadOnlyList<string> ChangesetShortcuts(ChangesetState state)
     {
         if (state.Files.Count == 0)
         {
-            return;
+            return [];
         }
 
-        shortcuts.Add("↑/k up");
-        shortcuts.Add("↓/j down");
-        if (state.SearchQuery.Length > 0)
+        IReadOnlyList<string> navigation = [.. Navigation(state.SearchQuery), "Enter/d diff"];
+        return state.Files[state.SelectedIndex].Kind == ChangeKind.Deleted
+            ? [.. navigation, "r restore"]
+            : [.. navigation, "e edit", "p preview"];
+    }
+
+    private static IReadOnlyList<string> TestShortcuts(ExplorerState state) =>
+        [.. SelectionShortcuts(state), .. RunShortcuts(state)];
+
+    private static IReadOnlyList<string> SelectionShortcuts(ExplorerState state)
+    {
+        if (state.VisibleNodes.Count == 0)
         {
-            shortcuts.Add("n/N match");
+            return [];
         }
 
-        shortcuts.Add("Enter/d diff");
-        if (state.Files[state.SelectedIndex].Kind == ChangeKind.Deleted)
+        var shortcuts = new List<string>(Navigation(state.SearchQuery));
+        if (state.VisibleNodes[state.SelectedIndex].Kind != TestNodeKind.Test)
         {
-            shortcuts.Add("r restore");
-            return;
+            shortcuts.Add("Space fold");
+        }
+
+        if (!IsRunning(state))
+        {
+            shortcuts.Add("Enter run");
         }
 
         shortcuts.Add("e edit");
         shortcuts.Add("p preview");
+        return shortcuts;
     }
 
-    private static void AddExplorerShortcuts(
-        ICollection<string> shortcuts,
-        FileExplorerState state)
+    private static IReadOnlyList<string> RunShortcuts(ExplorerState state)
     {
-        if (state.VisibleNodes.Count == 0)
+        if (IsRunning(state))
         {
-            return;
+            return state.LastRun is null ? ["c cancel"] : ["o output", "c cancel"];
         }
 
-        shortcuts.Add("↑/k up");
-        shortcuts.Add("↓/j down");
-        if (state.SearchQuery.Length > 0)
+        if (state.LastRun is null)
         {
-            shortcuts.Add("n/N match");
+            return [];
         }
 
-        if (state.VisibleNodes[state.SelectedIndex].Kind == FileNodeKind.File)
-        {
-            shortcuts.Add("Enter/e edit");
-            shortcuts.Add("p preview");
-            return;
-        }
-
-        shortcuts.Add("Space/Enter fold");
+        return state.LastRun.Results.Any(IsFailed)
+            ? ["o output", "R rerun", "F failures"]
+            : ["o output", "R rerun"];
     }
 
-    private static void AddTestShortcuts(
-        ICollection<string> shortcuts,
-        ExplorerState state)
-    {
-        if (state.VisibleNodes.Count > 0)
-        {
-            shortcuts.Add("↑/k up");
-            shortcuts.Add("↓/j down");
-            if (state.SearchQuery.Length > 0)
-            {
-                shortcuts.Add("n/N match");
-            }
+    private static IReadOnlyList<string> Navigation(string searchQuery) => searchQuery.Length == 0
+        ? ["↑/k up", "↓/j down"]
+        : ["↑/k up", "↓/j down", "n/N match"];
 
-            if (state.VisibleNodes[state.SelectedIndex].Kind != TestNodeKind.Test)
-            {
-                shortcuts.Add("Space fold");
-            }
-
-            if (state.Status != ExplorerStatus.Running)
-            {
-                shortcuts.Add("Enter run");
-            }
-            shortcuts.Add("e edit");
-            shortcuts.Add("p preview");
-        }
-
-        if (state.LastRun is not null)
-        {
-            shortcuts.Add("o output");
-            if (state.Status != ExplorerStatus.Running)
-            {
-                shortcuts.Add("R rerun");
-            }
-        }
-
-        if (state.Status == ExplorerStatus.Running)
-        {
-            shortcuts.Add("c cancel");
-            return;
-        }
-
-        if (state.LastRun?.Results.Any(IsFailed) == true)
-        {
-            shortcuts.Add("F failures");
-        }
-    }
+    private static bool IsRunning(ExplorerState state) => state.Status == ExplorerStatus.Running;
 
     private static bool IsFailed(TestResult result) => result.Outcome == TestOutcome.Failed;
 }
