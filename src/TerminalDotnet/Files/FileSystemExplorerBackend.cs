@@ -11,31 +11,56 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         string target,
         CancellationToken cancellationToken = default)
     {
-        var projectPaths = ProjectPaths(target);
         var workingDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
         var gitStatuses = await GitStatusesAsync(workingDirectory, cancellationToken);
         var entries = new List<FileEntry>();
-        foreach (var projectPath in projectPaths)
+        foreach (var projectPath in ProjectPaths(target))
         {
-            var projectDirectory = Path.GetDirectoryName(projectPath)!;
-            foreach (var path in Directory
-                .EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
-                .Where(IsSourceFile)
-                .OrderBy(path => path, StringComparer.Ordinal))
-            {
-                var source = await File.ReadAllTextAsync(path, cancellationToken);
-                var declaredNamespace = NamespaceDeclaration().Match(source);
-                entries.Add(new FileEntry(
-                    projectPath,
-                    declaredNamespace.Success ? declaredNamespace.Groups[1].Value : "(global)",
-                    path,
-                    gitStatuses.GetValueOrDefault(Path.GetFullPath(path), FileGitStatus.Unchanged)));
-            }
-
-            entries.AddRange(DeletedEntries(projectPath, projectDirectory, gitStatuses));
+            entries.AddRange(await ProjectEntriesAsync(projectPath, gitStatuses, cancellationToken));
         }
 
         return entries;
+    }
+
+    private static async Task<IReadOnlyList<FileEntry>> ProjectEntriesAsync(
+        string projectPath,
+        IReadOnlyDictionary<string, FileGitStatus> gitStatuses,
+        CancellationToken cancellationToken)
+    {
+        var projectDirectory = Path.GetDirectoryName(projectPath)!;
+        var entries = new List<FileEntry>();
+        foreach (var path in SourceFiles(projectDirectory))
+        {
+            entries.Add(await FileEntryAsync(projectPath, path, gitStatuses, cancellationToken));
+        }
+
+        entries.AddRange(DeletedEntries(projectPath, projectDirectory, gitStatuses));
+        return entries;
+    }
+
+    private static IEnumerable<string> SourceFiles(string projectDirectory) => Directory
+        .EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
+        .Where(IsSourceFile)
+        .OrderBy(path => path, StringComparer.Ordinal);
+
+    private static async Task<FileEntry> FileEntryAsync(
+        string projectPath,
+        string path,
+        IReadOnlyDictionary<string, FileGitStatus> gitStatuses,
+        CancellationToken cancellationToken)
+    {
+        var source = await File.ReadAllTextAsync(path, cancellationToken);
+        return new FileEntry(
+            projectPath,
+            NamespaceFrom(source),
+            path,
+            gitStatuses.GetValueOrDefault(Path.GetFullPath(path), FileGitStatus.Unchanged));
+    }
+
+    private static string NamespaceFrom(string source)
+    {
+        var declaredNamespace = NamespaceDeclaration().Match(source);
+        return declaredNamespace.Success ? declaredNamespace.Groups[1].Value : "(global)";
     }
 
     private async Task<IReadOnlyDictionary<string, FileGitStatus>> GitStatusesAsync(

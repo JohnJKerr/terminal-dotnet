@@ -28,7 +28,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             throw new InvalidOperationException($"Test discovery failed: {result.StandardError}");
         }
 
-        var discovered = false;
+        var listingTests = false;
         var testTarget = target;
         var tests = new List<TestCase>();
         foreach (var line in result.StandardOutput.Split('\n'))
@@ -36,35 +36,49 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             if (line.StartsWith("Test run for ", StringComparison.Ordinal))
             {
                 testTarget = TestTarget(line) ?? target;
-                discovered = false;
+                listingTests = false;
                 continue;
             }
 
             if (line.Contains("The following Tests are available:", StringComparison.Ordinal))
             {
-                discovered = true;
+                listingTests = true;
                 continue;
             }
 
-            if (!discovered || string.IsNullOrWhiteSpace(line) || !char.IsWhiteSpace(line[0]))
+            if (!listingTests || !NamesATest(line))
             {
                 continue;
             }
 
-            var discoveredName = line.Trim();
-            var parameterStart = discoveredName.IndexOf('(');
-            var fullyQualifiedName = parameterStart < 0
-                ? discoveredName
-                : discoveredName[..parameterStart].TrimEnd();
-            var methodSeparator = fullyQualifiedName.LastIndexOf('.');
-            var displayName = discoveredName[(methodSeparator + 1)..].Replace('_', ' ');
-            tests.Add(new TestCase(
-                fullyQualifiedName,
-                displayName,
-                testTarget));
+            tests.Add(DiscoveredTest(line.Trim(), testTarget));
         }
 
         return tests;
+    }
+
+    private static bool NamesATest(string line) =>
+        !string.IsNullOrWhiteSpace(line) && char.IsWhiteSpace(line[0]);
+
+    private static TestCase DiscoveredTest(string discoveredName, string target)
+    {
+        var fullyQualifiedName = FullyQualifiedNameFrom(discoveredName);
+        return new TestCase(
+            fullyQualifiedName,
+            DisplayNameFrom(discoveredName, fullyQualifiedName),
+            target);
+    }
+
+    private static string FullyQualifiedNameFrom(string discoveredName)
+    {
+        var parameterStart = discoveredName.IndexOf('(');
+        return parameterStart < 0 ? discoveredName : discoveredName[..parameterStart].TrimEnd();
+    }
+
+    private static string DisplayNameFrom(string discoveredName, string fullyQualifiedName)
+    {
+        var methodSeparator = fullyQualifiedName.LastIndexOf('.');
+        return discoveredName[(methodSeparator + 1)..].Replace('_', ' ');
     }
 
     private static string? TestTarget(string line)
