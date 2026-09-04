@@ -43,6 +43,22 @@ public sealed class WhenUsingTheFileExplorer
     }
 
     [Fact]
+    public async Task It_keeps_the_selection_on_the_node_it_folded()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ToggleExpanded());
+
+        // Assert
+        Assert.Equal("App.Domain", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+    }
+
+    [Fact]
     public async Task It_selects_the_next_visible_node_when_moving_down()
     {
         // Arrange

@@ -127,15 +127,15 @@ public sealed class TestExplorerSession(
         };
     }
 
-    private void SelectNext(IReadOnlyList<int> indices) => Select(
-        indices.FirstOrDefault(index => index > State.SelectedIndex, indices.FirstOrDefault(-1)));
+    private void SelectNext(IReadOnlyList<int> indices) =>
+        Select(SelectionRing.Next(indices, State.SelectedIndex));
 
-    private void SelectPrevious(IReadOnlyList<int> indices) => Select(
-        indices.LastOrDefault(index => index < State.SelectedIndex, indices.LastOrDefault(-1)));
+    private void SelectPrevious(IReadOnlyList<int> indices) =>
+        Select(SelectionRing.Previous(indices, State.SelectedIndex));
 
     private void Select(int index)
     {
-        if (index < 0)
+        if (index == SelectionRing.None)
         {
             return;
         }
