@@ -1,11 +1,10 @@
+using TerminalDotnet.Git;
 using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Changes;
 
 public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChangesetBackend
 {
-    private const string RenameArrow = " -> ";
-
     private string? repositoryRoot;
     private string scopeDirectory = "";
 
@@ -28,11 +27,8 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             return [];
         }
 
-        return status.StandardOutput
-            .ReplaceLineEndings("\n")
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Where(line => line.Length > 3)
-            .Select(line => ChangedFileFrom(line, repositoryRoot, scopeDirectory))
+        return GitStatusOutput.EntriesFrom(status.StandardOutput)
+            .Select(entry => ChangedFileFrom(entry, repositoryRoot, scopeDirectory))
             .OrderBy(file => file.DisplayPath, StringComparer.Ordinal)
             .ToArray();
     }
@@ -83,30 +79,22 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             new CommandRequest("git", arguments, repositoryRoot!),
             cancellationToken);
 
-    private static ChangedFile ChangedFileFrom(string line, string repositoryRoot, string scopeDirectory)
+    private static ChangedFile ChangedFileFrom(
+        GitStatusEntry entry,
+        string repositoryRoot,
+        string scopeDirectory)
     {
-        var path = Path.GetFullPath(RelativePathFrom(line[3..]), repositoryRoot);
+        var path = Path.GetFullPath(entry.RelativePath, repositoryRoot);
         return new ChangedFile(
             path,
             Path.GetRelativePath(scopeDirectory, path),
-            KindFrom(line[..2]));
+            KindFrom(entry.Kind));
     }
 
-    private static string RelativePathFrom(string path)
+    private static ChangeKind KindFrom(GitChangeKind kind) => kind switch
     {
-        var rename = path.IndexOf(RenameArrow, StringComparison.Ordinal);
-        return rename < 0 ? path : path[(rename + RenameArrow.Length)..];
-    }
-
-    private static ChangeKind KindFrom(string code)
-    {
-        if (code.Contains('D', StringComparison.Ordinal))
-        {
-            return ChangeKind.Deleted;
-        }
-
-        return code == "??" || code.Contains('A', StringComparison.Ordinal)
-            ? ChangeKind.Added
-            : ChangeKind.Modified;
-    }
+        GitChangeKind.Added => ChangeKind.Added,
+        GitChangeKind.Deleted => ChangeKind.Deleted,
+        _ => ChangeKind.Modified
+    };
 }

@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
+using TerminalDotnet.Git;
 using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Files;
@@ -61,27 +62,19 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
             return new Dictionary<string, FileGitStatus>();
         }
 
-        return result.StandardOutput
-            .ReplaceLineEndings("\n")
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Where(line => line.Length > 3)
+        return GitStatusOutput.EntriesFrom(result.StandardOutput)
             .ToDictionary(
-                line => Path.GetFullPath(line[3..], repositoryRoot),
-                line => StatusFrom(line[..2]),
+                entry => Path.GetFullPath(entry.RelativePath, repositoryRoot),
+                entry => StatusFrom(entry.Kind),
                 StringComparer.Ordinal);
     }
 
-    private static FileGitStatus StatusFrom(string code)
+    private static FileGitStatus StatusFrom(GitChangeKind kind) => kind switch
     {
-        if (code.Contains('D', StringComparison.Ordinal))
-        {
-            return FileGitStatus.Deleted;
-        }
-
-        return code == "??" || code.Contains('A', StringComparison.Ordinal)
-            ? FileGitStatus.New
-            : FileGitStatus.Modified;
-    }
+        GitChangeKind.Added => FileGitStatus.New,
+        GitChangeKind.Deleted => FileGitStatus.Deleted,
+        _ => FileGitStatus.Modified
+    };
 
     private static IEnumerable<FileEntry> DeletedEntries(
         string projectPath,
