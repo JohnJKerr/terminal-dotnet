@@ -28,4 +28,34 @@ public sealed class WhenCreatingAFilePanelSnapshot
             [("    • Changed.cs", FileRowTone.Modified), ("    • Added.cs", FileRowTone.New)],
             snapshot.Rows.Skip(2).Select(row => (row.Text, row.Tone)));
     }
+
+    [Fact]
+    public void It_counts_the_solution_files_and_their_changes_on_the_status_line()
+    {
+        // Arrange
+        var state = new FileExplorerState([]) { Changes = new FileChangeSummary(12, 3, 2, 1) };
+
+        // Act
+        var snapshot = FilePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(
+            ["12 Files", "3 Added", "2 Edited", "1 Deleted"],
+            snapshot.StatusSegments.Select(segment => segment.Text));
+    }
+
+    [Fact]
+    public void It_tones_the_status_line_counts_by_the_change_they_report()
+    {
+        // Arrange
+        var state = new FileExplorerState([]) { Changes = new FileChangeSummary(12, 3, 2, 1) };
+
+        // Act
+        var snapshot = FilePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(
+            [FileRowTone.Neutral, FileRowTone.New, FileRowTone.Modified, FileRowTone.Deleted],
+            snapshot.StatusSegments.Select(segment => segment.Tone));
+    }
 }

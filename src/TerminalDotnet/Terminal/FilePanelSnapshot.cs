@@ -7,10 +7,13 @@ public enum FileRowTone
 {
     Neutral,
     Modified,
-    New
+    New,
+    Deleted
 }
 
 public sealed record FilePanelRow(string Text, FileRowTone Tone);
+
+public sealed record FileStatusSegment(string Text, FileRowTone Tone);
 
 public static class FileRowAppearance
 {
@@ -21,14 +24,18 @@ public static class FileRowAppearance
         global::Terminal.Gui.Drawing.Attribute selected)
     {
         var baseAppearance = isSelected ? selected : normal;
-        var foreground = tone switch
-        {
-            FileRowTone.Modified => Color.BrightBlue,
-            FileRowTone.New => Color.BrightGreen,
-            _ => baseAppearance.Foreground
-        };
-        return new global::Terminal.Gui.Drawing.Attribute(foreground, baseAppearance.Background);
+        return new global::Terminal.Gui.Drawing.Attribute(
+            ForegroundFor(tone, baseAppearance.Foreground),
+            baseAppearance.Background);
     }
+
+    public static Color ForegroundFor(FileRowTone tone, Color unchanged) => tone switch
+    {
+        FileRowTone.Modified => Color.BrightBlue,
+        FileRowTone.New => Color.BrightGreen,
+        FileRowTone.Deleted => Color.BrightRed,
+        _ => unchanged
+    };
 }
 
 public sealed record FilePanelSnapshot(
@@ -36,14 +43,24 @@ public sealed record FilePanelSnapshot(
     IReadOnlyList<FilePanelRow> Rows,
     int SelectedIndex,
     string SearchQuery,
-    int SearchHitCount)
+    int SearchHitCount,
+    IReadOnlyList<FileStatusSegment> StatusSegments)
 {
     public static FilePanelSnapshot From(FileExplorerState state) => new(
         state.VisibleNodes,
         state.VisibleNodes.Select(RowFrom).ToArray(),
         state.SelectedIndex,
         state.SearchQuery,
-        state.VisibleNodes.Count(node => node.Kind == FileNodeKind.File));
+        state.VisibleNodes.Count(node => node.Kind == FileNodeKind.File),
+        StatusSegmentsFrom(state.Changes));
+
+    private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(FileChangeSummary changes) =>
+    [
+        new($"{changes.Total} Files", FileRowTone.Neutral),
+        new($"{changes.Added} Added", FileRowTone.New),
+        new($"{changes.Edited} Edited", FileRowTone.Modified),
+        new($"{changes.Deleted} Deleted", FileRowTone.Deleted)
+    ];
 
     private static FilePanelRow RowFrom(VisibleFileNode node)
     {
@@ -55,6 +72,7 @@ public sealed record FilePanelSnapshot(
             {
                 FileGitStatus.Modified => FileRowTone.Modified,
                 FileGitStatus.New => FileRowTone.New,
+                FileGitStatus.Deleted => FileRowTone.Deleted,
                 _ => FileRowTone.Neutral
             }
             : FileRowTone.Neutral;

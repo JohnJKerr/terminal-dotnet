@@ -13,7 +13,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         var files = await backend.DiscoverAsync(target, cancellationToken);
         discoveredFiles = files;
         allNodes = NodesFrom(files);
-        State = new FileExplorerState(allNodes);
+        State = new FileExplorerState(allNodes) { Changes = SummaryFrom(files) };
     }
 
     public Task DispatchAsync(FileExplorerCommand command)
@@ -143,7 +143,14 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         .Select(item => item.index)
         .ToArray();
 
+    private static FileChangeSummary SummaryFrom(IReadOnlyList<FileEntry> files) => new(
+        files.Count(file => file.GitStatus != FileGitStatus.Deleted),
+        files.Count(file => file.GitStatus == FileGitStatus.New),
+        files.Count(file => file.GitStatus == FileGitStatus.Modified),
+        files.Count(file => file.GitStatus == FileGitStatus.Deleted));
+
     private static IReadOnlyList<VisibleFileNode> NodesFrom(IReadOnlyList<FileEntry> files) => files
+        .Where(file => file.GitStatus != FileGitStatus.Deleted)
         .GroupBy(file => file.ProjectPath)
         .OrderBy(group => group.Key, StringComparer.Ordinal)
         .SelectMany(ProjectNodes)

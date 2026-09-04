@@ -30,6 +30,8 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
                     path,
                     gitStatuses.GetValueOrDefault(Path.GetFullPath(path), FileGitStatus.Unchanged)));
             }
+
+            entries.AddRange(DeletedEntries(projectPath, projectDirectory, gitStatuses));
         }
 
         return entries;
@@ -65,11 +67,36 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
             .Where(line => line.Length > 3)
             .ToDictionary(
                 line => Path.GetFullPath(line[3..], repositoryRoot),
-                line => line.StartsWith("??", StringComparison.Ordinal) || line[0] == 'A'
-                    ? FileGitStatus.New
-                    : FileGitStatus.Modified,
+                line => StatusFrom(line[..2]),
                 StringComparer.Ordinal);
     }
+
+    private static FileGitStatus StatusFrom(string code)
+    {
+        if (code.Contains('D', StringComparison.Ordinal))
+        {
+            return FileGitStatus.Deleted;
+        }
+
+        return code == "??" || code.Contains('A', StringComparison.Ordinal)
+            ? FileGitStatus.New
+            : FileGitStatus.Modified;
+    }
+
+    private static IEnumerable<FileEntry> DeletedEntries(
+        string projectPath,
+        string projectDirectory,
+        IReadOnlyDictionary<string, FileGitStatus> gitStatuses) => gitStatuses
+        .Where(status => status.Value == FileGitStatus.Deleted)
+        .Select(status => status.Key)
+        .Where(path => IsProjectSourceFile(path, projectDirectory))
+        .OrderBy(path => path, StringComparer.Ordinal)
+        .Select(path => new FileEntry(projectPath, "", path, FileGitStatus.Deleted));
+
+    private static bool IsProjectSourceFile(string path, string projectDirectory) =>
+        path.StartsWith(projectDirectory + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
+        Path.GetExtension(path).Equals(".cs", StringComparison.OrdinalIgnoreCase) &&
+        IsSourceFile(path);
 
     private static IReadOnlyList<string> ProjectPaths(string target)
     {

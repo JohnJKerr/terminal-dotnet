@@ -130,6 +130,38 @@ public sealed class WhenUsingTheFileExplorer
         Assert.Equal("OrderHandler.cs", session.State.VisibleNodes[session.State.SelectedIndex].Name);
     }
 
+    [Fact]
+    public async Task It_counts_the_files_it_discovered_and_the_changes_among_them()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "App", "src/App/Added.cs", FileGitStatus.New),
+            new FileEntry("src/App/App.csproj", "App", "src/App/Changed.cs", FileGitStatus.Modified),
+            new FileEntry("src/App/App.csproj", "", "src/App/Gone.cs", FileGitStatus.Deleted));
+
+        // Act
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Assert
+        Assert.Equal(new FileChangeSummary(3, 1, 1, 1), session.State.Changes);
+    }
+
+    [Fact]
+    public async Task It_leaves_deleted_files_out_of_the_tree()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "", "src/App/Gone.cs", FileGitStatus.Deleted));
+
+        // Act
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Assert
+        Assert.DoesNotContain("Gone.cs", session.State.VisibleNodes.Select(node => node.Name));
+    }
+
     private static FileExplorerSession SessionWithFiles(params FileEntry[] entries) =>
         new(new InMemoryFileExplorerBackend(entries));
 

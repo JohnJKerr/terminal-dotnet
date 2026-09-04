@@ -71,6 +71,62 @@ public sealed class WhenDiscoveringProjectFiles
     }
 
     [Fact]
+    public async Task It_reports_files_git_says_were_deleted()
+    {
+        // Arrange
+        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
+        await File.WriteAllTextAsync(
+            Path.Combine(root, "TerminalDotnet.slnx"),
+            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
+        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
+        var gitStatus = " D src/App/Gone.cs\n";
+
+        try
+        {
+            // Act
+            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, gitStatus))
+                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+
+            // Assert
+            Assert.Equal(
+                [("Gone.cs", FileGitStatus.Deleted)],
+                files.Select(file => (Path.GetFileName(file.Path), file.GitStatus)));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task It_ignores_deletions_outside_the_solution_projects()
+    {
+        // Arrange
+        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
+        await File.WriteAllTextAsync(
+            Path.Combine(root, "TerminalDotnet.slnx"),
+            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
+        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
+        var gitStatus = " D docs/Notes.md\n D other/Gone.cs\n";
+
+        try
+        {
+            // Act
+            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, gitStatus))
+                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+
+            // Assert
+            Assert.Empty(files);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task It_resolves_git_paths_from_the_repository_root()
     {
         // Arrange

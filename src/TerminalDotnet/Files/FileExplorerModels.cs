@@ -4,7 +4,8 @@ public enum FileGitStatus
 {
     Unchanged,
     Modified,
-    New
+    New,
+    Deleted
 }
 
 public enum FileNodeKind
@@ -27,10 +28,18 @@ public sealed record VisibleFileNode(
     IReadOnlyList<FileEntry> Files,
     bool IsExpanded = true);
 
+public sealed record FileChangeSummary(int Total, int Added, int Edited, int Deleted)
+{
+    public static readonly FileChangeSummary Empty = new(0, 0, 0, 0);
+}
+
 public sealed record FileExplorerState(
     IReadOnlyList<VisibleFileNode> VisibleNodes,
     int SelectedIndex = 0,
-    string SearchQuery = "");
+    string SearchQuery = "")
+{
+    public FileChangeSummary Changes { get; init; } = FileChangeSummary.Empty;
+}
 
 public abstract record FileExplorerCommand
 {

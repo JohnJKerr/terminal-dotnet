@@ -20,6 +20,7 @@ public sealed class TestRunnerApplication(
     private const int ContentInset = 1;
     private const int PanelWidth = 20;
     private const int WorkspaceX = ContentInset + PanelWidth + 1;
+    private const int SegmentGap = 2;
 
     private CancellationTokenSource? runCancellation;
     private IReadOnlyList<VisibleTestNode> testNodes = [];
@@ -31,6 +32,8 @@ public sealed class TestRunnerApplication(
     private bool failureNavigationPending;
     private bool previewVisible;
     private Label? testStatus;
+    private IReadOnlyList<Label> fileStatus = [];
+    private IReadOnlyList<FileStatusSegment> fileStatusSegments = [];
     private Label? shortcuts;
 
     public void Run()
@@ -62,9 +65,11 @@ public sealed class TestRunnerApplication(
                 background);
             args.Handled = true;
         };
+        fileStatus = FileStatus();
         shortcuts = Shortcuts();
 
         window.Add(panels, search, tests, testStatus, shortcuts);
+        window.Add([.. fileStatus]);
         search.ValueChanged += async (_, _) =>
         {
             if (shell.State.ActivePanel == PanelKind.Explorer)
@@ -114,6 +119,35 @@ public sealed class TestRunnerApplication(
         Width = Dim.Fill(ContentInset),
         Height = 1
     };
+
+    private IReadOnlyList<Label> FileStatus() => FilePanelSnapshot.From(fileSession.State)
+        .StatusSegments
+        .Select((_, index) => FileStatusSegment(index))
+        .ToArray();
+
+    private Label FileStatusSegment(int index)
+    {
+        var label = new Label
+        {
+            X = WorkspaceX,
+            Y = Pos.AnchorEnd(2),
+            Height = 1,
+            Visible = false
+        };
+        label.GettingAttributeForRole += (_, args) =>
+        {
+            var background = args.Result?.Background ?? Color.Black;
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(
+                FileRowAppearance.ForegroundFor(ToneFor(index), Color.White),
+                background);
+            args.Handled = true;
+        };
+        return label;
+    }
+
+    private FileRowTone ToneFor(int index) => index < fileStatusSegments.Count
+        ? fileStatusSegments[index].Tone
+        : FileRowTone.Neutral;
 
     private static TextField Search() => new()
     {
@@ -580,6 +614,7 @@ public sealed class TestRunnerApplication(
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Breadcrumb}";
         tests.Height = Dim.Fill(3);
+        HideFileStatus();
         testStatus!.Visible = true;
         testStatus.Text = snapshot.StatusLine;
         search.Title = snapshot.SearchQuery.Length == 0
@@ -604,11 +639,34 @@ public sealed class TestRunnerApplication(
         search.Text = snapshot.SearchQuery;
         fileRows = snapshot.Rows;
         files.SetSource(new ObservableCollection<string>(snapshot.Rows.Select(row => row.Text)));
-        files.Height = Dim.Fill(2);
+        files.Height = Dim.Fill(3);
         testStatus!.Visible = false;
+        ShowFileStatus(snapshot.StatusSegments);
         if (snapshot.Nodes.Count > 0)
         {
             files.SelectedItem = snapshot.SelectedIndex;
+        }
+    }
+
+    private void ShowFileStatus(IReadOnlyList<FileStatusSegment> segments)
+    {
+        fileStatusSegments = segments;
+        var column = WorkspaceX;
+        foreach (var (label, segment) in fileStatus.Zip(segments))
+        {
+            label.X = column;
+            label.Width = segment.Text.Length;
+            label.Text = segment.Text;
+            label.Visible = true;
+            column += segment.Text.Length + SegmentGap;
+        }
+    }
+
+    private void HideFileStatus()
+    {
+        foreach (var label in fileStatus)
+        {
+            label.Visible = false;
         }
     }
 
