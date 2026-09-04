@@ -203,61 +203,10 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        if (search.HasFocus && Is(key, KeyCode.Esc))
+        var shellAction = ShellKeyBindings.ActionFor(key, search.HasFocus, panels.HasFocus);
+        if (shellAction is not null)
         {
-            key.Handled = true;
-            search.Text = "";
-            _ = ClearSearchAsync(application, search, tests);
-            tests.SetFocus();
-            return;
-        }
-
-        if (search.HasFocus && Is(key, KeyCode.Enter))
-        {
-            key.Handled = true;
-            tests.SetFocus();
-            return;
-        }
-
-        if (search.HasFocus)
-        {
-            return;
-        }
-
-        if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))
-        {
-            key.Handled = true;
-            application.RequestStop();
-            return;
-        }
-
-        if (Is(key, KeyCode.S))
-        {
-            key.Handled = true;
-            search.SetFocus();
-            return;
-        }
-
-        if (panels.HasFocus && Is(key, KeyCode.CursorRight))
-        {
-            key.Handled = true;
-            tests.SetFocus();
-            return;
-        }
-
-        if (!panels.HasFocus && Is(key, KeyCode.CursorLeft))
-        {
-            key.Handled = true;
-            panels.SetFocus();
-            return;
-        }
-
-        if (panels.HasFocus && Is(key, KeyCode.Enter))
-        {
-            key.Handled = true;
-            shell.Select(panels.SelectedItem ?? 0);
-            Render(search, tests);
-            tests.SetFocus();
+            HandleShellAction(application, shellAction, key, panels, search, tests);
             return;
         }
 
@@ -273,67 +222,104 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        if (tests.HasFocus && session.State.SearchQuery.Length > 0 && Is(key, KeyCode.N))
-        {
-            key.Handled = true;
-            var searchCommand = key.IsShift
-                ? (ExplorerCommand)new ExplorerCommand.PreviousSearchMatch()
-                : new ExplorerCommand.NextSearchMatch();
-            HandleCommand(application, new TerminalCommand(searchCommand), search, tests);
-            return;
-        }
+        HandleTestKey(application, key, search, tests);
+    }
 
-        if (tests.HasFocus && failureNavigationPending)
-        {
-            failureNavigationPending = false;
-            if (Is(key, KeyCode.F))
-            {
-                key.Handled = true;
-                HandleCommand(
-                    application,
-                    new TerminalCommand(new ExplorerCommand.NextFailure()),
-                    search,
-                    tests);
-                return;
-            }
-        }
-
-        if (tests.HasFocus && Is(key, (KeyCode)']'))
-        {
-            key.Handled = true;
-            failureNavigationPending = true;
-            return;
-        }
-
-        if (Is(key, KeyCode.E))
-        {
-            key.Handled = true;
-            RequestTestSource(application, preview: false);
-            return;
-        }
-
-        if (Is(key, KeyCode.P))
-        {
-            key.Handled = true;
-            RequestTestSource(application, preview: true);
-            return;
-        }
-
-        if (Is(key, KeyCode.O))
-        {
-            key.Handled = true;
-            ShowTestOutput(application);
-            return;
-        }
-
-        var command = tests.HasFocus ? CommandFor(key) : null;
-        if (command is null)
+    private void HandleShellAction(
+        IApplication application,
+        ShellAction action,
+        Key key,
+        ListView panels,
+        TextField search,
+        ListView tests)
+    {
+        if (action is ShellAction.TypeIntoSearch)
         {
             return;
         }
 
         key.Handled = true;
-        HandleCommand(application, command, search, tests);
+        switch (action)
+        {
+            case ShellAction.ClearSearch:
+                search.Text = "";
+                _ = ClearSearchAsync(application, search, tests);
+                tests.SetFocus();
+                return;
+            case ShellAction.LeaveSearch:
+            case ShellAction.FocusRows:
+                tests.SetFocus();
+                return;
+            case ShellAction.FocusSearch:
+                search.SetFocus();
+                return;
+            case ShellAction.FocusPanels:
+                panels.SetFocus();
+                return;
+            case ShellAction.SelectPanel:
+                shell.Select(panels.SelectedItem ?? 0);
+                Render(search, tests);
+                tests.SetFocus();
+                return;
+            case ShellAction.Quit:
+                application.RequestStop();
+                return;
+        }
+    }
+
+    private void HandleTestKey(
+        IApplication application,
+        Key key,
+        TextField search,
+        ListView tests)
+    {
+        var awaitingFailureNavigation = failureNavigationPending;
+        if (tests.HasFocus && awaitingFailureNavigation)
+        {
+            failureNavigationPending = false;
+        }
+
+        var action = TestPanelKeyBindings.ActionFor(
+            key,
+            session.State.SearchQuery,
+            tests.HasFocus,
+            awaitingFailureNavigation);
+        if (action is null)
+        {
+            return;
+        }
+
+        key.Handled = true;
+        HandleTestAction(application, action, search, tests);
+    }
+
+    private void HandleTestAction(
+        IApplication application,
+        TestPanelAction action,
+        TextField search,
+        ListView tests)
+    {
+        switch (action)
+        {
+            case TestPanelAction.AwaitFailureNavigation:
+                failureNavigationPending = true;
+                return;
+            case TestPanelAction.OpenSource:
+                RequestTestSource(application, preview: false);
+                return;
+            case TestPanelAction.PreviewSource:
+                RequestTestSource(application, preview: true);
+                return;
+            case TestPanelAction.ShowOutput:
+                ShowTestOutput(application);
+                return;
+            case TestPanelAction.CancelRun:
+                runCancellation?.Cancel();
+                return;
+            case TestPanelAction.Dispatch dispatch:
+                _ = DispatchAsync(application, dispatch.Command, search, tests);
+                return;
+        }
     }
 
     private Task SearchAsync(string query) => shell.State.ActivePanel switch
@@ -359,20 +345,6 @@ public sealed class TestRunnerApplication(
         ? changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch())
         : fileSession.DispatchAsync(new FileExplorerCommand.ClearSearch());
 
-    private void HandleCommand(
-        IApplication application,
-        TerminalCommand command,
-        TextField search,
-        ListView tests)
-    {
-        if (command is CancelRun)
-        {
-            runCancellation?.Cancel();
-            return;
-        }
-
-        _ = DispatchAsync(application, command.ExplorerCommand!, search, tests);
-    }
 
     private void HandleFileKey(
         IApplication application,
@@ -390,10 +362,7 @@ public sealed class TestRunnerApplication(
         if (action is FilePanelAction.OpenFile open)
         {
             key.Handled = true;
-            openPath = open.Path;
-            openLine = 1;
-            openSourceRequested = true;
-            application.RequestStop();
+            RequestOpen(application, open.Path, line: 1);
             return;
         }
 
@@ -404,26 +373,7 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        FileExplorerCommand? command = null;
-        if (fileSession.State.SearchQuery.Length > 0 && Is(key, KeyCode.N))
-        {
-            command = key.IsShift
-                ? new FileExplorerCommand.PreviousSearchMatch()
-                : new FileExplorerCommand.NextSearchMatch();
-        }
-        else if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
-        {
-            command = new FileExplorerCommand.MoveUp();
-        }
-        else if (Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J))
-        {
-            command = new FileExplorerCommand.MoveDown();
-        }
-        else if (Is(key, KeyCode.Space) || Is(key, KeyCode.Enter))
-        {
-            command = new FileExplorerCommand.ToggleExpanded();
-        }
-
+        var command = FileCommandFor(key, fileSession.State.SearchQuery);
         if (command is null)
         {
             return;
@@ -431,6 +381,30 @@ public sealed class TestRunnerApplication(
 
         key.Handled = true;
         _ = DispatchFileAsync(command, search, files);
+    }
+
+    private static FileExplorerCommand? FileCommandFor(Key key, string searchQuery)
+    {
+        if (searchQuery.Length > 0 && Is(key, KeyCode.N))
+        {
+            return key.IsShift
+                ? new FileExplorerCommand.PreviousSearchMatch()
+                : new FileExplorerCommand.NextSearchMatch();
+        }
+
+        if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
+        {
+            return new FileExplorerCommand.MoveUp();
+        }
+
+        if (Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J))
+        {
+            return new FileExplorerCommand.MoveDown();
+        }
+
+        return Is(key, KeyCode.Space) || Is(key, KeyCode.Enter)
+            ? new FileExplorerCommand.ToggleExpanded()
+            : null;
     }
 
     private async Task DispatchFileAsync(
@@ -465,10 +439,7 @@ public sealed class TestRunnerApplication(
         if (action is ChangesetAction.OpenFile open)
         {
             key.Handled = true;
-            openPath = open.Path;
-            openLine = 1;
-            openSourceRequested = true;
-            application.RequestStop();
+            RequestOpen(application, open.Path, line: 1);
             return;
         }
 
@@ -599,10 +570,7 @@ public sealed class TestRunnerApplication(
                 return;
             }
 
-            openPath = source.Path;
-            openLine = source.HighlightLine;
-            openSourceRequested = true;
-            application.RequestStop();
+            RequestOpen(application, source.Path, source.HighlightLine);
         });
     }
 
@@ -932,44 +900,12 @@ public sealed class TestRunnerApplication(
         args.RowAttribute = new global::Terminal.Gui.Drawing.Attribute(foreground, background);
     }
 
-    private static TerminalCommand? CommandFor(Key key)
+    private void RequestOpen(IApplication application, string path, int line)
     {
-        if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
-        {
-            return new TerminalCommand(new ExplorerCommand.MoveUp());
-        }
-
-        if (Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J))
-        {
-            return new TerminalCommand(new ExplorerCommand.MoveDown());
-        }
-
-        if (Is(key, KeyCode.Space))
-        {
-            return new TerminalCommand(new ExplorerCommand.ToggleExpanded());
-        }
-
-        if (Is(key, KeyCode.Enter) || Is(key, KeyCode.R) && !key.IsShift)
-        {
-            return new TerminalCommand(new ExplorerCommand.RunSelected());
-        }
-
-        if (Is(key, KeyCode.R) && key.IsShift)
-        {
-            return new TerminalCommand(new ExplorerCommand.RerunLast());
-        }
-
-        if (Is(key, KeyCode.F) && key.IsShift)
-        {
-            return new TerminalCommand(new ExplorerCommand.RerunFailed());
-        }
-
-        if (Is(key, KeyCode.C))
-        {
-            return new CancelRun();
-        }
-
-        return null;
+        openPath = path;
+        openLine = line;
+        openSourceRequested = true;
+        application.RequestStop();
     }
 
     private static bool RunsTests(ExplorerCommand command) => command is
@@ -978,8 +914,4 @@ public sealed class TestRunnerApplication(
         ExplorerCommand.RerunFailed;
 
     private static bool Is(Key key, KeyCode keyCode) => key.NoShift.KeyCode == keyCode;
-
-    private record TerminalCommand(ExplorerCommand? ExplorerCommand = null);
-
-    private sealed record CancelRun : TerminalCommand;
 }
