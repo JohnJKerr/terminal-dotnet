@@ -6,7 +6,7 @@ namespace TerminalDotnet.Tests.Terminal;
 public sealed class WhenUsingThePanelShell
 {
     [Fact]
-    public void It_offers_explorer_tests_and_changes_with_explorer_selected()
+    public void It_offers_explorer_tests_and_changes()
     {
         // Arrange
         var shell = new PanelShell();
@@ -15,9 +15,20 @@ public sealed class WhenUsingThePanelShell
         var state = shell.State;
 
         // Assert
-        Assert.Equal(
-            ("Explorer|Tests|Changes", PanelKind.Explorer),
-            (string.Join('|', state.Panels), state.ActivePanel));
+        Assert.Equal(["Explorer", "Tests", "Changes"], state.Panels);
+    }
+
+    [Fact]
+    public void It_starts_on_the_explorer()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.Equal(PanelKind.Explorer, state.ActivePanel);
     }
 
     [Fact]

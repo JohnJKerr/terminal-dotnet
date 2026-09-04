@@ -105,9 +105,23 @@ public sealed class WhenUsingTheFileExplorer
         await session.DispatchAsync(new FileExplorerCommand.ClearSearch());
 
         // Assert
-        Assert.Equal(
-            ("", 2),
-            (session.State.SearchQuery, session.State.VisibleNodes.Count(node => node.Kind == FileNodeKind.File)));
+        Assert.Equal(2, session.State.VisibleNodes.Count(node => node.Kind == FileNodeKind.File));
+    }
+
+    [Fact]
+    public async Task It_forgets_the_query_when_search_is_cleared()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.Search("order"));
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ClearSearch());
+
+        // Assert
+        Assert.Equal("", session.State.SearchQuery);
     }
 
     [Fact]

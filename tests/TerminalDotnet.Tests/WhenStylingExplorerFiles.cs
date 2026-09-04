@@ -18,8 +18,8 @@ public sealed class WhenStylingExplorerFiles
 
         // Assert
         Assert.Equal(
-            (Color.BrightBlue, Color.BrightYellow),
-            (appearance.Foreground, appearance.Background));
+            new global::Terminal.Gui.Drawing.Attribute(Color.BrightBlue, Color.BrightYellow),
+            appearance);
     }
 
     [Fact]

@@ -6,35 +6,34 @@ namespace TerminalDotnet.Tests.Testing;
 public sealed class WhenUsingTheDotnetCliTestBackend
 {
     [Fact]
-    public async Task It_issues_a_list_tests_command_and_returns_the_reported_tests_when_discovering()
+    public async Task It_issues_a_list_tests_command_when_discovering()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, """
-            Determining projects to restore...
-            The following Tests are available:
-                Shop.Tests.CartTests.Adds_item
-                Shop.Tests.CartTests.Removes_item
-            """, ""));
+        var runner = ListingCartTests();
         var backend = new DotnetCliTestBackend(runner);
+
+        // Act
+        await backend.DiscoverAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal(
+            ["dotnet", "test", "/repo/Shop.sln", "--list-tests", "--nologo", "--tl:off"],
+            [runner.LastRequest!.FileName, .. runner.LastRequest.Arguments]);
+    }
+
+    [Fact]
+    public async Task It_returns_the_reported_tests_when_discovering()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(ListingCartTests());
 
         // Act
         var tests = await backend.DiscoverAsync("/repo/Shop.sln");
 
         // Assert
         Assert.Equal(
-        [
-            "command:dotnet",
-            "argument:test",
-            "argument:/repo/Shop.sln",
-            "argument:--list-tests",
-            "argument:--nologo",
-            "argument:--tl:off",
-            "test:Shop.Tests.CartTests.Adds_item",
-            "test:Shop.Tests.CartTests.Removes_item"
-        ],
-            [$"command:{runner.LastRequest!.FileName}",
-                .. runner.LastRequest.Arguments.Select(argument => $"argument:{argument}"),
-                .. tests.Select(test => $"test:{test.FullyQualifiedName}")]);
+            ["Shop.Tests.CartTests.Adds_item", "Shop.Tests.CartTests.Removes_item"],
+            tests.Select(test => test.FullyQualifiedName));
     }
 
     [Fact]
@@ -54,64 +53,132 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         // Assert
         Assert.Equal(
         [
-            "argument:test",
-            "argument:/repo/Shop.sln",
-            "argument:--filter",
-            "argument:FullyQualifiedName=Shop.Tests.CartTests.Adds_item|FullyQualifiedName=Shop.Tests.CartTests.Removes_item",
-            "argument:--logger",
-            "argument:trx;LogFileName=/tmp/terminal-dotnet.trx",
-            "argument:--nologo",
-            "argument:--tl:on",
-            "passed:True",
-            "output:2 tests passed"
+            "test",
+            "/repo/Shop.sln",
+            "--filter",
+            "FullyQualifiedName=Shop.Tests.CartTests.Adds_item|FullyQualifiedName=Shop.Tests.CartTests.Removes_item",
+            "--logger",
+            "trx;LogFileName=/tmp/terminal-dotnet.trx",
+            "--nologo",
+            "--tl:on"
         ],
-            [.. runner.LastRequest!.Arguments.Select(argument => $"argument:{argument}"),
-                $"passed:{run.Passed}",
-                $"output:{run.Output}"]);
+            runner.LastRequest!.Arguments);
     }
 
     [Fact]
-    public async Task It_returns_structured_failure_details_for_a_failed_run()
+    public async Task It_reports_a_passing_run_when_the_command_succeeds()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(1, "1 test failed", ""));
-        var results = new InMemoryTestResultStore("""
-            <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
-              <Results>
-                <UnitTestResult testId="test-1" testName="Adds_item" outcome="Failed" duration="00:00:00.012">
-                  <Output>
-                    <StdOut>Cart total: 9</StdOut>
-                    <ErrorInfo>
-                      <Message>Expected total to be 10.</Message>
-                      <StackTrace>at Shop.Tests.CartTests.Adds_item() in /repo/CartTests.cs:line 42</StackTrace>
-                    </ErrorInfo>
-                  </Output>
-                </UnitTestResult>
-              </Results>
-              <TestDefinitions>
-                <UnitTest id="test-1" name="Adds_item">
-                  <TestMethod className="Shop.Tests.CartTests" name="Adds_item" />
-                </UnitTest>
-              </TestDefinitions>
-            </TestRun>
-            """);
-        var backend = new DotnetCliTestBackend(runner, results);
+        var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
 
         // Act
-        var run = await backend.RunAsync(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.sln")
-        ]);
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.True(run.Passed);
+    }
+
+    [Fact]
+    public async Task It_reports_what_the_command_wrote_when_running_tests()
+    {
+        // Arrange
+        var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.Equal("2 tests passed", run.Output);
+    }
+
+    [Fact]
+    public async Task It_reads_the_outcome_of_a_failed_test()
+    {
+        // Arrange
+        var backend = BackendWithAFailedRun();
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
 
         // Assert
         var failure = run.Results.Single();
-        Assert.Equal(
-            (TestOutcome.Failed, "Expected total to be 10.", "/repo/CartTests.cs", 42, TimeSpan.FromMilliseconds(12), "Cart total: 9"),
-            (failure.Outcome, failure.ErrorMessage, failure.SourceFile, failure.SourceLine, failure.Duration, failure.Output));
+        Assert.Equal(TestOutcome.Failed, failure.Outcome);
     }
 
     [Fact]
-    public async Task It_retains_test_modules_and_normalizes_parameterized_identities_when_discovering()
+    public async Task It_reads_the_message_a_failure_reported()
+    {
+        // Arrange
+        var backend = BackendWithAFailedRun();
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        var failure = run.Results.Single();
+        Assert.Equal("Expected total to be 10.", failure.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task It_reads_the_file_a_failure_came_from()
+    {
+        // Arrange
+        var backend = BackendWithAFailedRun();
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        var failure = run.Results.Single();
+        Assert.Equal("/repo/CartTests.cs", failure.SourceFile);
+    }
+
+    [Fact]
+    public async Task It_reads_the_line_a_failure_came_from()
+    {
+        // Arrange
+        var backend = BackendWithAFailedRun();
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        var failure = run.Results.Single();
+        Assert.Equal(42, failure.SourceLine);
+    }
+
+    [Fact]
+    public async Task It_reads_how_long_a_test_took()
+    {
+        // Arrange
+        var backend = BackendWithAFailedRun();
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        var failure = run.Results.Single();
+        Assert.Equal(TimeSpan.FromMilliseconds(12), failure.Duration);
+    }
+
+    [Fact]
+    public async Task It_reads_the_output_a_test_wrote()
+    {
+        // Arrange
+        var backend = BackendWithAFailedRun();
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        var failure = run.Results.Single();
+        Assert.Equal("Cart total: 9", failure.Output);
+    }
+
+    [Fact]
+    public async Task It_retains_the_module_each_test_belongs_to_when_discovering()
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, """
@@ -131,10 +198,33 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         // Assert
         Assert.Equal(
         [
-            "/repo/Cart.Tests/Cart.Tests.csproj|Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 1)",
-            "/repo/Cart.Tests/Cart.Tests.csproj|Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 2)",
-            "/repo/Order.Tests/Order.Tests.csproj|Shop.Order.Tests.OrderTests.Submits_order|Submits order"
-        ], tests.Select(test => $"{test.ProjectPath}|{test.FullyQualifiedName}|{test.DisplayName}"));
+            "/repo/Cart.Tests/Cart.Tests.csproj",
+            "/repo/Cart.Tests/Cart.Tests.csproj",
+            "/repo/Order.Tests/Order.Tests.csproj"
+        ], tests.Select(test => test.ProjectPath));
+    }
+
+    [Fact]
+    public async Task It_normalizes_parameterized_identities_when_discovering()
+    {
+        // Arrange
+        var runner = new InMemoryCommandRunner(new CommandResult(0, """
+            Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+            The following Tests are available:
+                Shop.Cart.Tests.CartTests.Adds_item(value: 1)
+                Shop.Cart.Tests.CartTests.Adds_item(value: 2)
+            """, ""));
+        var backend = new DotnetCliTestBackend(runner);
+
+        // Act
+        var tests = await backend.DiscoverAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal(
+        [
+            "Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 1)",
+            "Shop.Cart.Tests.CartTests.Adds_item|Adds item(value: 2)"
+        ], tests.Select(test => $"{test.FullyQualifiedName}|{test.DisplayName}"));
     }
 
     [Theory]
@@ -213,6 +303,39 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             "Accepts price(value: 2)"
         ], run.Results.Select(result => result.Test.DisplayName));
     }
+
+    private static InMemoryCommandRunner ListingCartTests() => new(new CommandResult(0, """
+        Determining projects to restore...
+        The following Tests are available:
+            Shop.Tests.CartTests.Adds_item
+            Shop.Tests.CartTests.Removes_item
+        """, ""));
+
+    private static DotnetCliTestBackend BackendWithAFailedRun() => new(
+        new InMemoryCommandRunner(new CommandResult(1, "1 test failed", "")),
+        new InMemoryTestResultStore("""
+            <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+              <Results>
+                <UnitTestResult testId="test-1" testName="Adds_item" outcome="Failed" duration="00:00:00.012">
+                  <Output>
+                    <StdOut>Cart total: 9</StdOut>
+                    <ErrorInfo>
+                      <Message>Expected total to be 10.</Message>
+                      <StackTrace>at Shop.Tests.CartTests.Adds_item() in /repo/CartTests.cs:line 42</StackTrace>
+                    </ErrorInfo>
+                  </Output>
+                </UnitTestResult>
+              </Results>
+              <TestDefinitions>
+                <UnitTest id="test-1" name="Adds_item">
+                  <TestMethod className="Shop.Tests.CartTests" name="Adds_item" />
+                </UnitTest>
+              </TestDefinitions>
+            </TestRun>
+            """));
+
+    private static TestCase AddsItem() =>
+        new("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.sln");
 
     private sealed class InMemoryCommandRunner(CommandResult result) : ICommandRunner
     {

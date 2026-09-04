@@ -30,12 +30,7 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_produces_a_project_class_and_test_tree_when_loaded()
     {
         // Arrange
-        var backend = new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adding_item_updates_total", "Adding item updates total", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.CartTests.Empty_cart_has_zero_total", "Empty cart has zero total", "Shop.Tests.csproj")
-        ]);
-        var session = new TestExplorerSession(backend);
+        var session = SessionWithCartTests();
 
         // Act
         await session.LoadAsync("/repo/Shop.sln");
@@ -43,16 +38,38 @@ public sealed class WhenUsingTheTestExplorer
         // Assert
         Assert.Equal(
         [
-            "node:0:Project:Shop.Tests",
-            "node:1:Class:CartTests",
-            "node:2:Test:Adding item updates total",
-            "node:2:Test:Empty cart has zero total",
-            "status:Ready",
-            "selected:0"
+            "0:Project:Shop.Tests",
+            "1:Class:CartTests",
+            "2:Test:Adding item updates total",
+            "2:Test:Empty cart has zero total"
         ],
-            [.. session.State.VisibleNodes.Select(node => $"node:{node.Depth}:{node.Kind}:{node.Name}"),
-                $"status:{session.State.Status}",
-                $"selected:{session.State.SelectedIndex}"]);
+            session.State.VisibleNodes.Select(node => $"{node.Depth}:{node.Kind}:{node.Name}"));
+    }
+
+    [Fact]
+    public async Task It_is_ready_when_loaded()
+    {
+        // Arrange
+        var session = SessionWithCartTests();
+
+        // Act
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal(ExplorerStatus.Ready, session.State.Status);
+    }
+
+    [Fact]
+    public async Task It_selects_the_first_node_when_loaded()
+    {
+        // Arrange
+        var session = SessionWithCartTests();
+
+        // Act
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal(0, session.State.SelectedIndex);
     }
 
     [Fact]
@@ -117,24 +134,29 @@ public sealed class WhenUsingTheTestExplorer
     }
 
     [Fact]
-    public async Task It_restores_the_test_tree_with_a_valid_selection_when_search_is_cleared()
+    public async Task It_restores_the_test_tree_when_search_is_cleared()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
-        await session.DispatchAsync(new ExplorerCommand.Search("missing"));
+        var session = await SessionSearchingForNothingAsync();
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.ClearSearch());
 
         // Assert
-        Assert.Equal(
-            (5, 0),
-            (session.State.VisibleNodes.Count, session.State.SelectedIndex));
+        Assert.Equal(5, session.State.VisibleNodes.Count);
+    }
+
+    [Fact]
+    public async Task It_selects_the_first_node_when_search_is_cleared()
+    {
+        // Arrange
+        var session = await SessionSearchingForNothingAsync();
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.ClearSearch());
+
+        // Assert
+        Assert.Equal(0, session.State.SelectedIndex);
     }
 
     [Fact]
@@ -443,9 +465,33 @@ public sealed class WhenUsingTheTestExplorer
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
 
         // Assert
-        Assert.Equal(
-            (failure, TestNodeOutcome.Failed),
-            (session.State.LastRun!.Results.Single(), session.State.VisibleNodes[2].Outcome));
+        Assert.Equal(failure, session.State.LastRun!.Results.Single());
+    }
+
+    [Fact]
+    public async Task It_marks_the_selected_test_as_failed_after_a_failed_run()
+    {
+        // Arrange
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var failure = new TestResult(
+            test,
+            TestOutcome.Failed,
+            TimeSpan.FromMilliseconds(12),
+            "Expected total to be 10.",
+            "at CartTests.Adds_item() in /repo/CartTests.cs:line 42",
+            "/repo/CartTests.cs",
+            42);
+        var session = new TestExplorerSession(
+            new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+
+        // Assert
+        Assert.Equal(TestNodeOutcome.Failed, session.State.VisibleNodes[2].Outcome);
     }
 
     [Fact]
@@ -580,9 +626,55 @@ public sealed class WhenUsingTheTestExplorer
     }
 
     [Fact]
-    public async Task It_restores_a_ready_not_run_state_when_an_active_run_is_cancelled()
+    public async Task It_is_ready_again_when_an_active_run_is_cancelled()
     {
-        // Arrange
+        // Act
+        var session = await CancelledRunAsync();
+
+        // Assert
+        Assert.Equal(ExplorerStatus.Ready, session.State.Status);
+    }
+
+    [Fact]
+    public async Task It_reports_the_cancellation_when_an_active_run_is_cancelled()
+    {
+        // Act
+        var session = await CancelledRunAsync();
+
+        // Assert
+        Assert.Equal("Run cancelled", session.State.Message);
+    }
+
+    [Fact]
+    public async Task It_leaves_the_tests_unrun_when_an_active_run_is_cancelled()
+    {
+        // Act
+        var session = await CancelledRunAsync();
+
+        // Assert
+        Assert.Equal(TestNodeOutcome.NotRun, session.State.VisibleNodes[2].Outcome);
+    }
+
+    private static TestExplorerSession SessionWithCartTests() => new(new InMemoryTestBackend(
+    [
+        new TestCase("Shop.Tests.CartTests.Adding_item_updates_total", "Adding item updates total", "Shop.Tests.csproj"),
+        new TestCase("Shop.Tests.CartTests.Empty_cart_has_zero_total", "Empty cart has zero total", "Shop.Tests.csproj")
+    ]));
+
+    private static async Task<TestExplorerSession> SessionSearchingForNothingAsync()
+    {
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.Search("missing"));
+        return session;
+    }
+
+    private static async Task<TestExplorerSession> CancelledRunAsync()
+    {
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
         var backend = new CancellableTestBackend(test);
         var session = new TestExplorerSession(backend);
@@ -592,15 +684,9 @@ public sealed class WhenUsingTheTestExplorer
         using var cancellation = new CancellationTokenSource();
         var activeRun = session.DispatchAsync(new ExplorerCommand.RunSelected(), cancellation.Token);
         await backend.Started.Task.WaitAsync(TimeSpan.FromSeconds(1));
-
-        // Act
         await cancellation.CancelAsync();
         await activeRun;
-
-        // Assert
-        Assert.Equal(
-            (ExplorerStatus.Ready, "Run cancelled", TestNodeOutcome.NotRun),
-            (session.State.Status, session.State.Message, session.State.VisibleNodes[2].Outcome));
+        return session;
     }
 
     private sealed class InMemoryTestBackend(
