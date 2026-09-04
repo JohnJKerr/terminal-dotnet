@@ -37,10 +37,8 @@ public sealed record TestPanelSnapshot(
             return state.Message;
         }
 
-        var passed = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Passed);
-        var failed = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Failed);
-        var skipped = state.LastRun.Results.Count(result => result.Outcome == TestOutcome.Skipped);
-        return $"{failed} Failed, {passed} Passed, {skipped} Skipped";
+        var summary = state.LastRun.Summary;
+        return $"{summary.Failed} Failed, {summary.Passed} Passed, {summary.Skipped} Skipped";
     }
 
     private static string BreadcrumbFrom(ExplorerState state, string target)

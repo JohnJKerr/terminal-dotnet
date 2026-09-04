@@ -29,11 +29,20 @@ public sealed record TestResult(
     int? SourceLine,
     string? Output = null);
 
+public sealed record TestRunSummary(int Passed, int Failed, int Skipped);
+
 public sealed record TestRun(bool Passed, string Output, IReadOnlyList<TestResult> Results)
 {
     public TestRun(bool passed, string output) : this(passed, output, [])
     {
     }
+
+    public TestRunSummary Summary => new(
+        CountOf(TestOutcome.Passed),
+        CountOf(TestOutcome.Failed),
+        CountOf(TestOutcome.Skipped));
+
+    private int CountOf(TestOutcome outcome) => Results.Count(result => result.Outcome == outcome);
 }
 
 public interface ITestBackend
