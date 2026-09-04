@@ -551,11 +551,6 @@ public sealed class TestRunnerApplication(
 
     private async Task RequestTestSourceAsync(IApplication application, bool preview)
     {
-        if (!preview && editorLauncher is null)
-        {
-            return;
-        }
-
         await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
         if (session.State.SourceContext is not { } source)
         {
@@ -718,9 +713,15 @@ public sealed class TestRunnerApplication(
 
     private void OpenRequestedFile()
     {
-        new ExplorerEditorWorkflow(fileSession, changesetSession, editorLauncher!, target).OpenAsync(
-            openPath!,
-            openLine).GetAwaiter().GetResult();
+        if (editorLauncher is null || openPath is null)
+        {
+            return;
+        }
+
+        new ExplorerEditorWorkflow(fileSession, changesetSession, editorLauncher, target)
+            .OpenAsync(openPath, openLine)
+            .GetAwaiter()
+            .GetResult();
     }
 
     private void Render(TextField search, ListView tests)
@@ -902,6 +903,11 @@ public sealed class TestRunnerApplication(
 
     private void RequestOpen(IApplication application, string path, int line)
     {
+        if (editorLauncher is null)
+        {
+            return;
+        }
+
         openPath = path;
         openLine = line;
         openSourceRequested = true;
