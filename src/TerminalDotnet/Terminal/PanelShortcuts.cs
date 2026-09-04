@@ -1,3 +1,4 @@
+using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Testing;
@@ -9,6 +10,7 @@ public static class PanelShortcuts
     public static string For(
         PanelKind panel,
         FileExplorerState fileState,
+        ChangesetState changesetState,
         ExplorerState testState)
     {
         var shortcuts = new List<string> { "Tab pane", "s search" };
@@ -17,6 +19,10 @@ public static class PanelShortcuts
         {
             AddExplorerShortcuts(shortcuts, fileState);
         }
+        else if (panel == PanelKind.Changes)
+        {
+            AddChangesetShortcuts(shortcuts, changesetState);
+        }
         else
         {
             AddTestShortcuts(shortcuts, testState);
@@ -24,6 +30,33 @@ public static class PanelShortcuts
 
         shortcuts.Add("q quit");
         return string.Join("  ", shortcuts);
+    }
+
+    private static void AddChangesetShortcuts(
+        ICollection<string> shortcuts,
+        ChangesetState state)
+    {
+        if (state.Files.Count == 0)
+        {
+            return;
+        }
+
+        shortcuts.Add("↑/k up");
+        shortcuts.Add("↓/j down");
+        if (state.SearchQuery.Length > 0)
+        {
+            shortcuts.Add("n/N match");
+        }
+
+        shortcuts.Add("Enter/d diff");
+        if (state.Files[state.SelectedIndex].Kind == ChangeKind.Deleted)
+        {
+            shortcuts.Add("r restore");
+            return;
+        }
+
+        shortcuts.Add("e edit");
+        shortcuts.Add("p preview");
     }
 
     private static void AddExplorerShortcuts(

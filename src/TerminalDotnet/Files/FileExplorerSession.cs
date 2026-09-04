@@ -1,3 +1,5 @@
+using TerminalDotnet.Search;
+
 namespace TerminalDotnet.Files;
 
 public sealed class FileExplorerSession(IFileExplorerBackend backend)
@@ -20,7 +22,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
     {
         if (command is FileExplorerCommand.Search search)
         {
-            allNodes = NodesFrom(discoveredFiles.Where(file => IsOrderedMatch(file.Path, search.Query)).ToArray());
+            allNodes = NodesFrom(discoveredFiles.Where(file => FuzzyMatch.Matches(file.Path, search.Query)).ToArray());
             State = State with
             {
                 VisibleNodes = VisibleNodes(),
@@ -121,21 +123,6 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
 
     private static string NodeKey(VisibleFileNode node) =>
         $"{node.Kind}:{node.Files[0].ProjectPath}:{node.Name}";
-
-    private static bool IsOrderedMatch(string candidate, string query)
-    {
-        var queryIndex = 0;
-        foreach (var character in candidate)
-        {
-            if (queryIndex < query.Length &&
-                char.ToUpperInvariant(character) == char.ToUpperInvariant(query[queryIndex]))
-            {
-                queryIndex++;
-            }
-        }
-
-        return queryIndex == query.Length;
-    }
 
     private int[] FileNodeIndices() => State.VisibleNodes
         .Select((node, index) => (node, index))

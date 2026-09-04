@@ -8,6 +8,10 @@ Run it from a directory containing one `.sln`, `.slnx`, or `.csproj` file:
 dotnet run --project /path/to/terminal-dotnet/src/TerminalDotnet
 ```
 
+Panels: `Explorer` lists the solution's source files, `Changes` lists the files git reports as
+added, modified, or deleted beneath the directory you started in, and `Tests` lists the discovered
+tests.
+
 Keys:
 
 - `↑` / `k`: move up
@@ -15,6 +19,8 @@ Keys:
 - `s`: search the active panel; `Enter` returns to the tree; `n` / `N` select matches; `Esc` clears the search
 - `←` / `→`: move directly between the panel rail and workspace
 - `Space`: collapse or expand the highlighted project or class
+- `Enter` / `d` (Changes): show the highlighted file's diff
+- `r` (Changes): restore the highlighted deleted file
 - `r` / `Enter`: run every test beneath the highlighted project, class, or test
 - `R`: rerun the previous test set
 - `F`: rerun failed tests

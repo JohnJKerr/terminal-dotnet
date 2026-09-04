@@ -5,18 +5,18 @@ using Attribute = Terminal.Gui.Drawing.Attribute;
 namespace TerminalDotnet.Terminal;
 
 /// <summary>
-/// A read-only text view that keeps the colours captured from the test run.
+/// A read-only text view that keeps the colours captured for each cell.
 /// <see cref="TextView"/> discards per-cell attributes while read-only unless the
 /// foreground matches the background, and drops them from the leading cells of a
-/// wrapped row, which renders the run in a single flat colour.
+/// wrapped row, which renders the content in a single flat colour.
 /// </summary>
 #pragma warning disable CS0618
-public sealed class TestOutputView : TextView
+public sealed class ColoredTextView : TextView
 {
-    public TestOutputView()
+    public ColoredTextView(bool wordWrap = true)
     {
         ReadOnly = true;
-        WordWrap = true;
+        WordWrap = wordWrap;
     }
 
     protected override void OnDrawReadOnlyColor(List<Cell> line, int idxCol, int idxRow) =>

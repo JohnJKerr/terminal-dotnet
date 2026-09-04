@@ -1,3 +1,4 @@
+using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
@@ -17,7 +18,7 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(2, FileNodeKind.File, "Program.cs", [file])]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyTestState());
+        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState());
 
         // Assert
         Assert.Equal(
@@ -34,7 +35,7 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(0, FileNodeKind.Project, "App", [file])]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyTestState());
+        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState());
 
         // Assert
         Assert.Equal(
@@ -49,7 +50,7 @@ public sealed class WhenListingPanelShortcuts
         var state = TestState();
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
 
         // Assert
         Assert.DoesNotContain("output", shortcuts);
@@ -62,7 +63,7 @@ public sealed class WhenListingPanelShortcuts
         var state = TestState() with { LastRun = new TestRun(true, "Passed") };
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
 
         // Assert
         Assert.Contains("o output", shortcuts);
@@ -75,7 +76,7 @@ public sealed class WhenListingPanelShortcuts
         var state = TestState() with { Status = ExplorerStatus.Running };
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
 
         // Assert
         Assert.Equal(1, shortcuts.Split("c cancel").Length - 1);
@@ -90,11 +91,51 @@ public sealed class WhenListingPanelShortcuts
         var state = TestState() with { LastRun = new TestRun(false, "Failed", [failed]) };
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
 
         // Assert
         Assert.Contains("F failures", shortcuts);
     }
+
+    [Fact]
+    public void It_offers_diff_edit_and_preview_for_a_changed_file()
+    {
+        // Arrange
+        var changed = new ChangedFile("/repo/src/Order.cs", "Order.cs", ChangeKind.Modified);
+
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Changes,
+            new FileExplorerState([]),
+            new ChangesetState([changed]),
+            EmptyTestState());
+
+        // Assert
+        Assert.Equal(
+            "Tab pane  s search  ↑/k up  ↓/j down  Enter/d diff  e edit  p preview  q quit",
+            shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_restore_instead_of_editing_for_a_deleted_file()
+    {
+        // Arrange
+        var deleted = new ChangedFile("/repo/src/Gone.cs", "Gone.cs", ChangeKind.Deleted);
+
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Changes,
+            new FileExplorerState([]),
+            new ChangesetState([deleted]),
+            EmptyTestState());
+
+        // Assert
+        Assert.Equal(
+            "Tab pane  s search  ↑/k up  ↓/j down  Enter/d diff  r restore  q quit",
+            shortcuts);
+    }
+
+    private static ChangesetState EmptyChangeset() => new([]);
 
     private static ExplorerState EmptyTestState() =>
         new(ExplorerStatus.Ready, [], 0, "Ready");

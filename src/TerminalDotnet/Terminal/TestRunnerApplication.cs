@@ -5,6 +5,7 @@ using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
+using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TextMateSharp.Grammars;
@@ -14,6 +15,7 @@ namespace TerminalDotnet.Terminal;
 public sealed class TestRunnerApplication(
     TestExplorerSession session,
     FileExplorerSession fileSession,
+    ChangesetSession changesetSession,
     string target,
     IFileOpener? editorLauncher = null)
 {
@@ -22,10 +24,11 @@ public sealed class TestRunnerApplication(
     private const int WorkspaceX = ContentInset + PanelWidth + 1;
     private const int SegmentGap = 2;
     private const int SearchGap = 1;
+    private const int MaxStatusSegments = 4;
 
     private CancellationTokenSource? runCancellation;
     private IReadOnlyList<VisibleTestNode> testNodes = [];
-    private IReadOnlyList<FilePanelRow> fileRows = [];
+    private IReadOnlyList<FileRowTone> rowTones = [];
     private readonly PanelShell shell = new();
     private bool openSourceRequested;
     private string? openPath;
@@ -33,8 +36,8 @@ public sealed class TestRunnerApplication(
     private bool failureNavigationPending;
     private bool previewVisible;
     private Label? testStatus;
-    private IReadOnlyList<Label> fileStatus = [];
-    private IReadOnlyList<FileStatusSegment> fileStatusSegments = [];
+    private IReadOnlyList<Label> segmentLabels = [];
+    private IReadOnlyList<FileStatusSegment> statusSegments = [];
     private Label? shortcuts;
 
     public void Run()
@@ -66,27 +69,20 @@ public sealed class TestRunnerApplication(
                 background);
             args.Handled = true;
         };
-        fileStatus = FileStatus();
+        segmentLabels = StatusSegmentLabels();
         shortcuts = Shortcuts();
 
         window.Add(panels, search, tests, testStatus, shortcuts);
-        window.Add([.. fileStatus]);
+        window.Add([.. segmentLabels]);
         search.ValueChanged += async (_, _) =>
         {
-            if (shell.State.ActivePanel == PanelKind.Explorer)
-            {
-                await fileSession.DispatchAsync(new FileExplorerCommand.Search(search.Text));
-            }
-            else
-            {
-                await session.DispatchAsync(new ExplorerCommand.Search(search.Text));
-            }
+            await SearchAsync(search.Text);
             Render(search, tests);
         };
         application.Keyboard.KeyDown += (_, key) =>
             HandleKey(application, key, panels, search, tests);
         Render(search, tests);
-        panels.SelectedItem = shell.State.ActivePanel == PanelKind.Explorer ? 0 : 1;
+        panels.SelectedItem = shell.State.ActiveIndex;
         tests.SetFocus();
 
         application.Run(window);
@@ -96,7 +92,7 @@ public sealed class TestRunnerApplication(
         return openSourceRequested;
     }
 
-    private static ListView Panels()
+    private ListView Panels()
     {
         var panels = new ListView
         {
@@ -108,8 +104,8 @@ public sealed class TestRunnerApplication(
             ShowMarks = false,
             KeystrokeNavigator = null
         };
-        panels.SetSource(new ObservableCollection<string>(["Explorer", "Tests"]));
-        panels.SelectedItem = 0;
+        panels.SetSource(new ObservableCollection<string>(shell.State.Panels));
+        panels.SelectedItem = shell.State.ActiveIndex;
         return panels;
     }
 
@@ -121,12 +117,12 @@ public sealed class TestRunnerApplication(
         Height = 1
     };
 
-    private IReadOnlyList<Label> FileStatus() => FilePanelSnapshot.From(fileSession.State)
-        .StatusSegments
-        .Select((_, index) => FileStatusSegment(index))
+    private IReadOnlyList<Label> StatusSegmentLabels() => Enumerable
+        .Range(0, MaxStatusSegments)
+        .Select(StatusSegmentLabel)
         .ToArray();
 
-    private Label FileStatusSegment(int index)
+    private Label StatusSegmentLabel(int index)
     {
         var label = new Label
         {
@@ -146,8 +142,8 @@ public sealed class TestRunnerApplication(
         return label;
     }
 
-    private FileRowTone ToneFor(int index) => index < fileStatusSegments.Count
-        ? fileStatusSegments[index].Tone
+    private FileRowTone ToneFor(int index) => index < statusSegments.Count
+        ? statusSegments[index].Tone
         : FileRowTone.Neutral;
 
     private static TextField Search() => new()
@@ -200,14 +196,7 @@ public sealed class TestRunnerApplication(
         {
             key.Handled = true;
             search.Text = "";
-            if (shell.State.ActivePanel == PanelKind.Explorer)
-            {
-                _ = DispatchFileAsync(new FileExplorerCommand.ClearSearch(), search, tests);
-            }
-            else
-            {
-                _ = DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests);
-            }
+            _ = ClearSearchAsync(application, search, tests);
             tests.SetFocus();
             return;
         }
@@ -264,6 +253,12 @@ public sealed class TestRunnerApplication(
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
             HandleFileKey(application, key, tests, search);
+            return;
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Changes)
+        {
+            HandleChangesetKey(application, key, tests, search);
             return;
         }
 
@@ -329,6 +324,29 @@ public sealed class TestRunnerApplication(
         key.Handled = true;
         HandleCommand(application, command, search, tests);
     }
+
+    private Task SearchAsync(string query) => shell.State.ActivePanel switch
+    {
+        PanelKind.Explorer => fileSession.DispatchAsync(new FileExplorerCommand.Search(query)),
+        PanelKind.Changes => changesetSession.DispatchAsync(new ChangesetCommand.Search(query)),
+        _ => session.DispatchAsync(new ExplorerCommand.Search(query))
+    };
+
+    private async Task ClearSearchAsync(IApplication application, TextField search, ListView tests)
+    {
+        if (shell.State.ActivePanel == PanelKind.Tests)
+        {
+            await DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests);
+            return;
+        }
+
+        await ClearPanelSearchAsync();
+        Render(search, tests);
+    }
+
+    private Task ClearPanelSearchAsync() => shell.State.ActivePanel == PanelKind.Changes
+        ? changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch())
+        : fileSession.DispatchAsync(new FileExplorerCommand.ClearSearch());
 
     private void HandleCommand(
         IApplication application,
@@ -412,6 +430,116 @@ public sealed class TestRunnerApplication(
         await fileSession.DispatchAsync(command);
         Render(search, files);
     }
+
+    private void HandleChangesetKey(
+        IApplication application,
+        Key key,
+        ListView files,
+        TextField search)
+    {
+        if (!files.HasFocus || changesetSession.State.Files.Count == 0)
+        {
+            return;
+        }
+
+        var selected = changesetSession.State.Files[changesetSession.State.SelectedIndex];
+        var action = ChangesetPanelKeyBindings.ActionFor(key, selected, search.HasFocus);
+        if (action is ChangesetAction.ShowDiff)
+        {
+            key.Handled = true;
+            ShowDiff(application);
+            return;
+        }
+
+        if (action is ChangesetAction.OpenFile open)
+        {
+            key.Handled = true;
+            openPath = open.Path;
+            openLine = 1;
+            openSourceRequested = true;
+            application.RequestStop();
+            return;
+        }
+
+        if (action is ChangesetAction.PreviewFile preview)
+        {
+            key.Handled = true;
+            ShowPreview(application, preview.Path, 1);
+            return;
+        }
+
+        if (action is ChangesetAction.RestoreFile)
+        {
+            key.Handled = true;
+            _ = RestoreSelectedAsync(application, search, files);
+            return;
+        }
+
+        var command = ChangesetCommandFor(key, changesetSession.State.SearchQuery);
+        if (command is null)
+        {
+            return;
+        }
+
+        key.Handled = true;
+        _ = DispatchChangesetAsync(command, search, files);
+    }
+
+    private static ChangesetCommand? ChangesetCommandFor(Key key, string searchQuery)
+    {
+        if (searchQuery.Length > 0 && Is(key, KeyCode.N))
+        {
+            return key.IsShift ? new ChangesetCommand.MoveUp() : new ChangesetCommand.MoveDown();
+        }
+
+        if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
+        {
+            return new ChangesetCommand.MoveUp();
+        }
+
+        return Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J)
+            ? new ChangesetCommand.MoveDown()
+            : null;
+    }
+
+    private async Task DispatchChangesetAsync(
+        ChangesetCommand command,
+        TextField search,
+        ListView files)
+    {
+        await changesetSession.DispatchAsync(command);
+        Render(search, files);
+    }
+
+    private async Task RestoreSelectedAsync(
+        IApplication application,
+        TextField search,
+        ListView files)
+    {
+        await changesetSession.DispatchAsync(new ChangesetCommand.RestoreSelected());
+        application.Invoke(() => Render(search, files));
+    }
+
+    private void ShowDiff(IApplication application) => _ = ShowDiffAsync(application);
+
+    private async Task ShowDiffAsync(IApplication application)
+    {
+        await changesetSession.DispatchAsync(new ChangesetCommand.LoadSelectedDiff());
+        var snapshot = ChangesetPanelSnapshot.From(changesetSession.State);
+        application.Invoke(() => ShowCellDialog(
+            application,
+            $"Diff — {snapshot.DiffTitle} — ↑/k up  ↓/j down  Esc close",
+            DiffCells(snapshot.DiffLines),
+            wordWrap: false));
+    }
+
+    private static List<List<Cell>> DiffCells(IReadOnlyList<DiffLine> lines) => lines
+        .Select(line => Cell.ToCellList(
+            line.Text,
+            new global::Terminal.Gui.Drawing.Attribute(
+                DiffAppearance.ForegroundFor(line.Tone),
+                Color.Black)))
+        .ToList();
 
     private async Task DispatchAsync(
         IApplication application,
@@ -523,23 +651,36 @@ public sealed class TestRunnerApplication(
     private void ShowTestOutput(IApplication application)
     {
         var snapshot = TestPanelSnapshot.From(session.State, target);
+        ShowCellDialog(
+            application,
+            $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close",
+            AnsiTestOutput.ToCells(snapshot.SelectedOutput),
+            wordWrap: true);
+    }
+
+    private void ShowCellDialog(
+        IApplication application,
+        string title,
+        List<List<Cell>> lines,
+        bool wordWrap)
+    {
         using var dialog = new Window
         {
-            Title = $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close",
+            Title = title,
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
             Height = Dim.Fill(),
             ShadowStyle = ShadowStyles.None
         };
-        var text = new TestOutputView
+        var text = new ColoredTextView(wordWrap)
         {
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
             Height = Dim.Fill()
         };
-        text.Load(AnsiTestOutput.ToCells(snapshot.SelectedOutput));
+        text.Load(lines);
         SetBlackBackground(dialog);
         SetBlackBackground(text);
         dialog.Add(text);
@@ -598,24 +739,34 @@ public sealed class TestRunnerApplication(
 
     private void OpenRequestedFile()
     {
-        new ExplorerEditorWorkflow(fileSession, editorLauncher!, target).OpenAsync(
+        new ExplorerEditorWorkflow(fileSession, changesetSession, editorLauncher!, target).OpenAsync(
             openPath!,
             openLine).GetAwaiter().GetResult();
     }
 
     private void Render(TextField search, ListView tests)
     {
-        shortcuts!.Text = PanelShortcuts.For(shell.State.ActivePanel, fileSession.State, session.State);
+        shortcuts!.Text = PanelShortcuts.For(
+            shell.State.ActivePanel,
+            fileSession.State,
+            changesetSession.State,
+            session.State);
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
             RenderFiles(search, tests);
             return;
         }
 
+        if (shell.State.ActivePanel == PanelKind.Changes)
+        {
+            RenderChanges(search, tests);
+            return;
+        }
+
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Breadcrumb}";
         tests.Height = Dim.Fill(3);
-        HideFileStatus();
+        HideSegments();
         testStatus!.Visible = true;
         testStatus.Text = snapshot.StatusLine;
         search.Title = snapshot.SearchQuery.Length == 0
@@ -634,38 +785,74 @@ public sealed class TestRunnerApplication(
     {
         var snapshot = FilePanelSnapshot.From(fileSession.State);
         files.Title = "Explorer";
-        search.Title = snapshot.SearchQuery.Length == 0
-            ? "Search"
-            : $"Search — {snapshot.SearchHitCount} hits";
-        search.Text = snapshot.SearchQuery;
-        fileRows = snapshot.Rows;
-        files.SetSource(new ObservableCollection<string>(snapshot.Rows.Select(row => row.Text)));
+        RenderRows(
+            search,
+            files,
+            snapshot.SearchQuery,
+            snapshot.SearchHitCount,
+            snapshot.Rows.Select(row => (row.Text, row.Tone)).ToArray(),
+            snapshot.SelectedIndex,
+            snapshot.StatusSegments);
+    }
+
+    private void RenderChanges(TextField search, ListView files)
+    {
+        var snapshot = ChangesetPanelSnapshot.From(changesetSession.State);
+        files.Title = "Changes";
+        RenderRows(
+            search,
+            files,
+            snapshot.SearchQuery,
+            snapshot.SearchHitCount,
+            snapshot.Rows.Select(row => (row.Text, row.Tone)).ToArray(),
+            snapshot.SelectedIndex,
+            snapshot.StatusSegments);
+    }
+
+    private void RenderRows(
+        TextField search,
+        ListView files,
+        string searchQuery,
+        int searchHitCount,
+        IReadOnlyList<(string Text, FileRowTone Tone)> rows,
+        int selectedIndex,
+        IReadOnlyList<FileStatusSegment> segments)
+    {
+        search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
+        search.Text = searchQuery;
+        rowTones = rows.Select(row => row.Tone).ToArray();
+        files.SetSource(new ObservableCollection<string>(rows.Select(row => row.Text)));
         files.Height = Dim.Fill(3);
         testStatus!.Visible = false;
-        ShowFileStatus(snapshot.StatusSegments);
-        if (snapshot.Nodes.Count > 0)
+        ShowSegments(segments);
+        if (rows.Count > 0)
         {
-            files.SelectedItem = snapshot.SelectedIndex;
+            files.SelectedItem = selectedIndex;
         }
     }
 
-    private void ShowFileStatus(IReadOnlyList<FileStatusSegment> segments)
+    private void ShowSegments(IReadOnlyList<FileStatusSegment> segments)
     {
-        fileStatusSegments = segments;
+        statusSegments = segments;
         var column = WorkspaceX;
-        foreach (var (label, segment) in fileStatus.Zip(segments))
+        foreach (var (label, index) in segmentLabels.Select((label, index) => (label, index)))
         {
+            label.Visible = index < segments.Count;
+            if (!label.Visible)
+            {
+                continue;
+            }
+
             label.X = column;
-            label.Width = segment.Text.Length;
-            label.Text = segment.Text;
-            label.Visible = true;
-            column += segment.Text.Length + SegmentGap;
+            label.Width = segments[index].Text.Length;
+            label.Text = segments[index].Text;
+            column += segments[index].Text.Length + SegmentGap;
         }
     }
 
-    private void HideFileStatus()
+    private void HideSegments()
     {
-        foreach (var label in fileStatus)
+        foreach (var label in segmentLabels)
         {
             label.Visible = false;
         }
@@ -673,24 +860,24 @@ public sealed class TestRunnerApplication(
 
     private void ColorTreeRow(ListView tree, ListViewRowEventArgs args)
     {
-        if (shell.State.ActivePanel == PanelKind.Explorer)
+        if (shell.State.ActivePanel == PanelKind.Tests)
         {
-            ColorFileRow(tree, args);
+            ColorTestRow(tree, args);
             return;
         }
 
-        ColorTestRow(tree, args);
+        ColorFileRow(tree, args);
     }
 
     private void ColorFileRow(ListView files, ListViewRowEventArgs args)
     {
-        if (args.Row >= fileRows.Count)
+        if (args.Row >= rowTones.Count)
         {
             return;
         }
 
         args.RowAttribute = FileRowAppearance.For(
-            fileRows[args.Row].Tone,
+            rowTones[args.Row],
             files.IsSelectedOrMarked(args.Row),
             files.GetAttributeForRole(VisualRole.Normal),
             files.GetAttributeForRole(VisualRole.Focus));
