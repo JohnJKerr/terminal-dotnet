@@ -2,7 +2,27 @@
 
 > Throwaway vertical slice: validate whether navigating a discovered test tree and running the selected subtree is useful.
 
-Run it from a directory containing one `.sln`, `.slnx`, or `.csproj` file:
+## Install
+
+```bash
+./install.sh
+```
+
+That publishes the app to `~/.local/libexec/terminal-dotnet` and puts a `terminal-dotnet`
+command in `~/.local/bin`. Run it from any directory containing one `.sln`, `.slnx`, or
+`.csproj` file:
+
+```bash
+cd /path/to/some/repository
+terminal-dotnet
+```
+
+The install is framework-dependent, so it uses the .NET SDK already on your PATH — the same
+one it shells out to for `dotnet test`. Pass `--self-contained` to bundle the runtime instead,
+`--prefix DIR` to install somewhere else, and `--uninstall` to remove it. Re-run `./install.sh`
+to upgrade an existing install.
+
+Without installing, run it straight from the source tree:
 
 ```bash
 dotnet run --project /path/to/terminal-dotnet/src/TerminalDotnet
