@@ -25,6 +25,7 @@ public sealed class TestRunnerApplication(
     private const int SegmentGap = 2;
     private const int SearchGap = 1;
     private const int MaxStatusSegments = 4;
+    private const string ConsoleDriver = "dotnet";
 
     private CancellationTokenSource? runCancellation;
     private IReadOnlyList<VisibleTestNode> testNodes = [];
@@ -55,7 +56,7 @@ public sealed class TestRunnerApplication(
         openPath = null;
         openLine = 1;
         using IApplication application = Application.Create();
-        application.Init();
+        application.Init(TerminalDriver());
 
         using var window = new Window { Title = "terminal-dotnet" };
         var panels = Panels();
@@ -110,6 +111,11 @@ public sealed class TestRunnerApplication(
         panels.SelectedItem = shell.State.ActiveIndex;
         return panels;
     }
+
+    private static string TerminalDriver() =>
+        Environment.GetEnvironmentVariable("TERMINAL_DOTNET_DRIVER") is { Length: > 0 } driver
+            ? driver
+            : ConsoleDriver;
 
     private static Label TestStatus() => new()
     {

@@ -55,6 +55,24 @@ rm -f ~/.local/bin/terminal-dotnet
 rm -rf ~/.local/libexec/terminal-dotnet
 ```
 
+### Terminal driver
+
+Terminal.Gui offers `ansi`, `dotnet`, and `windows` drivers, and picks `ansi` on Linux by
+default. That driver negotiates terminal capabilities over escape sequences, and the
+negotiation does not complete under every terminal — inside the [herdr](https://herdr.dev)
+multiplexer it leaves a blank screen and never draws a frame. This app therefore asks for the
+`dotnet` driver, which renders through `System.Console` and needs no negotiation.
+
+Override it when you want a different driver:
+
+```bash
+TERMINAL_DOTNET_DRIVER=ansi terminal-dotnet
+```
+
+If a run ever does leave the terminal blank, `Ctrl-C` can drop you back to a shell where
+`Enter` types a literal `u`: the abandoned driver left the kitty keyboard protocol enabled.
+Run `reset` to restore the terminal.
+
 Without installing, run it straight from the source tree:
 
 ```bash
