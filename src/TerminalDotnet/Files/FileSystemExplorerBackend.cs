@@ -13,27 +13,59 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
     {
         var workingDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
         var gitStatuses = await GitStatusesAsync(workingDirectory, cancellationToken);
-        return ProjectPaths(target)
-            .SelectMany(projectPath => ProjectEntries(projectPath, gitStatuses))
-            .ToArray();
+        var entries = new List<FileEntry>();
+        foreach (var projectPath in ProjectPaths(target))
+        {
+            entries.AddRange(await ProjectEntriesAsync(projectPath, gitStatuses, cancellationToken));
+        }
+
+        return entries;
     }
 
-    private static IReadOnlyList<FileEntry> ProjectEntries(
+    private async Task<IReadOnlyList<FileEntry>> ProjectEntriesAsync(
         string projectPath,
-        IReadOnlyDictionary<string, FileGitStatus> gitStatuses)
+        IReadOnlyDictionary<string, FileGitStatus> gitStatuses,
+        CancellationToken cancellationToken)
     {
         var projectDirectory = Path.GetDirectoryName(projectPath)!;
+        var paths = await ProjectFilesAsync(projectDirectory, cancellationToken);
         return
         [
-            .. SourceFiles(projectDirectory).Select(path => FileEntryFor(projectPath, path, gitStatuses)),
+            .. paths.Select(path => FileEntryFor(projectPath, path, gitStatuses)),
             .. DeletedEntries(projectPath, projectDirectory, gitStatuses)
         ];
     }
 
-    private static IEnumerable<string> SourceFiles(string projectDirectory) => Directory
-        .EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
-        .Where(IsSourceFile)
-        .OrderBy(path => path, StringComparer.Ordinal);
+    private async Task<IReadOnlyList<string>> ProjectFilesAsync(
+        string projectDirectory,
+        CancellationToken cancellationToken)
+    {
+        var listing = await commandRunner.RunAsync(
+            new CommandRequest(
+                "git",
+                ["ls-files", "--cached", "--others", "--exclude-standard"],
+                projectDirectory),
+            cancellationToken);
+
+        return listing.ExitCode == 0
+            ? TrackedFiles(listing.StandardOutput, projectDirectory)
+            : FilesOnDisk(projectDirectory);
+    }
+
+    private static IReadOnlyList<string> TrackedFiles(string listing, string projectDirectory) => listing
+        .ReplaceLineEndings("\n")
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        .Select(path => Path.GetFullPath(path, projectDirectory))
+        .Where(File.Exists)
+        .Where(IsProjectFile)
+        .OrderBy(path => path, StringComparer.Ordinal)
+        .ToArray();
+
+    private static IReadOnlyList<string> FilesOnDisk(string projectDirectory) => Directory
+        .EnumerateFiles(projectDirectory, "*", SearchOption.AllDirectories)
+        .Where(IsProjectFile)
+        .OrderBy(path => path, StringComparer.Ordinal)
+        .ToArray();
 
     private static FileEntry FileEntryFor(
         string projectPath,
@@ -87,14 +119,13 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         IReadOnlyDictionary<string, FileGitStatus> gitStatuses) => gitStatuses
         .Where(status => status.Value == FileGitStatus.Deleted)
         .Select(status => status.Key)
-        .Where(path => IsProjectSourceFile(path, projectDirectory))
+        .Where(path => IsUnder(path, projectDirectory))
         .OrderBy(path => path, StringComparer.Ordinal)
         .Select(path => new FileEntry(projectPath, path, FileGitStatus.Deleted));
 
-    private static bool IsProjectSourceFile(string path, string projectDirectory) =>
+    private static bool IsUnder(string path, string projectDirectory) =>
         path.StartsWith(projectDirectory + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
-        Path.GetExtension(path).Equals(".cs", StringComparison.OrdinalIgnoreCase) &&
-        IsSourceFile(path);
+        IsProjectFile(path);
 
     private static IReadOnlyList<string> ProjectPaths(string target)
     {
@@ -111,18 +142,23 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
                 .Descendants("Project")
                 .Select(project => project.Attribute("Path")?.Value)
                 .Where(path => path is not null)
-                .Select(path => Path.GetFullPath(path!, directory))
+                .Select(path => ProjectPathFrom(path!, directory))
                 .ToArray();
         }
 
         return File.ReadLines(fullTarget)
             .Select(line => SolutionProjectPath().Match(line))
             .Where(match => match.Success)
-            .Select(match => Path.GetFullPath(match.Groups[1].Value, directory))
+            .Select(match => ProjectPathFrom(match.Groups[1].Value, directory))
             .ToArray();
     }
 
-    private static bool IsSourceFile(string path)
+    private static string ProjectPathFrom(string declaredPath, string solutionDirectory) =>
+        Path.GetFullPath(
+            declaredPath.Replace('\\', Path.DirectorySeparatorChar),
+            solutionDirectory);
+
+    private static bool IsProjectFile(string path)
     {
         var segments = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         return !segments.Contains("bin", StringComparer.OrdinalIgnoreCase) &&
