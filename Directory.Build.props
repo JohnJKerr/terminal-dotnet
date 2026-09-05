@@ -1,0 +1,15 @@
+<Project>
+  <!-- Major and minor are set by hand. The patch counts builds since that
+       major.minor was cut: CI passes its run number as BuildNumber, and
+       VersionPatchOffset is the run number of the first build of the current
+       major.minor, so that build is patch 0. Bump the offset to the next run
+       number whenever you change the major or minor version. -->
+  <PropertyGroup>
+    <VersionMajor>0</VersionMajor>
+    <VersionMinor>1</VersionMinor>
+    <VersionPatchOffset>1</VersionPatchOffset>
+    <BuildNumber Condition="'$(BuildNumber)' == ''">$(VersionPatchOffset)</BuildNumber>
+    <VersionPatch>$([System.Math]::Max(0, $([MSBuild]::Subtract($(BuildNumber), $(VersionPatchOffset)))))</VersionPatch>
+    <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)</Version>
+  </PropertyGroup>
+</Project>

@@ -58,7 +58,7 @@ public sealed class TestRunnerApplication(
         using IApplication application = Application.Create();
         application.Init(TerminalDriver());
 
-        using var window = new Window { Title = "terminal-dotnet" };
+        using var window = new Window { Title = $"terminal-dotnet - {VersionNumber.Current}" };
         var panels = Panels();
         var search = Search();
         var tests = Tests(search);
