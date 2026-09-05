@@ -1,6 +1,7 @@
 using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TerminalDotnet.Filters;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using Xunit;
@@ -85,6 +86,50 @@ public sealed class WhenAPanelHasNothingToShow
 
         // Assert
         Assert.Equal("No changes match 'odr'", snapshot.EmptyMessage);
+    }
+
+    [Fact]
+    public void The_explorer_has_no_updated_files_to_show()
+    {
+        // Arrange
+        var state = new FileExplorerState([], ActiveFilter: ExplorerFilter.Updated);
+
+        // Act
+        var snapshot = FilePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal("No updated files to show", snapshot.EmptyMessage);
+    }
+
+    [Fact]
+    public void The_test_panel_has_no_updated_tests_to_show()
+    {
+        // Arrange
+        var state = new ExplorerState(
+            ExplorerStatus.Ready,
+            [],
+            0,
+            "Ready",
+            ActiveFilter: ExplorerFilter.Updated);
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "App.slnx");
+
+        // Assert
+        Assert.Equal("No updated tests to show", snapshot.EmptyMessage);
+    }
+
+    [Fact]
+    public void The_explorer_names_the_search_no_updated_file_matched()
+    {
+        // Arrange
+        var state = new FileExplorerState([], SearchQuery: "odr", ActiveFilter: ExplorerFilter.Updated);
+
+        // Act
+        var snapshot = FilePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal("No updated files match 'odr'", snapshot.EmptyMessage);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+using TerminalDotnet.Filters;
 using TerminalDotnet.Search;
 
 namespace TerminalDotnet.Files;
@@ -34,6 +35,9 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
             case FileExplorerCommand.ClearSearch:
                 ApplySearch("");
                 return;
+            case FileExplorerCommand.ToggleFilter filter:
+                ApplyFilter(filter.Filter);
+                return;
             case FileExplorerCommand.NextSearchMatch:
                 Select(SelectionRing.Next(FileIndices(), State.SelectedIndex));
                 return;
@@ -49,14 +53,20 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         }
     }
 
-    private void ApplySearch(string query)
+    private void ApplySearch(string query) => Show(query, State.ActiveFilter);
+
+    private void ApplyFilter(ExplorerFilter filter) =>
+        Show(State.SearchQuery, State.ActiveFilter == filter ? null : filter);
+
+    private void Show(string query, ExplorerFilter? filter)
     {
-        allNodes = NodesFrom(FilesMatching(query));
+        allNodes = NodesFrom(FilesMatching(query, filter));
         State = State with
         {
             VisibleNodes = VisibleNodes(),
             SelectedIndex = 0,
-            SearchQuery = query
+            SearchQuery = query,
+            ActiveFilter = filter
         };
     }
 
@@ -130,9 +140,14 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
     private static string NodeKey(VisibleFileNode node) =>
         $"{node.Kind}:{node.Files[0].ProjectPath}:{node.Name}";
 
-    private IReadOnlyList<FileEntry> FilesMatching(string query) => discoveredFiles
-        .Where(file => FuzzyMatch.Matches(file.Path, query))
-        .ToArray();
+    private IReadOnlyList<FileEntry> FilesMatching(string query, ExplorerFilter? filter) =>
+        discoveredFiles
+            .Where(file => FuzzyMatch.Matches(file.Path, query))
+            .Where(file => PassesFilter(file, filter))
+            .ToArray();
+
+    private static bool PassesFilter(FileEntry file, ExplorerFilter? filter) =>
+        filter != ExplorerFilter.Updated || file.GitStatus != FileGitStatus.Unchanged;
 
     private IReadOnlyList<int> FileIndices() => State.VisibleNodes
         .Select((node, index) => (node, index))

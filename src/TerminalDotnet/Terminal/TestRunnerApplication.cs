@@ -8,6 +8,7 @@ using Terminal.Gui.Views;
 using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TerminalDotnet.Filters;
 using TextMateSharp.Grammars;
 
 namespace TerminalDotnet.Terminal;
@@ -23,8 +24,10 @@ public sealed class TestRunnerApplication(
     private const int PanelWidth = 20;
     private const int WorkspaceX = ContentInset + PanelWidth + 1;
     private const int SegmentGap = 2;
-    private const int SearchGap = 1;
+    private const int FilterRowHeight = 1;
+    private const int FilterGap = 1;
     private const int MaxStatusSegments = 4;
+    private const int MaxFilterChips = 4;
     private const string ConsoleDriver = "dotnet";
 
     private CancellationTokenSource? runCancellation;
@@ -39,6 +42,8 @@ public sealed class TestRunnerApplication(
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
     private IReadOnlyList<FileStatusSegment> statusSegments = [];
+    private IReadOnlyList<Label> filterLabels = [];
+    private IReadOnlyList<FilterChip> filterChips = [];
     private Label? emptyState;
     private Label? shortcuts;
 
@@ -72,11 +77,13 @@ public sealed class TestRunnerApplication(
             args.Handled = true;
         };
         segmentLabels = StatusSegmentLabels();
+        filterLabels = FilterLabels(search);
         emptyState = EmptyState(tests);
         shortcuts = Shortcuts();
 
         window.Add(panels, search, tests, emptyState, testStatus, shortcuts);
         window.Add([.. segmentLabels]);
+        window.Add([.. filterLabels]);
         search.ValueChanged += async (_, _) =>
         {
             await SearchAsync(search.Text);
@@ -154,6 +161,33 @@ public sealed class TestRunnerApplication(
         ? statusSegments[index].Tone
         : FileRowTone.Neutral;
 
+    private IReadOnlyList<Label> FilterLabels(TextField search) => Enumerable
+        .Range(0, MaxFilterChips)
+        .Select(index => FilterLabel(search, index))
+        .ToArray();
+
+    private Label FilterLabel(TextField search, int index)
+    {
+        var label = new Label
+        {
+            X = WorkspaceX,
+            Y = Pos.Bottom(search),
+            Height = 1,
+            Visible = false
+        };
+        label.GettingAttributeForRole += (_, args) =>
+        {
+            var background = args.Result?.Background ?? Color.Black;
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(
+                FilterAppearance.ForegroundFor(IsActiveFilter(index)),
+                background);
+            args.Handled = true;
+        };
+        return label;
+    }
+
+    private bool IsActiveFilter(int index) => index < filterChips.Count && filterChips[index].IsActive;
+
     private static TextField Search() => new()
     {
         Title = "Search",
@@ -170,7 +204,7 @@ public sealed class TestRunnerApplication(
         {
             Title = "Tests",
             X = WorkspaceX,
-            Y = Pos.Bottom(search) + SearchGap,
+            Y = Pos.Bottom(search) + FilterRowHeight + FilterGap,
             Width = Dim.Fill(ContentInset),
             Height = Dim.Fill(3),
             ShowMarks = false,
@@ -358,13 +392,19 @@ public sealed class TestRunnerApplication(
         ListView files,
         TextField search)
     {
-        if (!files.HasFocus || fileSession.State.VisibleNodes.Count == 0)
+        if (!files.HasFocus)
         {
             return;
         }
 
-        var selected = fileSession.State.VisibleNodes[fileSession.State.SelectedIndex];
-        var action = FilePanelKeyBindings.ActionFor(key, selected, search.HasFocus);
+        var action = FilePanelKeyBindings.ActionFor(key, SelectedFile(), search.HasFocus);
+        if (action is FilePanelAction.ToggleFilter toggle)
+        {
+            key.Handled = true;
+            _ = DispatchFileAsync(new FileExplorerCommand.ToggleFilter(toggle.Filter), search, files);
+            return;
+        }
+
         if (action is FilePanelAction.OpenFile open)
         {
             key.Handled = true;
@@ -388,6 +428,10 @@ public sealed class TestRunnerApplication(
         key.Handled = true;
         _ = DispatchFileAsync(command, search, files);
     }
+
+    private VisibleFileNode? SelectedFile() => fileSession.State.VisibleNodes.Count == 0
+        ? null
+        : fileSession.State.VisibleNodes[fileSession.State.SelectedIndex];
 
     private static FileExplorerCommand? FileCommandFor(Key key, string searchQuery)
     {
@@ -753,6 +797,7 @@ public sealed class TestRunnerApplication(
         tests.Title = $"Tests — {snapshot.Breadcrumb}";
         tests.Height = Dim.Fill(3);
         HideSegments();
+        ShowFilters(snapshot.Filters);
         ShowEmptyState(snapshot.EmptyMessage);
         testStatus!.Visible = true;
         testStatus.Text = snapshot.StatusLine;
@@ -780,6 +825,7 @@ public sealed class TestRunnerApplication(
             snapshot.Rows.Select(row => (row.Text, row.Tone)).ToArray(),
             snapshot.SelectedIndex,
             snapshot.StatusSegments,
+            snapshot.Filters,
             snapshot.EmptyMessage);
     }
 
@@ -795,6 +841,7 @@ public sealed class TestRunnerApplication(
             snapshot.Rows.Select(row => (row.Text, row.Tone)).ToArray(),
             snapshot.SelectedIndex,
             snapshot.StatusSegments,
+            [],
             snapshot.EmptyMessage);
     }
 
@@ -806,6 +853,7 @@ public sealed class TestRunnerApplication(
         IReadOnlyList<(string Text, FileRowTone Tone)> rows,
         int selectedIndex,
         IReadOnlyList<FileStatusSegment> segments,
+        IReadOnlyList<FilterChip> filters,
         string emptyMessage)
     {
         search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
@@ -815,6 +863,7 @@ public sealed class TestRunnerApplication(
         files.Height = Dim.Fill(3);
         testStatus!.Visible = false;
         ShowSegments(segments);
+        ShowFilters(filters);
         ShowEmptyState(emptyMessage);
         if (rows.Count > 0)
         {
@@ -836,6 +885,36 @@ public sealed class TestRunnerApplication(
         {
             Show(segmentLabels[index], index < placed.Count ? placed[index] : null);
         }
+    }
+
+    private void ShowFilters(IReadOnlyList<FilterChip> chips)
+    {
+        filterChips = chips;
+        var columns = StatusSegmentLayout.ColumnsFor(
+            chips.Select(chip => chip.Text).ToArray(),
+            WorkspaceX,
+            SegmentGap);
+        for (var index = 0; index < filterLabels.Count; index++)
+        {
+            ShowChip(filterLabels[index], chips, columns, index);
+        }
+    }
+
+    private static void ShowChip(
+        Label label,
+        IReadOnlyList<FilterChip> chips,
+        IReadOnlyList<int> columns,
+        int index)
+    {
+        label.Visible = index < chips.Count;
+        if (index >= chips.Count)
+        {
+            return;
+        }
+
+        label.X = columns[index];
+        label.Width = chips[index].Text.Length;
+        label.Text = chips[index].Text;
     }
 
     private static void Show(Label label, PlacedStatusSegment? segment)
@@ -891,15 +970,8 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        var foreground = testNodes[args.Row].Outcome switch
-        {
-            TestNodeOutcome.Failed => Color.BrightRed,
-            TestNodeOutcome.Passed => Color.BrightGreen,
-            TestNodeOutcome.Skipped => Color.BrightYellow,
-            TestNodeOutcome.Running => Color.BrightCyan,
-            _ => Color.White
-        };
-        SetRowForeground(tests, args, foreground);
+        var node = testNodes[args.Row];
+        SetRowForeground(tests, args, TestRowAppearance.ForegroundFor(node.Outcome, node.Update));
     }
 
     private static void SetRowForeground(

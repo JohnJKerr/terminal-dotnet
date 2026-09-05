@@ -1,3 +1,5 @@
+using TerminalDotnet.Filters;
+
 namespace TerminalDotnet.Files;
 
 public enum FileGitStatus
@@ -36,7 +38,8 @@ public sealed record FileChangeSummary(int Total, int Added, int Edited, int Del
 public sealed record FileExplorerState(
     IReadOnlyList<VisibleFileNode> VisibleNodes,
     int SelectedIndex = 0,
-    string SearchQuery = "")
+    string SearchQuery = "",
+    ExplorerFilter? ActiveFilter = null)
 {
     public FileChangeSummary Changes { get; init; } = FileChangeSummary.Empty;
 }
@@ -45,6 +48,7 @@ public abstract record FileExplorerCommand
 {
     public sealed record Search(string Query) : FileExplorerCommand;
     public sealed record ClearSearch : FileExplorerCommand;
+    public sealed record ToggleFilter(ExplorerFilter Filter) : FileExplorerCommand;
     public sealed record ToggleExpanded : FileExplorerCommand;
     public sealed record MoveUp : FileExplorerCommand;
     public sealed record MoveDown : FileExplorerCommand;

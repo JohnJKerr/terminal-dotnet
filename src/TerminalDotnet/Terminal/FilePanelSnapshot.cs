@@ -24,15 +24,26 @@ public static class StatusSegmentLayout
         int firstColumn,
         int gap)
     {
+        var columns = ColumnsFor(segments.Select(segment => segment.Text).ToArray(), firstColumn, gap);
+        return segments
+            .Select((segment, index) => new PlacedStatusSegment(segment.Text, segment.Tone, columns[index]))
+            .ToArray();
+    }
+
+    public static IReadOnlyList<int> ColumnsFor(
+        IReadOnlyList<string> texts,
+        int firstColumn,
+        int gap)
+    {
         var column = firstColumn;
-        var placed = new List<PlacedStatusSegment>();
-        foreach (var segment in segments)
+        var columns = new List<int>();
+        foreach (var text in texts)
         {
-            placed.Add(new PlacedStatusSegment(segment.Text, segment.Tone, column));
-            column += segment.Text.Length + gap;
+            columns.Add(column);
+            column += text.Length + gap;
         }
 
-        return placed;
+        return columns;
     }
 }
 
@@ -66,6 +77,7 @@ public sealed record FilePanelSnapshot(
     string SearchQuery,
     int SearchHitCount,
     IReadOnlyList<FileStatusSegment> StatusSegments,
+    IReadOnlyList<FilterChip> Filters,
     string EmptyMessage)
 {
     public static FilePanelSnapshot From(FileExplorerState state) => new(
@@ -75,7 +87,8 @@ public sealed record FilePanelSnapshot(
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == FileNodeKind.File),
         StatusSegmentsFrom(state.Changes),
-        PanelEmptyState.For("files", state.VisibleNodes.Count, state.SearchQuery));
+        PanelFilters.Chips(state.ActiveFilter),
+        PanelEmptyState.For("files", state.VisibleNodes.Count, state.SearchQuery, state.ActiveFilter));
 
     private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(FileChangeSummary changes) =>
     [

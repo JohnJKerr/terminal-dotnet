@@ -1,3 +1,5 @@
+using TerminalDotnet.Changes;
+using TerminalDotnet.Filters;
 using TerminalDotnet.Search;
 using TerminalDotnet.Testing;
 
@@ -6,12 +8,15 @@ namespace TerminalDotnet.Explorer;
 public sealed class TestExplorerSession(
     ITestBackend backend,
     ISourceProvider? sourceProvider = null,
-    ITestSourceLocator? testSourceLocator = null)
+    ITestSourceLocator? testSourceLocator = null,
+    IUpdatedSourceProvider? updatedSourceProvider = null)
 {
     private readonly HashSet<string> collapsedNodes = [];
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
     private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
+    private IReadOnlyDictionary<string, TestNodeUpdate> updatedSuites =
+        new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
 
     public ExplorerState State { get; private set; } =
         new(ExplorerStatus.Loading, [], 0, "Discovering tests...");
@@ -20,6 +25,7 @@ public sealed class TestExplorerSession(
     {
         var tests = await backend.DiscoverAsync(target, cancellationToken);
         discoveredTests = tests;
+        updatedSuites = await UpdatedSuitesAsync(target, cancellationToken);
         var nodes = VisibleNodes(tests);
 
         State = new ExplorerState(ExplorerStatus.Ready, nodes, 0, $"Ready — {tests.Count} tests discovered");
@@ -31,6 +37,7 @@ public sealed class TestExplorerSession(
             ExplorerCommand.LoadSelectedSource => LoadSelectedSourceAsync(cancellationToken),
             ExplorerCommand.Search search => Applied(() => ApplySearch(search.Query)),
             ExplorerCommand.ClearSearch => Applied(() => ApplySearch("")),
+            ExplorerCommand.ToggleFilter filter => Applied(() => ApplyFilter(filter.Filter)),
             ExplorerCommand.ToggleExpanded => Applied(ToggleSelectedExpansion),
             ExplorerCommand.RunSelected => RunSelectedAsync(cancellationToken),
             ExplorerCommand.RerunLast => RerunLastAsync(cancellationToken),
@@ -59,13 +66,46 @@ public sealed class TestExplorerSession(
         State = State with { SourceContext = source };
     }
 
-    private void ApplySearch(string query)
+    private async Task<IReadOnlyDictionary<string, TestNodeUpdate>> UpdatedSuitesAsync(
+        string target,
+        CancellationToken cancellationToken)
+    {
+        if (updatedSourceProvider is null)
+        {
+            return new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
+        }
+
+        var sources = await updatedSourceProvider.UpdatedSourcesAsync(target, cancellationToken);
+        return sources
+            .GroupBy(source => SuiteName(source.Path), StringComparer.Ordinal)
+            .ToDictionary(
+                suite => suite.Key,
+                suite => UpdateFrom(suite.First().Change),
+                StringComparer.Ordinal);
+    }
+
+    private static string SuiteName(string path) => Path.GetFileNameWithoutExtension(path)!;
+
+    private static TestNodeUpdate UpdateFrom(ChangeKind change) => change == ChangeKind.Added
+        ? TestNodeUpdate.Added
+        : TestNodeUpdate.Edited;
+
+    private TestNodeUpdate UpdateOf(string className) =>
+        updatedSuites.GetValueOrDefault(className, TestNodeUpdate.Unchanged);
+
+    private void ApplySearch(string query) => Show(query, State.ActiveFilter);
+
+    private void ApplyFilter(ExplorerFilter filter) =>
+        Show(State.SearchQuery, State.ActiveFilter == filter ? null : filter);
+
+    private void Show(string query, ExplorerFilter? filter)
     {
         State = State with
         {
-            VisibleNodes = VisibleNodes(TestsMatching(query)),
+            VisibleNodes = VisibleNodes(TestsMatching(query, filter)),
             SelectedIndex = 0,
-            SearchQuery = query
+            SearchQuery = query,
+            ActiveFilter = filter
         };
     }
 
@@ -83,7 +123,10 @@ public sealed class TestExplorerSession(
         }
 
         Collapse(selected, !selected.IsExpanded);
-        State = State with { VisibleNodes = VisibleNodes(TestsMatching(State.SearchQuery)) };
+        State = State with
+        {
+            VisibleNodes = VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter))
+        };
     }
 
     private void Collapse(VisibleTestNode node, bool isExpanded)
@@ -181,9 +224,14 @@ public sealed class TestExplorerSession(
         return node with { Outcome = NodeOutcomeFrom(node.Tests.Select(test => completedOutcomes[test])) };
     }
 
-    private IReadOnlyList<TestCase> TestsMatching(string query) => discoveredTests
-        .Where(test => MatchesSearch(test, query))
-        .ToArray();
+    private IReadOnlyList<TestCase> TestsMatching(string query, ExplorerFilter? filter) =>
+        discoveredTests
+            .Where(test => MatchesSearch(test, query))
+            .Where(test => PassesFilter(test, filter))
+            .ToArray();
+
+    private bool PassesFilter(TestCase test, ExplorerFilter? filter) =>
+        filter != ExplorerFilter.Updated || updatedSuites.ContainsKey(test.ClassName);
 
     private static string NodeId(VisibleTestNode node) =>
         $"{node.Tests[0].ProjectPath}:{node.Kind}:{node.Name}";
@@ -363,11 +411,21 @@ public sealed class TestExplorerSession(
     private IEnumerable<VisibleTestNode> ClassNodes(IGrouping<string, TestCase> testClass)
     {
         var classTests = testClass.ToArray();
-        var classNode = new VisibleTestNode(1, TestNodeKind.Class, testClass.Key, classTests);
+        var classNode = new VisibleTestNode(
+            1,
+            TestNodeKind.Class,
+            testClass.Key,
+            classTests,
+            Update: UpdateOf(testClass.Key));
         var classCollapsed = collapsedNodes.Contains(NodeId(classNode));
         var testNodes = classTests
             .OrderBy(test => test.DisplayName)
-            .Select(test => new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test]));
+            .Select(test => new VisibleTestNode(
+                2,
+                TestNodeKind.Test,
+                test.DisplayName,
+                [test],
+                Update: UpdateOf(test.ClassName)));
 
         return classCollapsed
             ? [classNode with { IsExpanded = false }]

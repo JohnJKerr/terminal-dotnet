@@ -1,3 +1,4 @@
+using TerminalDotnet.Filters;
 using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Explorer;
@@ -17,6 +18,13 @@ public enum TestNodeKind
     Test
 }
 
+public enum TestNodeUpdate
+{
+    Unchanged,
+    Added,
+    Edited
+}
+
 public enum TestNodeOutcome
 {
     NotRun,
@@ -32,7 +40,8 @@ public sealed record VisibleTestNode(
     string Name,
     IReadOnlyList<TestCase> Tests,
     TestNodeOutcome Outcome = TestNodeOutcome.NotRun,
-    bool IsExpanded = true);
+    bool IsExpanded = true,
+    TestNodeUpdate Update = TestNodeUpdate.Unchanged);
 
 public sealed record ExplorerState(
     ExplorerStatus Status,
@@ -41,12 +50,14 @@ public sealed record ExplorerState(
     string Message,
     TestRun? LastRun = null,
     SourceContext? SourceContext = null,
-    string SearchQuery = "");
+    string SearchQuery = "",
+    ExplorerFilter? ActiveFilter = null);
 
 public abstract record ExplorerCommand
 {
     public sealed record Search(string Query) : ExplorerCommand;
     public sealed record ClearSearch : ExplorerCommand;
+    public sealed record ToggleFilter(ExplorerFilter Filter) : ExplorerCommand;
     public sealed record ToggleExpanded : ExplorerCommand;
     public sealed record MoveUp : ExplorerCommand;
     public sealed record MoveDown : ExplorerCommand;

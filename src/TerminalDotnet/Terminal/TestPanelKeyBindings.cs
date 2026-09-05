@@ -29,6 +29,11 @@ public static class TestPanelKeyBindings
                 : new ExplorerCommand.NextSearchMatch());
         }
 
+        if (hasFocus && FilterKeyBindings.FilterFor(key) is { } filter)
+        {
+            return Dispatched(new ExplorerCommand.ToggleFilter(filter));
+        }
+
         if (hasFocus && awaitingFailureNavigation && Is(key, KeyCode.F))
         {
             return Dispatched(new ExplorerCommand.NextFailure());

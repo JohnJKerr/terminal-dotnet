@@ -18,7 +18,8 @@ var sourceProvider = new FileSourceProvider();
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
     sourceProvider,
-    new FileTestSourceLocator(sourceProvider));
+    new FileTestSourceLocator(sourceProvider),
+    new ChangesetUpdatedSourceProvider(new GitChangesetBackend(commandRunner)));
 try
 {
     await fileSession.LoadAsync(target);

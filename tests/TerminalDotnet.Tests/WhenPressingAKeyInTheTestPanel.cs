@@ -1,6 +1,7 @@
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using TerminalDotnet.Explorer;
+using TerminalDotnet.Filters;
 using TerminalDotnet.Terminal;
 using Xunit;
 
@@ -176,6 +177,28 @@ public sealed class WhenPressingAKeyInTheTestPanel
 
         // Assert
         Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.NextFailure()), action);
+    }
+
+    [Fact]
+    public void Pressing_1_toggles_the_updated_filter()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D1));
+
+        // Assert
+        Assert.Equal(
+            new TestPanelAction.Dispatch(new ExplorerCommand.ToggleFilter(ExplorerFilter.Updated)),
+            action);
+    }
+
+    [Fact]
+    public void Pressing_1_without_focus_does_nothing()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D1), hasFocus: false);
+
+        // Assert
+        Assert.Null(action);
     }
 
     private static Key Shifted(KeyCode keyCode) => new(keyCode | KeyCode.ShiftMask);

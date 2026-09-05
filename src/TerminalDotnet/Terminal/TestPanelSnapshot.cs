@@ -15,6 +15,7 @@ public sealed record TestPanelSnapshot(
     string StatusLine,
     string SelectedOutputTitle,
     string SelectedOutput,
+    IReadOnlyList<FilterChip> Filters,
     string EmptyMessage)
 {
     public static TestPanelSnapshot From(ExplorerState state, string target) => new(
@@ -28,7 +29,8 @@ public sealed record TestPanelSnapshot(
         StatusLineFrom(state),
         SelectedOutputTitleFrom(state),
         SelectedOutputFrom(state),
-        PanelEmptyState.For("tests", state.VisibleNodes.Count, state.SearchQuery));
+        PanelFilters.Chips(state.ActiveFilter),
+        PanelEmptyState.For("tests", state.VisibleNodes.Count, state.SearchQuery, state.ActiveFilter));
 
     private static string StatusLineFrom(ExplorerState state)
     {

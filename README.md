@@ -83,11 +83,21 @@ Panels: `Explorer` lists the solution's source files, `Tests` lists the discover
 `Changes` lists the files git reports as added, modified, or deleted beneath the directory you
 started in. A panel with nothing to list says so in place of its rows.
 
+The `Explorer` and `Tests` panels carry filters under the search box, numbered from `1`. The
+`Updated` filter keeps the files git reports as new or changed, and in the `Tests` panel keeps
+the suites whose source file changed, so `Enter` on the project runs only those suites. Search
+narrows whatever the filter left.
+
+Both panels colour what changed the same way: green for an added file or suite, blue for an
+edited one. A test keeps that colour until it runs, and then reports its outcome instead —
+green passed, red failed, yellow skipped, cyan running.
+
 Keys:
 
 - `↑` / `k`: move up
 - `↓` / `j`: move down
 - `s`: search the active panel; `Enter` returns to the tree; `n` / `N` select matches; `Esc` clears the search
+- `1`: apply the `Updated` filter, and press it again to drop it; numbers reach the filters only while the search box is not focused
 - `←` / `→`: move directly between the panel rail and workspace
 - `Space`: collapse or expand the highlighted project or class
 - `Enter` / `d` (Changes): show the highlighted file's diff

@@ -37,6 +37,16 @@ public sealed class WhenPlacingStatusSegments
     }
 
     [Fact]
+    public void It_places_filter_chips_along_the_same_row()
+    {
+        // Act
+        var columns = StatusSegmentLayout.ColumnsFor(["1. Updated", "2. Failing"], firstColumn: 22, gap: 2);
+
+        // Assert
+        Assert.Equal([22, 34], columns);
+    }
+
+    [Fact]
     public void It_places_nothing_without_segments()
     {
         // Act
