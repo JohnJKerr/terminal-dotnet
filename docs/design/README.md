@@ -13,8 +13,9 @@ variant 1b:
 - The outer window title is `terminal-dotnet`.
 - The layout has two columns: a full-height panel rail on the left and the
   selected panel workspace on the right.
-- The Explorer workspace is a searchable, collapsible project, namespace, and
-  file tree. Modified files are blue and new files are green.
+- The Explorer workspace is a searchable, collapsible project, folder, and
+  file tree, mirroring the layout on disk. Folders sort before the files
+  beside them. Modified files are blue and new files are green.
 - The Tests workspace is split vertically into a scrollable test tree and a
   scrollable execution-output pane.
 - A one-cell inset separates content from the outer box, with a one-cell gutter

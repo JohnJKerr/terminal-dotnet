@@ -13,29 +13,21 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
     {
         var workingDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
         var gitStatuses = await GitStatusesAsync(workingDirectory, cancellationToken);
-        var entries = new List<FileEntry>();
-        foreach (var projectPath in ProjectPaths(target))
-        {
-            entries.AddRange(await ProjectEntriesAsync(projectPath, gitStatuses, cancellationToken));
-        }
-
-        return entries;
+        return ProjectPaths(target)
+            .SelectMany(projectPath => ProjectEntries(projectPath, gitStatuses))
+            .ToArray();
     }
 
-    private static async Task<IReadOnlyList<FileEntry>> ProjectEntriesAsync(
+    private static IReadOnlyList<FileEntry> ProjectEntries(
         string projectPath,
-        IReadOnlyDictionary<string, FileGitStatus> gitStatuses,
-        CancellationToken cancellationToken)
+        IReadOnlyDictionary<string, FileGitStatus> gitStatuses)
     {
         var projectDirectory = Path.GetDirectoryName(projectPath)!;
-        var entries = new List<FileEntry>();
-        foreach (var path in SourceFiles(projectDirectory))
-        {
-            entries.Add(await FileEntryAsync(projectPath, path, gitStatuses, cancellationToken));
-        }
-
-        entries.AddRange(DeletedEntries(projectPath, projectDirectory, gitStatuses));
-        return entries;
+        return
+        [
+            .. SourceFiles(projectDirectory).Select(path => FileEntryFor(projectPath, path, gitStatuses)),
+            .. DeletedEntries(projectPath, projectDirectory, gitStatuses)
+        ];
     }
 
     private static IEnumerable<string> SourceFiles(string projectDirectory) => Directory
@@ -43,25 +35,13 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         .Where(IsSourceFile)
         .OrderBy(path => path, StringComparer.Ordinal);
 
-    private static async Task<FileEntry> FileEntryAsync(
+    private static FileEntry FileEntryFor(
         string projectPath,
         string path,
-        IReadOnlyDictionary<string, FileGitStatus> gitStatuses,
-        CancellationToken cancellationToken)
-    {
-        var source = await File.ReadAllTextAsync(path, cancellationToken);
-        return new FileEntry(
-            projectPath,
-            NamespaceFrom(source),
-            path,
-            gitStatuses.GetValueOrDefault(Path.GetFullPath(path), FileGitStatus.Unchanged));
-    }
-
-    private static string NamespaceFrom(string source)
-    {
-        var declaredNamespace = NamespaceDeclaration().Match(source);
-        return declaredNamespace.Success ? declaredNamespace.Groups[1].Value : "(global)";
-    }
+        IReadOnlyDictionary<string, FileGitStatus> gitStatuses) => new(
+        projectPath,
+        path,
+        gitStatuses.GetValueOrDefault(Path.GetFullPath(path), FileGitStatus.Unchanged));
 
     private async Task<IReadOnlyDictionary<string, FileGitStatus>> GitStatusesAsync(
         string workingDirectory,
@@ -109,7 +89,7 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         .Select(status => status.Key)
         .Where(path => IsProjectSourceFile(path, projectDirectory))
         .OrderBy(path => path, StringComparer.Ordinal)
-        .Select(path => new FileEntry(projectPath, "", path, FileGitStatus.Deleted));
+        .Select(path => new FileEntry(projectPath, path, FileGitStatus.Deleted));
 
     private static bool IsProjectSourceFile(string path, string projectDirectory) =>
         path.StartsWith(projectDirectory + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
@@ -148,9 +128,6 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         return !segments.Contains("bin", StringComparer.OrdinalIgnoreCase) &&
             !segments.Contains("obj", StringComparer.OrdinalIgnoreCase);
     }
-
-    [GeneratedRegex(@"\bnamespace\s+([A-Za-z_][A-Za-z0-9_.]*)\s*[;{]")]
-    private static partial Regex NamespaceDeclaration();
 
     [GeneratedRegex("Project\\([^)]*\\)\\s*=\\s*\"[^\"]+\",\\s*\"([^\"]+\\.csproj)\"")]
     private static partial Regex SolutionProjectPath();

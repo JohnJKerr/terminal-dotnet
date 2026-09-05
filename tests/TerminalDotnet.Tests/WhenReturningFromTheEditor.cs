@@ -11,7 +11,7 @@ public sealed class WhenReturningFromTheEditor
     public async Task It_refreshes_the_explorers_git_status()
     {
         // Arrange
-        var unchanged = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
+        var unchanged = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
         var modified = unchanged with { GitStatus = FileGitStatus.Modified };
         var backend = new ChangingFileBackend(unchanged);
         var explorer = new FileExplorerSession(backend);
@@ -31,7 +31,7 @@ public sealed class WhenReturningFromTheEditor
     {
         // Arrange
         var explorer = new FileExplorerSession(new ChangingFileBackend(
-            new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged)));
+            new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged)));
         var changesetBackend = new ChangingChangesetBackend();
         var changes = new ChangesetSession(changesetBackend);
         await changes.LoadAsync("App.csproj");

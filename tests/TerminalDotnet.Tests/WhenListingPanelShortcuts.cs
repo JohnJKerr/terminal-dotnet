@@ -13,7 +13,7 @@ public sealed class WhenListingPanelShortcuts
     public void It_only_offers_file_actions_for_a_selected_file()
     {
         // Arrange
-        var file = new FileEntry("App.csproj", "App", "Program.cs", FileGitStatus.Unchanged);
+        var file = new FileEntry("App.csproj", "Program.cs", FileGitStatus.Unchanged);
         var fileState = new FileExplorerState(
             [new VisibleFileNode(2, FileNodeKind.File, "Program.cs", [file])]);
 
@@ -30,7 +30,7 @@ public sealed class WhenListingPanelShortcuts
     public void It_offers_folding_for_a_selected_file_group()
     {
         // Arrange
-        var file = new FileEntry("App.csproj", "App", "Program.cs", FileGitStatus.Unchanged);
+        var file = new FileEntry("App.csproj", "Program.cs", FileGitStatus.Unchanged);
         var fileState = new FileExplorerState(
             [new VisibleFileNode(0, FileNodeKind.Project, "App", [file])]);
 

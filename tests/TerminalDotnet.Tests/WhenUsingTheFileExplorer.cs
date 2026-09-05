@@ -6,13 +6,13 @@ namespace TerminalDotnet.Tests.Explorer;
 public sealed class WhenUsingTheFileExplorer
 {
     [Fact]
-    public async Task It_shows_projects_namespaces_and_files()
+    public async Task It_nests_a_node_for_every_folder_between_the_project_and_the_file()
     {
         // Arrange
-        var session = new FileExplorerSession(new InMemoryFileExplorerBackend(
-        [
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged)
-        ]));
+        var session = SessionWithFiles(new FileEntry(
+            "src/App/App.csproj",
+            "src/App/Controllers/Api/OrdersController.cs",
+            FileGitStatus.Unchanged));
 
         // Act
         await session.LoadAsync("TerminalDotnet.slnx");
@@ -21,10 +21,82 @@ public sealed class WhenUsingTheFileExplorer
         Assert.Equal(
         [
             (0, FileNodeKind.Project, "App"),
-            (1, FileNodeKind.Namespace, "App.Domain"),
-            (2, FileNodeKind.File, "Order.cs")
+            (1, FileNodeKind.Folder, "Controllers"),
+            (2, FileNodeKind.Folder, "Api"),
+            (3, FileNodeKind.File, "OrdersController.cs")
         ],
         session.State.VisibleNodes.Select(node => (node.Depth, node.Kind, node.Name)));
+    }
+
+    [Fact]
+    public async Task It_hangs_files_in_the_project_root_directly_off_the_project()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "src/App/appsettings.json", FileGitStatus.Unchanged));
+
+        // Act
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Assert
+        Assert.Equal(
+            [(0, FileNodeKind.Project, "App"), (1, FileNodeKind.File, "appsettings.json")],
+            session.State.VisibleNodes.Select(node => (node.Depth, node.Kind, node.Name)));
+    }
+
+    [Fact]
+    public async Task It_lists_folders_before_the_files_beside_them()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "src/App/appsettings.json", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/Models/Order.cs", FileGitStatus.Unchanged));
+
+        // Act
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Assert
+        Assert.Equal(
+            ["App", "Models", "Order.cs", "appsettings.json"],
+            session.State.VisibleNodes.Select(node => node.Name));
+    }
+
+    [Fact]
+    public async Task It_hides_a_whole_subtree_when_its_folder_is_collapsed()
+    {
+        // Arrange
+        var session = SessionWithFiles(new FileEntry(
+            "src/App/App.csproj",
+            "src/App/Controllers/Api/OrdersController.cs",
+            FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ToggleExpanded());
+
+        // Assert
+        Assert.Equal(["App", "Controllers"], session.State.VisibleNodes.Select(node => node.Name));
+    }
+
+    [Fact]
+    public async Task It_folds_the_folder_it_was_told_to_and_not_its_namesake_elsewhere()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "src/App/Orders/Shared/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/Carts/Shared/Cart.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.MoveDown());
+        await session.DispatchAsync(new FileExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ToggleExpanded());
+
+        // Assert
+        Assert.Equal(
+            ["App", "Carts", "Shared", "Orders", "Shared", "Order.cs"],
+            session.State.VisibleNodes.Select(node => node.Name));
     }
 
     [Fact]
@@ -32,7 +104,7 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
 
         // Act
@@ -47,7 +119,7 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/Models/Order.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
         await session.DispatchAsync(new FileExplorerCommand.MoveDown());
 
@@ -55,7 +127,7 @@ public sealed class WhenUsingTheFileExplorer
         await session.DispatchAsync(new FileExplorerCommand.ToggleExpanded());
 
         // Assert
-        Assert.Equal("App.Domain", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+        Assert.Equal("Models", session.State.VisibleNodes[session.State.SelectedIndex].Name);
     }
 
     [Fact]
@@ -63,14 +135,14 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/Models/Order.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
 
         // Act
         await session.DispatchAsync(new FileExplorerCommand.MoveDown());
 
         // Assert
-        Assert.Equal("App.Domain", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+        Assert.Equal("Models", session.State.VisibleNodes[session.State.SelectedIndex].Name);
     }
 
     [Fact]
@@ -78,8 +150,8 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/OrderRepository.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Customer.cs", FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/OrderRepository.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/Customer.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
 
         // Act
@@ -87,7 +159,7 @@ public sealed class WhenUsingTheFileExplorer
 
         // Assert
         Assert.Equal(
-            ["App", "App.Domain", "OrderRepository.cs"],
+            ["App", "OrderRepository.cs"],
             session.State.VisibleNodes.Select(node => node.Name));
     }
 
@@ -96,11 +168,7 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry(
-                "src/App/App.csproj",
-                "App.Testing",
-                "src/App/Support/TestingExtensions.cs",
-                FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/Support/TestingExtensions.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
 
         // Act
@@ -115,8 +183,8 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Customer.cs", FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/Customer.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
         await session.DispatchAsync(new FileExplorerCommand.Search("order"));
 
@@ -132,7 +200,7 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
         await session.DispatchAsync(new FileExplorerCommand.Search("order"));
 
@@ -148,8 +216,8 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/OrderHandler.cs", FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/OrderHandler.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
         await session.DispatchAsync(new FileExplorerCommand.Search("order"));
 
@@ -167,8 +235,8 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/Order.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "App.Domain", "src/App/OrderHandler.cs", FileGitStatus.Unchanged));
+            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/OrderHandler.cs", FileGitStatus.Unchanged));
         await session.LoadAsync("TerminalDotnet.slnx");
         await session.DispatchAsync(new FileExplorerCommand.Search("order"));
 
@@ -184,10 +252,10 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App", "src/App/Order.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "App", "src/App/Added.cs", FileGitStatus.New),
-            new FileEntry("src/App/App.csproj", "App", "src/App/Changed.cs", FileGitStatus.Modified),
-            new FileEntry("src/App/App.csproj", "", "src/App/Gone.cs", FileGitStatus.Deleted));
+            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/Added.cs", FileGitStatus.New),
+            new FileEntry("src/App/App.csproj", "src/App/Changed.cs", FileGitStatus.Modified),
+            new FileEntry("src/App/App.csproj", "src/App/Gone.cs", FileGitStatus.Deleted));
 
         // Act
         await session.LoadAsync("TerminalDotnet.slnx");
@@ -201,8 +269,8 @@ public sealed class WhenUsingTheFileExplorer
     {
         // Arrange
         var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "App", "src/App/Order.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "", "src/App/Gone.cs", FileGitStatus.Deleted));
+            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/Gone.cs", FileGitStatus.Deleted));
 
         // Act
         await session.LoadAsync("TerminalDotnet.slnx");

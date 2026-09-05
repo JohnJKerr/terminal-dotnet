@@ -7,7 +7,7 @@ namespace TerminalDotnet.Tests.Explorer;
 public sealed class WhenDiscoveringProjectFiles
 {
     [Fact]
-    public async Task It_finds_project_files_and_their_declared_namespaces()
+    public async Task It_finds_the_files_belonging_to_each_project()
     {
         // Arrange
         var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
@@ -28,9 +28,8 @@ public sealed class WhenDiscoveringProjectFiles
 
             // Assert
             Assert.Equal(
-                [("App.csproj", "App.Domain", "Order.cs")],
-                files.Select(file =>
-                    (Path.GetFileName(file.ProjectPath), file.Namespace, Path.GetFileName(file.Path))));
+                [("App.csproj", "Order.cs")],
+                files.Select(file => (Path.GetFileName(file.ProjectPath), Path.GetFileName(file.Path))));
         }
         finally
         {

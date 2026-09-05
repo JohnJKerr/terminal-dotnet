@@ -10,12 +10,12 @@ public sealed class WhenCreatingAFilePanelSnapshot
     public void It_highlights_modified_files_blue_and_new_files_green()
     {
         // Arrange
-        var modified = new FileEntry("App.csproj", "App", "Changed.cs", FileGitStatus.Modified);
-        var added = new FileEntry("App.csproj", "App", "Added.cs", FileGitStatus.New);
+        var modified = new FileEntry("App.csproj", "Changed.cs", FileGitStatus.Modified);
+        var added = new FileEntry("App.csproj", "Added.cs", FileGitStatus.New);
         var state = new FileExplorerState(
         [
             new VisibleFileNode(0, FileNodeKind.Project, "App", [modified, added]),
-            new VisibleFileNode(1, FileNodeKind.Namespace, "App", [modified, added]),
+            new VisibleFileNode(1, FileNodeKind.Folder, "App", [modified, added]),
             new VisibleFileNode(2, FileNodeKind.File, "Changed.cs", [modified]),
             new VisibleFileNode(2, FileNodeKind.File, "Added.cs", [added])
         ]);

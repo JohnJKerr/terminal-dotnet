@@ -12,7 +12,7 @@ public sealed class WhenOpeningAFile
     public void Pressing_enter_opens_it()
     {
         // Arrange
-        var file = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
+        var file = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
         var selected = new VisibleFileNode(2, FileNodeKind.File, "Order.cs", [file]);
 
         // Act
@@ -26,7 +26,7 @@ public sealed class WhenOpeningAFile
     public void Pressing_e_opens_it()
     {
         // Arrange
-        var file = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
+        var file = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
         var selected = new VisibleFileNode(2, FileNodeKind.File, "Order.cs", [file]);
 
         // Act
@@ -40,7 +40,7 @@ public sealed class WhenOpeningAFile
     public void Pressing_p_previews_it()
     {
         // Arrange
-        var file = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
+        var file = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
         var selected = new VisibleFileNode(2, FileNodeKind.File, "Order.cs", [file]);
 
         // Act

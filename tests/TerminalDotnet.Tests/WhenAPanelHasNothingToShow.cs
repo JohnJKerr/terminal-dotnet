@@ -136,7 +136,7 @@ public sealed class WhenAPanelHasNothingToShow
     public void The_explorer_stays_silent_while_it_has_files()
     {
         // Arrange
-        var file = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
+        var file = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
         var state = new FileExplorerState([new VisibleFileNode(2, FileNodeKind.File, "Order.cs", [file])]);
 
         // Act

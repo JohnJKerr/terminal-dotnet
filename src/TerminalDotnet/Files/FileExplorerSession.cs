@@ -5,7 +5,7 @@ namespace TerminalDotnet.Files;
 
 public sealed class FileExplorerSession(IFileExplorerBackend backend)
 {
-    private IReadOnlyList<VisibleFileNode> allNodes = [];
+    private IReadOnlyList<TreeNode> tree = [];
     private IReadOnlyList<FileEntry> discoveredFiles = [];
     private readonly HashSet<string> collapsedNodes = [];
 
@@ -15,8 +15,8 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
     {
         var files = await backend.DiscoverAsync(target, cancellationToken);
         discoveredFiles = files;
-        allNodes = NodesFrom(files);
-        State = new FileExplorerState(allNodes) { Changes = SummaryFrom(files) };
+        tree = TreeFrom(files);
+        State = new FileExplorerState(VisibleNodes()) { Changes = SummaryFrom(files) };
     }
 
     public Task DispatchAsync(FileExplorerCommand command)
@@ -60,7 +60,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
 
     private void Show(string query, ExplorerFilter? filter)
     {
-        allNodes = NodesFrom(FilesMatching(query, filter));
+        tree = TreeFrom(FilesMatching(query, filter));
         State = State with
         {
             VisibleNodes = VisibleNodes(),
@@ -77,13 +77,12 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
             return;
         }
 
-        Collapse(State.VisibleNodes[State.SelectedIndex]);
+        Collapse(VisibleKeys()[State.SelectedIndex]);
         State = State with { VisibleNodes = VisibleNodes() };
     }
 
-    private void Collapse(VisibleFileNode node)
+    private void Collapse(string key)
     {
-        var key = NodeKey(node);
         if (!collapsedNodes.Add(key))
         {
             collapsedNodes.Remove(key);
@@ -114,31 +113,31 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         State = State with { SelectedIndex = index };
     }
 
-    private IReadOnlyList<VisibleFileNode> VisibleNodes()
+    private IReadOnlyList<VisibleFileNode> VisibleNodes() =>
+        Unfolded().Select(node => node.Node with { IsExpanded = IsExpanded(node.Key) }).ToArray();
+
+    private IReadOnlyList<string> VisibleKeys() =>
+        Unfolded().Select(node => node.Key).ToArray();
+
+    private IReadOnlyList<TreeNode> Unfolded()
     {
-        var visible = new List<VisibleFileNode>();
+        var visible = new List<TreeNode>();
         int? hiddenBelowDepth = null;
-        foreach (var node in allNodes)
+        foreach (var node in tree)
         {
-            if (hiddenBelowDepth is not null && node.Depth > hiddenBelowDepth)
+            if (hiddenBelowDepth is not null && node.Node.Depth > hiddenBelowDepth)
             {
                 continue;
             }
 
-            hiddenBelowDepth = null;
-            var isExpanded = !collapsedNodes.Contains(NodeKey(node));
-            visible.Add(node with { IsExpanded = isExpanded });
-            if (!isExpanded)
-            {
-                hiddenBelowDepth = node.Depth;
-            }
+            hiddenBelowDepth = IsExpanded(node.Key) ? null : node.Node.Depth;
+            visible.Add(node);
         }
 
         return visible;
     }
 
-    private static string NodeKey(VisibleFileNode node) =>
-        $"{node.Kind}:{node.Files[0].ProjectPath}:{node.Name}";
+    private bool IsExpanded(string key) => !collapsedNodes.Contains(key);
 
     private IReadOnlyList<FileEntry> FilesMatching(string query, ExplorerFilter? filter) =>
         discoveredFiles
@@ -161,36 +160,81 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         files.Count(file => file.GitStatus == FileGitStatus.Modified),
         files.Count(file => file.GitStatus == FileGitStatus.Deleted));
 
-    private static IReadOnlyList<VisibleFileNode> NodesFrom(IReadOnlyList<FileEntry> files) => files
+    private static IReadOnlyList<TreeNode> TreeFrom(IReadOnlyList<FileEntry> files) => files
         .Where(file => file.GitStatus != FileGitStatus.Deleted)
-        .GroupBy(file => file.ProjectPath)
-        .OrderBy(group => group.Key, StringComparer.Ordinal)
+        .GroupBy(file => file.ProjectPath, StringComparer.Ordinal)
+        .OrderBy(project => project.Key, StringComparer.Ordinal)
         .SelectMany(ProjectNodes)
         .ToArray();
 
-    private static IEnumerable<VisibleFileNode> ProjectNodes(IGrouping<string, FileEntry> project)
+    private static IEnumerable<TreeNode> ProjectNodes(IGrouping<string, FileEntry> project)
     {
-        var projectFiles = project.ToArray();
-        var projectNode = new VisibleFileNode(
-            0,
-            FileNodeKind.Project,
-            Path.GetFileNameWithoutExtension(project.Key),
-            projectFiles);
-        var namespaceNodes = project
-            .GroupBy(file => file.Namespace)
-            .OrderBy(group => group.Key, StringComparer.Ordinal)
-            .SelectMany(NamespaceNodes);
+        var placements = project.Select(file => PlacementFor(project.Key, file)).ToArray();
+        var projectNode = new TreeNode(
+            project.Key,
+            new VisibleFileNode(
+                0,
+                FileNodeKind.Project,
+                Path.GetFileNameWithoutExtension(project.Key),
+                placements.Select(placement => placement.File).ToArray()));
 
-        return [projectNode, .. namespaceNodes];
+        return [projectNode, .. ChildNodes(placements, project.Key, 1)];
     }
 
-    private static IEnumerable<VisibleFileNode> NamespaceNodes(IGrouping<string, FileEntry> namespaceFiles)
+    private static FilePlacement PlacementFor(string projectPath, FileEntry file)
     {
-        var files = namespaceFiles.OrderBy(file => file.Path, StringComparer.Ordinal).ToArray();
-        var namespaceNode = new VisibleFileNode(1, FileNodeKind.Namespace, namespaceFiles.Key, files);
-        var fileNodes = files
-            .Select(file => new VisibleFileNode(2, FileNodeKind.File, Path.GetFileName(file.Path), [file]));
+        var projectDirectory = Path.GetDirectoryName(projectPath);
+        var relativePath = Path.GetRelativePath(
+            string.IsNullOrEmpty(projectDirectory) ? "." : projectDirectory,
+            file.Path);
+        var segments = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return new FilePlacement(segments[..^1], file);
+    }
 
-        return [namespaceNode, .. fileNodes];
+    private static IEnumerable<TreeNode> ChildNodes(
+        IReadOnlyList<FilePlacement> placements,
+        string parentKey,
+        int depth)
+    {
+        var folders = placements
+            .Where(placement => placement.Folders.Count > 0)
+            .GroupBy(placement => placement.Folders[0], StringComparer.Ordinal)
+            .OrderBy(folder => folder.Key, StringComparer.Ordinal)
+            .SelectMany(folder => FolderNodes(folder, parentKey, depth));
+        var files = placements
+            .Where(placement => placement.Folders.Count == 0)
+            .OrderBy(placement => placement.File.Path, StringComparer.Ordinal)
+            .Select(placement => FileNode(placement.File, parentKey, depth));
+
+        return [.. folders, .. files];
+    }
+
+    private static IEnumerable<TreeNode> FolderNodes(
+        IGrouping<string, FilePlacement> folder,
+        string parentKey,
+        int depth)
+    {
+        var key = $"{parentKey}/{folder.Key}";
+        var contents = folder.Select(placement => placement.WithoutLeadingFolder()).ToArray();
+        var folderNode = new TreeNode(
+            key,
+            new VisibleFileNode(
+                depth,
+                FileNodeKind.Folder,
+                folder.Key,
+                contents.Select(placement => placement.File).ToArray()));
+
+        return [folderNode, .. ChildNodes(contents, key, depth + 1)];
+    }
+
+    private static TreeNode FileNode(FileEntry file, string parentKey, int depth) => new(
+        $"{parentKey}/{Path.GetFileName(file.Path)}",
+        new VisibleFileNode(depth, FileNodeKind.File, Path.GetFileName(file.Path), [file]));
+
+    private sealed record TreeNode(string Key, VisibleFileNode Node);
+
+    private sealed record FilePlacement(IReadOnlyList<string> Folders, FileEntry File)
+    {
+        public FilePlacement WithoutLeadingFolder() => this with { Folders = Folders.Skip(1).ToArray() };
     }
 }

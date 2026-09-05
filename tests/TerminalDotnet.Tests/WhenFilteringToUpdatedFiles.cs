@@ -110,10 +110,10 @@ public sealed class WhenFilteringToUpdatedFiles
     {
         var session = new FileExplorerSession(new InMemoryFileExplorerBackend(
         [
-            new FileEntry("src/App/App.csproj", "App", "src/App/Order.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "App", "src/App/Added.cs", FileGitStatus.New),
-            new FileEntry("src/App/App.csproj", "App", "src/App/Changed.cs", FileGitStatus.Modified),
-            new FileEntry("src/App/App.csproj", "", "src/App/Gone.cs", FileGitStatus.Deleted)
+            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/App/App.csproj", "src/App/Added.cs", FileGitStatus.New),
+            new FileEntry("src/App/App.csproj", "src/App/Changed.cs", FileGitStatus.Modified),
+            new FileEntry("src/App/App.csproj", "src/App/Gone.cs", FileGitStatus.Deleted)
         ]));
         await session.LoadAsync("TerminalDotnet.slnx");
         return session;

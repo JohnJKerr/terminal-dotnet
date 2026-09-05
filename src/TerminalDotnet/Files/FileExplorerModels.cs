@@ -13,13 +13,12 @@ public enum FileGitStatus
 public enum FileNodeKind
 {
     Project,
-    Namespace,
+    Folder,
     File
 }
 
 public sealed record FileEntry(
     string ProjectPath,
-    string Namespace,
     string Path,
     FileGitStatus GitStatus);
 

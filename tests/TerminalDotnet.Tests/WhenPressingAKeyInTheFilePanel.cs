@@ -13,7 +13,7 @@ public sealed class WhenPressingAKeyInTheFilePanel
     public void Pressing_1_toggles_the_updated_filter()
     {
         // Arrange
-        var file = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
+        var file = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
         var selected = new VisibleFileNode(2, FileNodeKind.File, "Order.cs", [file]);
 
         // Act
@@ -37,7 +37,7 @@ public sealed class WhenPressingAKeyInTheFilePanel
     public void Pressing_1_while_searching_leaves_the_filter_alone()
     {
         // Arrange
-        var file = new FileEntry("App.csproj", "App", "Order.cs", FileGitStatus.Unchanged);
+        var file = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
         var selected = new VisibleFileNode(2, FileNodeKind.File, "Order.cs", [file]);
 
         // Act
