@@ -19,8 +19,41 @@ terminal-dotnet
 
 The install is framework-dependent, so it uses the .NET SDK already on your PATH — the same
 one it shells out to for `dotnet test`. Pass `--self-contained` to bundle the runtime instead,
-`--prefix DIR` to install somewhere else, and `--uninstall` to remove it. Re-run `./install.sh`
-to upgrade an existing install.
+and `--prefix DIR` to install somewhere other than `~/.local`.
+
+### Upgrading
+
+Re-run the installer. It publishes to a staging directory and swaps it into place, so there is
+no need to uninstall first:
+
+```bash
+git pull
+./install.sh
+```
+
+### Uninstalling
+
+```bash
+./install.sh --uninstall
+```
+
+That removes the `terminal-dotnet` command and the published application directory, and prints
+both paths as it goes. It leaves `~/.local/bin` and `~/.local/libexec` in place, because other
+programs live there.
+
+Pass the same `--prefix DIR` you installed with, otherwise the uninstall looks in `~/.local`
+and finds nothing to remove:
+
+```bash
+./install.sh --prefix /opt/tools --uninstall
+```
+
+If you no longer have the repository, delete the two paths by hand:
+
+```bash
+rm -f ~/.local/bin/terminal-dotnet
+rm -rf ~/.local/libexec/terminal-dotnet
+```
 
 Without installing, run it straight from the source tree:
 
