@@ -142,7 +142,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
 
     private IReadOnlyList<FileEntry> FilesMatching(string query, ExplorerFilter? filter) =>
         discoveredFiles
-            .Where(file => FuzzyMatch.Matches(file.Path, query))
+            .Where(file => SearchMatch.Matches(file.Path, query))
             .Where(file => PassesFilter(file, filter))
             .ToArray();
 

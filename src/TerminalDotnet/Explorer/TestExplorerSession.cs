@@ -237,8 +237,8 @@ public sealed class TestExplorerSession(
         $"{node.Tests[0].ProjectPath}:{node.Kind}:{node.Name}";
 
     private static bool MatchesSearch(TestCase test, string query) =>
-        FuzzyMatch.Matches(test.FullyQualifiedName, query) ||
-        FuzzyMatch.Matches(test.DisplayName, query);
+        SearchMatch.Matches(test.FullyQualifiedName, query) ||
+        SearchMatch.Matches(test.DisplayName, query);
 
     private async Task RunTestsAsync(
         IReadOnlyList<TestCase> tests,

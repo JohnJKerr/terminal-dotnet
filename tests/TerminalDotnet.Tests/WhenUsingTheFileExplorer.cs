@@ -74,7 +74,7 @@ public sealed class WhenUsingTheFileExplorer
     }
 
     [Fact]
-    public async Task It_shows_fuzzy_file_matches_with_their_ancestors()
+    public async Task It_shows_matching_files_with_their_ancestors()
     {
         // Arrange
         var session = SessionWithFiles(
@@ -83,12 +83,31 @@ public sealed class WhenUsingTheFileExplorer
         await session.LoadAsync("TerminalDotnet.slnx");
 
         // Act
-        await session.DispatchAsync(new FileExplorerCommand.Search("odr"));
+        await session.DispatchAsync(new FileExplorerCommand.Search("orderrep"));
 
         // Assert
         Assert.Equal(
             ["App", "App.Domain", "OrderRepository.cs"],
             session.State.VisibleNodes.Select(node => node.Name));
+    }
+
+    [Fact]
+    public async Task It_ignores_files_that_only_scatter_the_query_across_their_path()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry(
+                "src/App/App.csproj",
+                "App.Testing",
+                "src/App/Support/TestingExtensions.cs",
+                FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.Search("appsettings"));
+
+        // Assert
+        Assert.Empty(session.State.VisibleNodes);
     }
 
     [Fact]

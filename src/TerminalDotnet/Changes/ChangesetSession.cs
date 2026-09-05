@@ -73,7 +73,7 @@ public sealed class ChangesetSession(IChangesetBackend backend)
 
     private IReadOnlyList<ChangedFile> Matching(string query) => query.Length == 0
         ? changedFiles
-        : changedFiles.Where(file => FuzzyMatch.Matches(file.DisplayPath, query)).ToArray();
+        : changedFiles.Where(file => SearchMatch.Matches(file.DisplayPath, query)).ToArray();
 
     private static ChangesetSummary SummaryFrom(IReadOnlyList<ChangedFile> files) => new(
         files.Count(file => file.Kind == ChangeKind.Modified),

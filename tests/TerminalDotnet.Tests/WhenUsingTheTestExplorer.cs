@@ -194,7 +194,27 @@ public sealed class WhenUsingTheTestExplorer
     }
 
     [Fact]
-    public async Task It_supports_ordered_fuzzy_search_matches()
+    public async Task It_matches_a_run_of_characters_anywhere_in_the_test_name()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase(
+                "Shop.Tests.RefundPolicyTests.Rejects_after_window",
+                "Rejects after window",
+                "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.Search("refundpolicy"));
+
+        // Assert
+        Assert.Equal("Rejects after window", session.State.VisibleNodes[2].Name);
+    }
+
+    [Fact]
+    public async Task It_ignores_tests_that_only_scatter_the_query_across_their_name()
     {
         // Arrange
         var session = new TestExplorerSession(new InMemoryTestBackend(
@@ -210,7 +230,7 @@ public sealed class WhenUsingTheTestExplorer
         await session.DispatchAsync(new ExplorerCommand.Search("rfpt"));
 
         // Assert
-        Assert.Equal("Rejects after window", session.State.VisibleNodes[2].Name);
+        Assert.Empty(session.State.VisibleNodes);
     }
 
     [Fact]

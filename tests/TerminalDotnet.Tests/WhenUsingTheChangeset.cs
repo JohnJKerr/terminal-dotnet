@@ -57,7 +57,7 @@ public sealed class WhenUsingTheChangeset
     }
 
     [Fact]
-    public async Task It_shows_only_fuzzy_matches_when_searching()
+    public async Task It_shows_only_matching_files_when_searching()
     {
         // Arrange
         var session = SessionWith(
@@ -66,12 +66,30 @@ public sealed class WhenUsingTheChangeset
         await session.LoadAsync("TerminalDotnet.slnx");
 
         // Act
-        await session.DispatchAsync(new ChangesetCommand.Search("odr"));
+        await session.DispatchAsync(new ChangesetCommand.Search("orderrep"));
 
         // Assert
         Assert.Equal(
             ["src/OrderRepository.cs"],
             session.State.Files.Select(file => file.DisplayPath));
+    }
+
+    [Fact]
+    public async Task It_ignores_files_that_only_scatter_the_query_across_their_path()
+    {
+        // Arrange
+        var session = SessionWith(
+            new ChangedFile(
+                "/repo/src/Support/TestingExtensions.cs",
+                "src/Support/TestingExtensions.cs",
+                ChangeKind.Modified));
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Act
+        await session.DispatchAsync(new ChangesetCommand.Search("appsettings"));
+
+        // Assert
+        Assert.Empty(session.State.Files);
     }
 
     [Fact]
