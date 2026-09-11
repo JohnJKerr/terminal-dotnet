@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using Terminal.Gui.App;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.Drivers;
@@ -29,8 +30,10 @@ public sealed class TestRunnerApplication(
     private const int MaxStatusSegments = 4;
     private const int MaxFilterChips = 4;
     private const string ConsoleDriver = "dotnet";
+    private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
 
     private CancellationTokenSource? runCancellation;
+    private readonly Stopwatch sincePanelsAppeared = new();
     private IReadOnlyList<VisibleTestNode> testNodes = [];
     private IReadOnlyList<FileRowTone> rowTones = [];
     private readonly PanelShell shell = new();
@@ -92,6 +95,7 @@ public sealed class TestRunnerApplication(
         application.Keyboard.KeyDown += (_, key) =>
             HandleKey(application, key, panels, search, tests);
         Render(search, tests);
+        sincePanelsAppeared.Restart();
         panels.SelectedItem = shell.State.ActiveIndex;
         tests.SetFocus();
 
@@ -238,6 +242,12 @@ public sealed class TestRunnerApplication(
         TextField search,
         ListView tests)
     {
+        if (!StartupInput.Accepts(sincePanelsAppeared.Elapsed, SettleDuration))
+        {
+            key.Handled = true;
+            return;
+        }
+
         if (previewVisible)
         {
             return;
