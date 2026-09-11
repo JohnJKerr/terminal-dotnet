@@ -34,9 +34,10 @@ public static class PanelShortcuts
         }
 
         var navigation = Navigation(state.SearchQuery);
-        return state.VisibleNodes[state.SelectedIndex].Kind == FileNodeKind.File
+        IReadOnlyList<string> selection = state.VisibleNodes[state.SelectedIndex].Kind == FileNodeKind.File
             ? [.. navigation, "Enter/e edit", "p preview"]
             : [.. navigation, "Space/Enter fold"];
+        return [.. selection, .. FoldAllShortcut(FileGroupExpansion(state.VisibleNodes))];
     }
 
     private static IReadOnlyList<string> ChangesetShortcuts(ChangesetState state)
@@ -68,6 +69,7 @@ public static class PanelShortcuts
             shortcuts.Add("Space fold");
         }
 
+        shortcuts.AddRange(FoldAllShortcut(TestGroupExpansion(state.VisibleNodes)));
         if (!IsRunning(state))
         {
             shortcuts.Add("Enter run");
@@ -93,6 +95,25 @@ public static class PanelShortcuts
         return state.LastRun.Results.Any(IsFailed)
             ? ["o output", "R rerun", "F failures"]
             : ["o output", "R rerun"];
+    }
+
+    private static IEnumerable<bool> FileGroupExpansion(IReadOnlyList<VisibleFileNode> nodes) => nodes
+        .Where(node => node.Kind != FileNodeKind.File)
+        .Select(node => node.IsExpanded);
+
+    private static IEnumerable<bool> TestGroupExpansion(IReadOnlyList<VisibleTestNode> nodes) => nodes
+        .Where(node => node.Kind != TestNodeKind.Test)
+        .Select(node => node.IsExpanded);
+
+    private static IReadOnlyList<string> FoldAllShortcut(IEnumerable<bool> groupExpansion)
+    {
+        var expansion = groupExpansion.ToArray();
+        if (expansion.Length == 0)
+        {
+            return [];
+        }
+
+        return expansion.Any(isExpanded => isExpanded) ? ["z fold all"] : ["z unfold all"];
     }
 
     private static IReadOnlyList<string> Navigation(string searchQuery) => searchQuery.Length == 0

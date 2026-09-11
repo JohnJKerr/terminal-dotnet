@@ -115,6 +115,72 @@ public sealed class WhenUsingTheFileExplorer
     }
 
     [Fact]
+    public async Task It_folds_every_project_and_folder_when_told_to_fold_everything()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "src/App/Models/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/Web/Web.csproj", "src/Web/Pages/Index.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ToggleAllExpanded());
+
+        // Assert
+        Assert.Equal(["App", "Web"], session.State.VisibleNodes.Select(node => node.Name));
+    }
+
+    [Fact]
+    public async Task It_unfolds_every_project_and_folder_when_everything_is_already_folded()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "src/App/Models/Order.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.ToggleAllExpanded());
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ToggleAllExpanded());
+
+        // Assert
+        Assert.Equal(["App", "Models", "Order.cs"], session.State.VisibleNodes.Select(node => node.Name));
+    }
+
+    [Fact]
+    public async Task It_folds_everything_while_part_of_the_tree_is_already_folded()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "src/App/Models/Order.cs", FileGitStatus.Unchanged),
+            new FileEntry("src/Web/Web.csproj", "src/Web/Pages/Index.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.ToggleExpanded());
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ToggleAllExpanded());
+
+        // Assert
+        Assert.Equal(["App", "Web"], session.State.VisibleNodes.Select(node => node.Name));
+    }
+
+    [Fact]
+    public async Task It_keeps_the_selection_on_a_visible_row_when_folding_everything()
+    {
+        // Arrange
+        var session = SessionWithFiles(
+            new FileEntry("src/App/App.csproj", "src/App/Models/Order.cs", FileGitStatus.Unchanged));
+        await session.LoadAsync("TerminalDotnet.slnx");
+        await session.DispatchAsync(new FileExplorerCommand.MoveDown());
+        await session.DispatchAsync(new FileExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new FileExplorerCommand.ToggleAllExpanded());
+
+        // Assert
+        Assert.Equal("App", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+    }
+
+    [Fact]
     public async Task It_keeps_the_selection_on_the_node_it_folded()
     {
         // Arrange

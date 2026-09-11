@@ -360,6 +360,93 @@ public sealed class WhenUsingTheTestExplorer
     }
 
     [Fact]
+    public async Task It_folds_every_project_and_class_when_told_to_fold_everything()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.ToggleAllExpanded());
+
+        // Assert
+        Assert.Equal(
+            ["Project:Shop.Tests"],
+            session.State.VisibleNodes.Select(node => $"{node.Kind}:{node.Name}"));
+    }
+
+    [Fact]
+    public async Task It_unfolds_every_project_and_class_when_everything_is_already_folded()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.ToggleAllExpanded());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.ToggleAllExpanded());
+
+        // Assert
+        Assert.Equal(
+        [
+            "Project:Shop.Tests",
+            "Class:CartTests",
+            "Test:Adds item",
+            "Class:OrderTests",
+            "Test:Submits order"
+        ], session.State.VisibleNodes.Select(node => $"{node.Kind}:{node.Name}"));
+    }
+
+    [Fact]
+    public async Task It_folds_everything_while_part_of_the_tree_is_already_folded()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
+            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.ToggleExpanded());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.ToggleAllExpanded());
+
+        // Assert
+        Assert.Equal(
+            ["Project:Shop.Tests"],
+            session.State.VisibleNodes.Select(node => $"{node.Kind}:{node.Name}"));
+    }
+
+    [Fact]
+    public async Task It_keeps_the_selection_on_a_visible_row_when_folding_everything()
+    {
+        // Arrange
+        var session = new TestExplorerSession(new InMemoryTestBackend(
+        [
+            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")
+        ]));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+        await session.DispatchAsync(new ExplorerCommand.MoveDown());
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.ToggleAllExpanded());
+
+        // Assert
+        Assert.Equal("Shop.Tests", session.State.VisibleNodes[session.State.SelectedIndex].Name);
+    }
+
+    [Fact]
     public async Task It_restores_test_outcomes_when_a_class_is_expanded_after_a_run()
     {
         // Arrange

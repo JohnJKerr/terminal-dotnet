@@ -47,6 +47,9 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
             case FileExplorerCommand.ToggleExpanded:
                 ToggleSelectedExpansion();
                 return;
+            case FileExplorerCommand.ToggleAllExpanded:
+                ToggleWholeTreeExpansion();
+                return;
             default:
                 MoveSelection(command);
                 return;
@@ -80,6 +83,29 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         Collapse(VisibleKeys()[State.SelectedIndex]);
         State = State with { VisibleNodes = VisibleNodes() };
     }
+
+    private void ToggleWholeTreeExpansion()
+    {
+        var groupKeys = GroupKeys();
+        var collapseAll = groupKeys.Any(key => !collapsedNodes.Contains(key));
+        collapsedNodes.Clear();
+        if (collapseAll)
+        {
+            collapsedNodes.UnionWith(groupKeys);
+        }
+
+        var nodes = VisibleNodes();
+        State = State with
+        {
+            VisibleNodes = nodes,
+            SelectedIndex = Math.Min(State.SelectedIndex, Math.Max(0, nodes.Count - 1))
+        };
+    }
+
+    private IReadOnlyList<string> GroupKeys() => tree
+        .Where(node => node.Node.Kind != FileNodeKind.File)
+        .Select(node => node.Key)
+        .ToArray();
 
     private void Collapse(string key)
     {

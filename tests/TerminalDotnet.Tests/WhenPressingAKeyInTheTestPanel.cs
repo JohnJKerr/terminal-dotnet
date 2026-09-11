@@ -40,6 +40,16 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
+    public void Pressing_z_folds_the_whole_tree()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Z));
+
+        // Assert
+        Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.ToggleAllExpanded()), action);
+    }
+
+    [Fact]
     public void Pressing_enter_runs_the_selection()
     {
         // Act

@@ -462,6 +462,11 @@ public sealed class TestRunnerApplication(
             return new FileExplorerCommand.MoveDown();
         }
 
+        if (Is(key, KeyCode.Z))
+        {
+            return new FileExplorerCommand.ToggleAllExpanded();
+        }
+
         return Is(key, KeyCode.Space) || Is(key, KeyCode.Enter)
             ? new FileExplorerCommand.ToggleExpanded()
             : null;

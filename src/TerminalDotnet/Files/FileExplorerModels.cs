@@ -49,6 +49,7 @@ public abstract record FileExplorerCommand
     public sealed record ClearSearch : FileExplorerCommand;
     public sealed record ToggleFilter(ExplorerFilter Filter) : FileExplorerCommand;
     public sealed record ToggleExpanded : FileExplorerCommand;
+    public sealed record ToggleAllExpanded : FileExplorerCommand;
     public sealed record MoveUp : FileExplorerCommand;
     public sealed record MoveDown : FileExplorerCommand;
     public sealed record NextSearchMatch : FileExplorerCommand;

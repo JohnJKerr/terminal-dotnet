@@ -39,6 +39,7 @@ public sealed class TestExplorerSession(
             ExplorerCommand.ClearSearch => Applied(() => ApplySearch("")),
             ExplorerCommand.ToggleFilter filter => Applied(() => ApplyFilter(filter.Filter)),
             ExplorerCommand.ToggleExpanded => Applied(ToggleSelectedExpansion),
+            ExplorerCommand.ToggleAllExpanded => Applied(ToggleWholeTreeExpansion),
             ExplorerCommand.RunSelected => RunSelectedAsync(cancellationToken),
             ExplorerCommand.RerunLast => RerunLastAsync(cancellationToken),
             ExplorerCommand.RerunFailed => RerunFailedAsync(cancellationToken),
@@ -128,6 +129,38 @@ public sealed class TestExplorerSession(
             VisibleNodes = VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter))
         };
     }
+
+    private void ToggleWholeTreeExpansion()
+    {
+        var groupIds = GroupNodeIds(TestsMatching(State.SearchQuery, State.ActiveFilter));
+        var collapseAll = groupIds.Any(id => !collapsedNodes.Contains(id));
+        collapsedNodes.Clear();
+        if (collapseAll)
+        {
+            collapsedNodes.UnionWith(groupIds);
+        }
+
+        var nodes = VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter));
+        State = State with
+        {
+            VisibleNodes = nodes,
+            SelectedIndex = Math.Min(State.SelectedIndex, Math.Max(0, nodes.Count - 1))
+        };
+    }
+
+    private static IReadOnlyList<string> GroupNodeIds(IReadOnlyList<TestCase> tests) => tests
+        .GroupBy(test => test.ProjectPath)
+        .SelectMany(ProjectGroupIds)
+        .ToArray();
+
+    private static IEnumerable<string> ProjectGroupIds(IGrouping<string, TestCase> project) =>
+    [
+        NodeId(project.Key, TestNodeKind.Project, Path.GetFileNameWithoutExtension(project.Key)),
+        .. project
+            .Select(test => test.ClassName)
+            .Distinct()
+            .Select(className => NodeId(project.Key, TestNodeKind.Class, className))
+    ];
 
     private void Collapse(VisibleTestNode node, bool isExpanded)
     {
@@ -234,7 +267,10 @@ public sealed class TestExplorerSession(
         filter != ExplorerFilter.Updated || updatedSuites.ContainsKey(test.ClassName);
 
     private static string NodeId(VisibleTestNode node) =>
-        $"{node.Tests[0].ProjectPath}:{node.Kind}:{node.Name}";
+        NodeId(node.Tests[0].ProjectPath, node.Kind, node.Name);
+
+    private static string NodeId(string projectPath, TestNodeKind kind, string name) =>
+        $"{projectPath}:{kind}:{name}";
 
     private static bool MatchesSearch(TestCase test, string query) =>
         SearchMatch.Matches(test.FullyQualifiedName, query) ||

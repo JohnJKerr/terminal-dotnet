@@ -59,6 +59,7 @@ public abstract record ExplorerCommand
     public sealed record ClearSearch : ExplorerCommand;
     public sealed record ToggleFilter(ExplorerFilter Filter) : ExplorerCommand;
     public sealed record ToggleExpanded : ExplorerCommand;
+    public sealed record ToggleAllExpanded : ExplorerCommand;
     public sealed record MoveUp : ExplorerCommand;
     public sealed record MoveDown : ExplorerCommand;
     public sealed record RunSelected : ExplorerCommand;

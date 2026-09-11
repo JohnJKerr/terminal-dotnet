@@ -39,8 +39,44 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Space/Enter fold  q quit",
+            "Tab pane  s search  ↑/k up  ↓/j down  Space/Enter fold  z fold all  q quit",
             shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_unfolding_everything_once_every_group_is_folded()
+    {
+        // Arrange
+        var file = new FileEntry("App.csproj", "Program.cs", FileGitStatus.Unchanged);
+        var fileState = new FileExplorerState(
+            [new VisibleFileNode(0, FileNodeKind.Project, "App", [file], IsExpanded: false)]);
+
+        // Act
+        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState());
+
+        // Assert
+        Assert.Contains("z unfold all", shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_folding_the_whole_test_tree()
+    {
+        // Arrange
+        var test = Test();
+        var state = TestState() with
+        {
+            VisibleNodes =
+            [
+                new VisibleTestNode(1, TestNodeKind.Class, "ExampleTests", [test]),
+                new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test])
+            ]
+        };
+
+        // Act
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
+
+        // Assert
+        Assert.Contains("z fold all", shortcuts);
     }
 
     [Fact]

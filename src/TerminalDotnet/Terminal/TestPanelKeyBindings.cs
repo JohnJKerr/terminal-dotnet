@@ -79,6 +79,11 @@ public static class TestPanelKeyBindings
             return Dispatched(new ExplorerCommand.ToggleExpanded());
         }
 
+        if (Is(key, KeyCode.Z))
+        {
+            return Dispatched(new ExplorerCommand.ToggleAllExpanded());
+        }
+
         if (Is(key, KeyCode.Enter) || Is(key, KeyCode.R) && !key.IsShift)
         {
             return Dispatched(new ExplorerCommand.RunSelected());
