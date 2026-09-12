@@ -373,7 +373,8 @@ public sealed class TestExplorerSession(
             {
                 Status = ExplorerStatus.Ready,
                 VisibleNodes = CurrentNodes(),
-                Message = "Run cancelled"
+                Message = "Run cancelled",
+                Diagnostic = "Run cancelled"
             };
             return;
         }
@@ -384,7 +385,8 @@ public sealed class TestExplorerSession(
             {
                 Status = ExplorerStatus.Failed,
                 VisibleNodes = CurrentNodes(),
-                Message = exception.Message
+                Message = exception.Message,
+                Diagnostic = exception.Message
             };
             return;
         }

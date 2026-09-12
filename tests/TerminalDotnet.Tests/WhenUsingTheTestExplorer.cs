@@ -667,6 +667,16 @@ public sealed class WhenUsingTheTestExplorer
     }
 
     [Fact]
+    public async Task It_reports_the_cancellation_apart_from_the_run_it_kept()
+    {
+        // Act
+        var session = await CancelledRunAsync();
+
+        // Assert
+        Assert.Equal("Run cancelled", session.State.Diagnostic);
+    }
+
+    [Fact]
     public async Task It_leaves_the_tests_unrun_when_an_active_run_is_cancelled()
     {
         // Act

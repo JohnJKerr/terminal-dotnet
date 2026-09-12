@@ -49,6 +49,20 @@ public sealed class WhenARunCannotComplete
     }
 
     [Fact]
+    public async Task It_reports_the_failure_apart_from_the_run_it_kept()
+    {
+        // Arrange
+        var session = await SessionRunningOneTestAsync(
+            new BrokenTestBackend(CartTest, "dotnet test could not start"));
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+
+        // Assert
+        Assert.Equal("dotnet test could not start", session.State.Diagnostic);
+    }
+
+    [Fact]
     public async Task It_accepts_another_run_afterwards()
     {
         // Arrange

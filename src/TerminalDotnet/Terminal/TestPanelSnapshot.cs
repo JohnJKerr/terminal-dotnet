@@ -49,8 +49,16 @@ public sealed record TestPanelSnapshot(
                 state.SearchQuery,
                 state.ActiveFilter);
 
+    // A run that failed, was cancelled, or came back without results leaves
+    // the run before it on the state. The diagnostic is shown ahead of that
+    // summary so the older run cannot stand in for what just happened.
     private static string StatusLineFrom(ExplorerState state)
     {
+        if (state.Diagnostic is { } diagnostic)
+        {
+            return diagnostic;
+        }
+
         if (state.LastRun is null || state.Status == ExplorerStatus.Running)
         {
             return state.Message;
@@ -120,6 +128,11 @@ public sealed record TestPanelSnapshot(
 
     private static string SelectedOutputFrom(ExplorerState state)
     {
+        if (state.Diagnostic is { } diagnostic)
+        {
+            return diagnostic;
+        }
+
         if (state.LastRun is null || state.VisibleNodes.Count == 0)
         {
             return "No test output available.";
