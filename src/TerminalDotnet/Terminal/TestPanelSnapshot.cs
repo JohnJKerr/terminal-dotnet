@@ -18,7 +18,10 @@ public sealed record TestPanelSnapshot(
     IReadOnlyList<FilterChip> Filters,
     string EmptyMessage)
 {
-    public static TestPanelSnapshot From(ExplorerState state, string target) => new(
+    public static TestPanelSnapshot From(
+        ExplorerState state,
+        string target,
+        TimeSpan runElapsed = default) => new(
         Path.GetFileName(target),
         BreadcrumbFrom(state, target),
         state.VisibleNodes,
@@ -26,7 +29,7 @@ public sealed record TestPanelSnapshot(
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
-        StatusLineFrom(state),
+        StatusLineFrom(state, runElapsed),
         SelectedOutputTitleFrom(state),
         SelectedOutputFrom(state),
         PanelFilters.Chips(state.ActiveFilter),
@@ -41,9 +44,14 @@ public sealed record TestPanelSnapshot(
                 state.SearchQuery,
                 state.ActiveFilter);
 
-    private static string StatusLineFrom(ExplorerState state)
+    private static string StatusLineFrom(ExplorerState state, TimeSpan runElapsed) =>
+        state.Status == ExplorerStatus.Running
+            ? RunActivity.Marking(state.Message, runElapsed)
+            : SettledStatusLineFrom(state);
+
+    private static string SettledStatusLineFrom(ExplorerState state)
     {
-        if (state.LastRun is null || state.Status == ExplorerStatus.Running)
+        if (state.LastRun is null)
         {
             return state.Message;
         }

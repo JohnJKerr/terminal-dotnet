@@ -34,6 +34,7 @@ public sealed class TestRunnerApplication(
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? loadCancellation;
+    private readonly Stopwatch sinceRunStarted = new();
     private bool panelsRequested;
     private readonly Stopwatch sincePanelsAppeared = new();
     private IReadOnlyList<VisibleTestNode> testNodes = [];
@@ -656,10 +657,40 @@ public sealed class TestRunnerApplication(
         runCancellation?.Dispose();
         runCancellation = new CancellationTokenSource();
         var run = session.DispatchAsync(command, runCancellation.Token);
+        sinceRunStarted.Restart();
         Render(search, tests);
+        var marker = TurnActivityMarker(application);
         await run;
-        application.Invoke(() => Render(search, tests));
+        application.Invoke(() =>
+        {
+            if (marker is not null)
+            {
+                application.RemoveTimeout(marker);
+            }
+
+            sinceRunStarted.Stop();
+            Render(search, tests);
+        });
     }
+
+    /// <summary>
+    /// Turns the status line's marker while a run is in flight, so a run that
+    /// spends seconds building reads as working rather than wedged. Only the
+    /// status line is repainted, and the draw is asked for explicitly because
+    /// nothing else wakes the loop while the run is out at `dotnet test`.
+    /// </summary>
+    private object? TurnActivityMarker(IApplication application) =>
+        application.AddTimeout(RunActivity.FrameDuration, () =>
+        {
+            if (session.State.Status != ExplorerStatus.Running)
+            {
+                return false;
+            }
+
+            testStatus!.Text = RunActivity.Marking(session.State.Message, sinceRunStarted.Elapsed);
+            application.LayoutAndDraw(true);
+            return true;
+        });
 
     private void RequestTestSource(IApplication application, bool preview)
     {
@@ -741,7 +772,7 @@ public sealed class TestRunnerApplication(
 
     private void ShowTestOutput(IApplication application)
     {
-        var snapshot = TestPanelSnapshot.From(session.State, target);
+        var snapshot = TestPanelSnapshot.From(session.State, target, sinceRunStarted.Elapsed);
         ShowCellDialog(
             application,
             $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close",
