@@ -14,11 +14,11 @@ public sealed class WhenReadingGitStatus
         // Assert
         Assert.Equal(
             [
-                new GitStatusEntry("src/Added.cs", GitChangeKind.Added),
-                new GitStatusEntry("src/Changed.cs", GitChangeKind.Modified),
-                new GitStatusEntry("src/Gone.cs", GitChangeKind.Deleted)
+                ("src/Added.cs", GitChangeKind.Added),
+                ("src/Changed.cs", GitChangeKind.Modified),
+                ("src/Gone.cs", GitChangeKind.Deleted)
             ],
-            entries);
+            entries.Select(entry => (entry.RelativePath, entry.Kind)));
     }
 
     [Fact]
@@ -29,6 +29,26 @@ public sealed class WhenReadingGitStatus
 
         // Assert
         Assert.Equal("src/New.cs", entries.Single().RelativePath);
+    }
+
+    [Fact]
+    public void It_reads_the_change_staged_in_the_index()
+    {
+        // Act
+        var entries = GitStatusOutput.EntriesFrom("MD src/Gone.cs\n");
+
+        // Assert
+        Assert.Equal(GitChangeKind.Modified, entries.Single().Staged);
+    }
+
+    [Fact]
+    public void It_reads_the_change_left_in_the_working_tree()
+    {
+        // Act
+        var entries = GitStatusOutput.EntriesFrom("MD src/Gone.cs\n");
+
+        // Assert
+        Assert.Equal(GitChangeKind.Deleted, entries.Single().Unstaged);
     }
 
     [Fact]

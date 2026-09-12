@@ -7,7 +7,14 @@ public enum GitChangeKind
     Deleted
 }
 
-public sealed record GitStatusEntry(string RelativePath, GitChangeKind Kind);
+public sealed record GitStatusEntry(string RelativePath, GitChangeKind Kind)
+{
+    /// <summary>The change git has staged in the index against HEAD, if any.</summary>
+    public GitChangeKind? Staged { get; init; }
+
+    /// <summary>The change left in the working tree against the index, if any.</summary>
+    public GitChangeKind? Unstaged { get; init; }
+}
 
 public static class GitStatusOutput
 {
@@ -23,7 +30,25 @@ public static class GitStatusOutput
 
     private static GitStatusEntry EntryFrom(string line) => new(
         RelativePathFrom(line[PathStart..]),
-        KindFrom(line[..2]));
+        KindFrom(line[..2]))
+    {
+        Staged = StagedKindFrom(line[0]),
+        Unstaged = UnstagedKindFrom(line[1])
+    };
+
+    private static GitChangeKind? StagedKindFrom(char code) =>
+        code == '?' ? null : TrackedKindFrom(code);
+
+    private static GitChangeKind? UnstagedKindFrom(char code) =>
+        code == '?' ? GitChangeKind.Added : TrackedKindFrom(code);
+
+    private static GitChangeKind? TrackedKindFrom(char code) => code switch
+    {
+        ' ' => null,
+        'A' => GitChangeKind.Added,
+        'D' => GitChangeKind.Deleted,
+        _ => GitChangeKind.Modified
+    };
 
     private static string RelativePathFrom(string path)
     {

@@ -108,10 +108,42 @@ public sealed class WhenDiscoveringChangedFiles
     }
 
     [Fact]
-    public async Task It_asks_git_to_restore_a_deleted_file()
+    public async Task It_asks_git_to_restore_a_deleted_file_from_the_index()
     {
         // Arrange
         var runner = new GitCommandRunner("/repo", " D src/Gone.cs\n");
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync("/repo/App.slnx");
+
+        // Act
+        await backend.RestoreAsync(files[0]);
+
+        // Assert
+        Assert.Equal(
+            ["restore", "--worktree", "--", "/repo/src/Gone.cs"],
+            runner.Requests.Last());
+    }
+
+    [Fact]
+    public async Task It_keeps_a_staged_edit_when_restoring_the_file_deleted_over_it()
+    {
+        // Arrange
+        var runner = new GitCommandRunner("/repo", "MD src/Gone.cs\n");
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync("/repo/App.slnx");
+
+        // Act
+        await backend.RestoreAsync(files[0]);
+
+        // Assert
+        Assert.DoesNotContain("--staged", runner.Requests.Last());
+    }
+
+    [Fact]
+    public async Task It_asks_git_to_restore_a_staged_deletion_from_the_last_commit()
+    {
+        // Arrange
+        var runner = new GitCommandRunner("/repo", "D  src/Gone.cs\n");
         var backend = new GitChangesetBackend(runner);
         var files = await backend.DiscoverAsync("/repo/App.slnx");
 

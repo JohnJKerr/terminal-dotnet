@@ -7,7 +7,14 @@ public enum ChangeKind
     Deleted
 }
 
-public sealed record ChangedFile(string Path, string DisplayPath, ChangeKind Kind);
+public sealed record ChangedFile(string Path, string DisplayPath, ChangeKind Kind)
+{
+    /// <summary>The change staged in the index against the last commit, if any.</summary>
+    public ChangeKind? Staged { get; init; }
+
+    /// <summary>The change left in the working tree against the index, if any.</summary>
+    public ChangeKind? Unstaged { get; init; }
+}
 
 public sealed record ChangesetSummary(int Changed, int Added, int Deleted)
 {

@@ -61,8 +61,15 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             return;
         }
 
-        await GitAsync(["restore", "--staged", "--worktree", "--", file.Path], cancellationToken);
+        await GitAsync(RestoreArgumentsFor(file), cancellationToken);
     }
+
+    /// <summary>A file deleted from the working tree comes back from the index, so a
+    /// staged edit survives. Only a deletion that is itself staged comes back from HEAD.</summary>
+    private static IReadOnlyList<string> RestoreArgumentsFor(ChangedFile file) =>
+        file.Unstaged == ChangeKind.Deleted
+            ? ["restore", "--worktree", "--", file.Path]
+            : ["restore", "--staged", "--worktree", "--", file.Path];
 
     private async Task<string?> RepositoryRootAsync(CancellationToken cancellationToken)
     {
@@ -88,7 +95,11 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         return new ChangedFile(
             path,
             Path.GetRelativePath(scopeDirectory, path),
-            KindFrom(entry.Kind));
+            KindFrom(entry.Kind))
+        {
+            Staged = entry.Staged is { } staged ? KindFrom(staged) : null,
+            Unstaged = entry.Unstaged is { } unstaged ? KindFrom(unstaged) : null
+        };
     }
 
     private static ChangeKind KindFrom(GitChangeKind kind) => kind switch
