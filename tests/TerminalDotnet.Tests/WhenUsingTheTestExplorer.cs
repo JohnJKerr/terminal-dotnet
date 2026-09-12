@@ -724,8 +724,14 @@ public sealed class WhenUsingTheTestExplorer
         {
             LastRun = tests;
             RunHistory.Add(tests);
-            return Task.FromResult(run ?? new TestRun(true, "Passed"));
+            return Task.FromResult(run ?? PassingRun(tests));
         }
+
+        private static TestRun PassingRun(IReadOnlyCollection<TestCase> tests) => new(
+            true,
+            "Passed",
+            [.. tests.Select(test =>
+                new TestResult(test, TestOutcome.Passed, TimeSpan.Zero, null, null, null, null))]);
     }
 
     private sealed class InMemoryTestSourceLocator(SourceLocation source) : ITestSourceLocator

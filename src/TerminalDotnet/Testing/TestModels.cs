@@ -46,6 +46,11 @@ public sealed record TestRun(bool Passed, string Output, IReadOnlyList<TestResul
     {
     }
 
+    /// <summary>Why the run's results could not be read. Set when the results
+    /// file was missing or unreadable, which says nothing about how the
+    /// individual tests went, whatever the exit code was.</summary>
+    public string? Diagnostic { get; init; }
+
     public TestRunSummary Summary => new(
         CountOf(TestOutcome.Passed),
         CountOf(TestOutcome.Failed),

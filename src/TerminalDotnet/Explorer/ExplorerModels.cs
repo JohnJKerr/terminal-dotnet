@@ -51,7 +51,13 @@ public sealed record ExplorerState(
     TestRun? LastRun = null,
     SourceLocation? SourceLocation = null,
     string SearchQuery = "",
-    ExplorerFilter? ActiveFilter = null);
+    ExplorerFilter? ActiveFilter = null)
+{
+    /// <summary>What went wrong with the most recent attempt to run, when
+    /// something did. It is kept apart from <see cref="LastRun"/> so a run
+    /// that never produced results cannot hide behind an older one.</summary>
+    public string? Diagnostic { get; init; }
+}
 
 public abstract record ExplorerCommand
 {

@@ -389,7 +389,7 @@ public sealed class TestExplorerSession(
             return;
         }
 
-        foreach (var (test, outcome) in CompletedOutcomes(tests, run))
+        foreach (var (test, outcome) in CompletedOutcomes(run))
         {
             completedOutcomes[test] = outcome;
         }
@@ -401,25 +401,21 @@ public sealed class TestExplorerSession(
             VisibleNodes = CurrentNodes(),
             Message = run.Output,
             LastRun = run with { Results = Snapshot.Of(run.Results) },
-            SourceLocation = FailureSourceFrom(run)
+            SourceLocation = FailureSourceFrom(run),
+            Diagnostic = run.Diagnostic
         };
     }
 
-    private static IReadOnlyDictionary<TestCase, TestNodeOutcome> CompletedOutcomes(
-        IReadOnlyList<TestCase> tests,
-        TestRun run)
-    {
-        if (run.Results.Count == 0)
-        {
-            return tests.ToDictionary(test => test, _ => OutcomeFor(run));
-        }
-
-        return run.Results
+    /// <summary>A test's outcome comes from its own result. An exit code
+    /// covers the whole command, so a run that reported nothing leaves the
+    /// tests it asked for unrun rather than passing or failing them all.
+    /// </summary>
+    private static IReadOnlyDictionary<TestCase, TestNodeOutcome> CompletedOutcomes(TestRun run) =>
+        run.Results
             .GroupBy(result => result.Test)
             .ToDictionary(
                 group => group.Key,
                 group => NodeOutcomeFrom(group.Select(result => NodeOutcomeFor(result.Outcome))));
-    }
 
     private static SourceLocation? FailureSourceFrom(TestRun run)
     {
@@ -429,9 +425,6 @@ public sealed class TestExplorerSession(
             result.SourceLine is not null);
         return failure is null ? null : new SourceLocation(failure.SourceFile!, failure.SourceLine!.Value);
     }
-
-    private static TestNodeOutcome OutcomeFor(TestRun run) =>
-        run.Passed ? TestNodeOutcome.Passed : TestNodeOutcome.Failed;
 
     private static TestNodeOutcome NodeOutcomeFor(TestOutcome outcome) => outcome switch
     {

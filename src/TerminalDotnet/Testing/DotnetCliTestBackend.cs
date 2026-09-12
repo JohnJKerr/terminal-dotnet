@@ -140,24 +140,31 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         var output = string.IsNullOrWhiteSpace(result.StandardError)
             ? result.StandardOutput
             : $"{result.StandardOutput}{Environment.NewLine}{result.StandardError}";
-        return new TestRun(
-            result.ExitCode == 0,
-            output.Trim(),
-            await RecordedResultsAsync(resultPath, tests, cancellationToken));
+        var recorded = await RecordedResultsAsync(resultPath, tests, cancellationToken);
+        return new TestRun(result.ExitCode == 0, output.Trim(), recorded.Results)
+        {
+            Diagnostic = recorded.Diagnostic
+        };
     }
 
-    private async Task<IReadOnlyList<TestResult>> RecordedResultsAsync(
+    private sealed record RecordedResults(IReadOnlyList<TestResult> Results, string? Diagnostic);
+
+    /// <summary>The run's outcomes come from the results file, so a file that
+    /// is missing or unreadable is reported as such rather than swallowed:
+    /// nothing else can tell an unrun test from a passing one.</summary>
+    private async Task<RecordedResults> RecordedResultsAsync(
         string resultPath,
         IReadOnlyCollection<TestCase> tests,
         CancellationToken cancellationToken)
     {
         try
         {
-            return ParseResults(await resultStore.ReadAsync(resultPath, cancellationToken), tests);
+            var trx = await resultStore.ReadAsync(resultPath, cancellationToken);
+            return new RecordedResults(ParseResults(trx, tests), null);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return [];
+            return new RecordedResults([], $"Could not read the test results: {exception.Message}");
         }
     }
 

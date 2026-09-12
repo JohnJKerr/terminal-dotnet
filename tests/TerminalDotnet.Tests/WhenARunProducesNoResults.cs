@@ -36,6 +36,21 @@ public sealed class WhenARunProducesNoResults
     }
 
     [Fact]
+    public async Task It_reports_why_the_results_could_not_be_read()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new InMemoryCommandRunner(new CommandResult(0, "", "")),
+            new MissingTestResultStore());
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.Contains("No results were written.", run.Diagnostic);
+    }
+
+    [Fact]
     public async Task It_keeps_the_output_when_the_results_cannot_be_read()
     {
         // Arrange
