@@ -99,8 +99,8 @@ public static class PanelShortcuts
         }
 
         return state.LastRun.Results.Any(IsFailed)
-            ? ["o output", "R rerun", "F failures"]
-            : ["o output", "R rerun"];
+            ? ["o output", "l rerun", "u failures", "f next failure"]
+            : ["o output", "l rerun"];
     }
 
     private static IEnumerable<bool> FileGroupExpansion(IReadOnlyList<VisibleFileNode> nodes) => nodes
@@ -124,7 +124,7 @@ public static class PanelShortcuts
 
     private static IReadOnlyList<string> Navigation(string searchQuery) => searchQuery.Length == 0
         ? ["↑/k up", "↓/j down"]
-        : ["↑/k up", "↓/j down", "n/N match"];
+        : ["↑/k up", "↓/j down", "n/b match"];
 
     private static bool IsRunning(ExplorerState state) => state.Status == ExplorerStatus.Running;
 

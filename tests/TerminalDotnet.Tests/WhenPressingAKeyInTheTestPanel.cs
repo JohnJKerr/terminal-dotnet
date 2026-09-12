@@ -60,20 +60,20 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_shift_r_reruns_the_last_run()
+    public void Pressing_l_reruns_the_last_run()
     {
         // Act
-        var action = ActionFor(Shifted(KeyCode.R));
+        var action = ActionFor(new Key(KeyCode.L));
 
         // Assert
         Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.RerunLast()), action);
     }
 
     [Fact]
-    public void Pressing_shift_f_reruns_the_failures()
+    public void Pressing_u_reruns_the_failures()
     {
         // Act
-        var action = ActionFor(Shifted(KeyCode.F));
+        var action = ActionFor(new Key(KeyCode.U));
 
         // Assert
         Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.RerunFailed()), action);
@@ -150,10 +150,10 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_shift_n_during_a_search_moves_to_the_previous_match()
+    public void Pressing_b_during_a_search_moves_to_the_previous_match()
     {
         // Act
-        var action = ActionFor(Shifted(KeyCode.N), searchQuery: "cart");
+        var action = ActionFor(new Key(KeyCode.B), searchQuery: "cart");
 
         // Assert
         Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.PreviousSearchMatch()), action);
@@ -170,10 +170,10 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_g_then_f_moves_to_the_next_failure()
+    public void Pressing_f_moves_to_the_next_failure()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.F), awaitingNavigation: true);
+        var action = ActionFor(new Key(KeyCode.F));
 
         // Assert
         Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.NextFailure()), action);
@@ -201,12 +201,41 @@ public sealed class WhenPressingAKeyInTheTestPanel
         Assert.Null(action);
     }
 
+    [Fact]
+    public void Pressing_capital_E_does_not_open_the_source()
+    {
+        // Act
+        var action = ActionFor(Shifted(KeyCode.E));
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_capital_C_does_not_cancel_the_run()
+    {
+        // Act
+        var action = ActionFor(Shifted(KeyCode.C));
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_capital_R_does_not_run_the_selection()
+    {
+        // Act
+        var action = ActionFor(Shifted(KeyCode.R));
+
+        // Assert
+        Assert.Null(action);
+    }
+
     private static Key Shifted(KeyCode keyCode) => new(keyCode | KeyCode.ShiftMask);
 
     private static TestPanelAction? ActionFor(
         Key key,
         string searchQuery = "",
-        bool hasFocus = true,
-        bool awaitingNavigation = false) =>
-        TestPanelKeyBindings.ActionFor(key, searchQuery, hasFocus, awaitingNavigation);
+        bool hasFocus = true) =>
+        TestPanelKeyBindings.ActionFor(key, searchQuery, hasFocus);
 }

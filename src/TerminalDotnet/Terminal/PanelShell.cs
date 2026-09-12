@@ -7,14 +7,14 @@ public enum PanelKind
     Changes
 }
 
+public sealed record PanelLabel(string Key, string Name);
+
 public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind ActivePanel)
 {
     public int ActiveIndex => (int)ActivePanel;
 
-    /// <summary>The panel names as the reader sees them, each carrying the
-    /// number that targets it.</summary>
-    public IReadOnlyList<string> NumberedPanels =>
-        [.. Panels.Select((name, index) => $"{index + 1}. {name}")];
+    public IReadOnlyList<PanelLabel> KeyedPanels =>
+        [.. Panels.Select(name => new PanelLabel(char.ToUpperInvariant(name[0]).ToString(), name))];
 }
 
 public sealed class PanelShell
@@ -33,16 +33,6 @@ public sealed class PanelShell
     public void SelectPrevious() => Select(Wrapped(State.ActiveIndex - 1));
 
     public void SelectNext() => Select(Wrapped(State.ActiveIndex + 1));
-
-    public void SelectNumbered(int number)
-    {
-        if (number < 1 || number > State.Panels.Count)
-        {
-            return;
-        }
-
-        Select(number - 1);
-    }
 
     private int Wrapped(int index) => (index + State.Panels.Count) % State.Panels.Count;
 }

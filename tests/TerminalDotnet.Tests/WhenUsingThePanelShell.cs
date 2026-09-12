@@ -56,4 +56,30 @@ public sealed class WhenUsingThePanelShell
         // Assert
         Assert.Equal(PanelKind.Changes, shell.State.ActivePanel);
     }
+
+    [Fact]
+    public void It_labels_each_panel_with_the_key_that_reaches_it()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var panels = shell.State.KeyedPanels;
+
+        // Assert
+        Assert.Equal(["E", "T", "C"], panels.Select(panel => panel.Key));
+    }
+
+    [Fact]
+    public void It_names_each_panel_beside_its_key()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var panels = shell.State.KeyedPanels;
+
+        // Assert
+        Assert.Equal(["Explorer", "Tests", "Changes"], panels.Select(panel => panel.Name));
+    }
 }

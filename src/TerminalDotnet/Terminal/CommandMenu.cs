@@ -49,13 +49,14 @@ public static class CommandMenu
 
     private static readonly IReadOnlyList<CommandMenuEntry> Anywhere =
     [
+        new("E", "go to the Explorer"),
+        new("T", "go to the Tests"),
+        new("C", "go to the Changes"),
         new("Tab", "move between search, panels and rows"),
-        new("g ↑/↓", "move between panels"),
-        new("g 1…3", "go straight to a numbered panel"),
         new("←", "focus the panel list"),
         new("→", "focus the rows"),
         new("s", "search the active panel"),
-        new("Esc", "clear the search, or stop navigating"),
+        new("Esc", "clear the search"),
         new("Ctrl+K", "show this list"),
         new("q", "quit")
     ];
@@ -76,9 +77,9 @@ public static class CommandMenu
         new("Space", "fold or unfold a suite"),
         new("z", "fold or unfold every suite"),
         new("Enter/r", "run the selection"),
-        new("R", "rerun the last run"),
-        new("F", "rerun the failures"),
-        new("g f", "jump to the next failure"),
+        new("l", "rerun the last run"),
+        new("u", "rerun the failures"),
+        new("f", "jump to the next failure"),
         new("c", "cancel the run"),
         new("o", "show the captured output"),
         new("e", "edit the test"),
@@ -99,6 +100,6 @@ public static class CommandMenu
     [
         new("↑/k", "move up"),
         new("↓/j", "move down"),
-        new("n/N", "next or previous search match")
+        new("n/b", "next or previous search match")
     ];
 }

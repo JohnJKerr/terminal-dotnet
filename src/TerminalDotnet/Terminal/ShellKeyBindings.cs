@@ -11,13 +11,9 @@ public abstract record ShellAction
     public sealed record FocusSearch : ShellAction;
     public sealed record FocusPanels : ShellAction;
     public sealed record FocusRows : ShellAction;
-    public sealed record SelectPanel : ShellAction;
+    public sealed record SelectPanel(PanelKind Panel) : ShellAction;
+    public sealed record SelectFocusedPanel : ShellAction;
     public sealed record ShowCommands : ShellAction;
-    public sealed record PreviousPanel : ShellAction;
-    public sealed record NextPanel : ShellAction;
-    public sealed record AwaitPanelTarget : ShellAction;
-    public sealed record StopNavigating : ShellAction;
-    public sealed record SelectNumberedPanel(int Number) : ShellAction;
     public sealed record Quit : ShellAction;
 }
 
@@ -26,8 +22,7 @@ public static class ShellKeyBindings
     public static ShellAction? ActionFor(
         Key key,
         bool searchFocused,
-        bool panelsFocused,
-        bool awaitingNavigation = false)
+        bool panelsFocused)
     {
         if (IsCtrl(key, KeyCode.K))
         {
@@ -39,22 +34,9 @@ public static class ShellKeyBindings
             return SearchActionFor(key);
         }
 
-        if (awaitingNavigation)
+        if (PanelFor(key) is { } panel)
         {
-            if (Is(key, KeyCode.Esc))
-            {
-                return new ShellAction.StopNavigating();
-            }
-
-            if (PanelActionFor(key) is { } panelAction)
-            {
-                return panelAction;
-            }
-        }
-
-        if (Is(key, KeyCode.G))
-        {
-            return new ShellAction.AwaitPanelTarget();
+            return new ShellAction.SelectPanel(panel);
         }
 
         if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))
@@ -82,8 +64,18 @@ public static class ShellKeyBindings
             return new ShellAction.FocusRows();
         }
 
-        return Is(key, KeyCode.Enter) ? new ShellAction.SelectPanel() : null;
+        return Is(key, KeyCode.Enter) ? new ShellAction.SelectFocusedPanel() : null;
     }
+
+    private static PanelKind? PanelFor(Key key) => key.IsShift
+        ? key.NoShift.KeyCode switch
+        {
+            KeyCode.E => PanelKind.Explorer,
+            KeyCode.T => PanelKind.Tests,
+            KeyCode.C => PanelKind.Changes,
+            _ => null
+        }
+        : null;
 
     private static ShellAction SearchActionFor(Key key)
     {
@@ -97,33 +89,10 @@ public static class ShellKeyBindings
             : new ShellAction.TypeIntoSearch();
     }
 
-    private static bool Is(Key key, KeyCode keyCode) => key.NoShift.KeyCode == keyCode;
+    private static bool Is(Key key, KeyCode keyCode) =>
+        !key.IsShift && key.NoShift.KeyCode == keyCode;
 
     private static bool IsCtrl(Key key, KeyCode keyCode) =>
         key.IsCtrl && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
 
-    private static ShellAction? PanelActionFor(Key key)
-    {
-        if (Is(key, KeyCode.CursorUp))
-        {
-            return new ShellAction.PreviousPanel();
-        }
-
-        if (Is(key, KeyCode.CursorDown))
-        {
-            return new ShellAction.NextPanel();
-        }
-
-        return PanelNumber(key) is { } number
-            ? new ShellAction.SelectNumberedPanel(number)
-            : null;
-    }
-
-    private static int? PanelNumber(Key key)
-    {
-        var code = (int)key.NoShift.KeyCode;
-        return code >= (int)KeyCode.D1 && code <= (int)KeyCode.D9
-            ? code - (int)KeyCode.D1 + 1
-            : null;
-    }
 }

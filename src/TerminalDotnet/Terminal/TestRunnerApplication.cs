@@ -43,7 +43,6 @@ internal sealed class TestRunnerApplication(
     private bool openSourceRequested;
     private string? openPath;
     private int openLine = 1;
-    private readonly NavigationPrefix navigation = new();
     private bool previewVisible;
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
@@ -98,7 +97,6 @@ internal sealed class TestRunnerApplication(
         };
         application.Keyboard.KeyDown += (_, key) =>
             HandleKey(application, key, panels, search, tests);
-        application.Keyboard.KeyUp += (_, key) => HandleKeyUp(key);
         Render(search, tests);
         sincePanelsAppeared.Restart();
         panels.SelectedItem = shell.State.ActiveIndex;
@@ -176,7 +174,7 @@ internal sealed class TestRunnerApplication(
             ShowMarks = false,
             KeystrokeNavigator = null
         };
-        panels.SetSource(new ObservableCollection<string>(shell.State.NumberedPanels));
+        panels.Source = new PanelListSource(shell.State.KeyedPanels);
         panels.SelectedItem = shell.State.ActiveIndex;
         return panels;
     }
@@ -311,15 +309,9 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var awaitingNavigation = navigation.IsWaiting;
-        var shellAction = ShellKeyBindings.ActionFor(
-            key,
-            search.HasFocus,
-            panels.HasFocus,
-            awaitingNavigation);
+        var shellAction = ShellKeyBindings.ActionFor(key, search.HasFocus, panels.HasFocus);
         if (shellAction is not null)
         {
-            RecordNavigation(application, shellAction);
             HandleShellAction(application, shellAction, key, panels, search, tests);
             return;
         }
@@ -336,38 +328,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        HandleTestKey(application, key, search, tests, awaitingNavigation);
-    }
-
-    /// <summary>Whether this terminal tells us a key has been let go. Only the
-    /// kitty keyboard protocol does, and holding g is only on offer when it
-    /// does, so a wait always has something that can close it.</summary>
-    private static bool ReportsKeyReleases(IApplication application) =>
-        application.Driver?.KittyKeyboardCapabilities?.Flags
-            .HasFlag(KittyKeyboardFlags.ReportEventTypes) == true;
-
-    /// <summary>Letting go of the navigation key unlocks navigation. A repeat
-    /// reported while g is still down is not a release.</summary>
-    private void HandleKeyUp(Key key)
-    {
-        if (Is(key, KeyCode.G) && key.EventType != KeyEventType.Repeat)
-        {
-            navigation.Released();
-        }
-    }
-
-    private void RecordNavigation(IApplication application, ShellAction action)
-    {
-        if (action is ShellAction.AwaitPanelTarget)
-        {
-            navigation.Pressed(ReportsKeyReleases(application));
-            return;
-        }
-
-        if (action is ShellAction.StopNavigating)
-        {
-            navigation.Stop();
-        }
+        HandleTestKey(application, key, search, tests);
     }
 
     private void HandleShellAction(
@@ -401,24 +362,12 @@ internal sealed class TestRunnerApplication(
             case ShellAction.FocusPanels:
                 panels.SetFocus();
                 return;
-            case ShellAction.SelectPanel:
+            case ShellAction.SelectFocusedPanel:
                 shell.Select(panels.SelectedItem ?? 0);
                 ShowActivePanel(panels, search, tests);
                 return;
-            case ShellAction.PreviousPanel:
-                shell.SelectPrevious();
-                ShowActivePanel(panels, search, tests);
-                return;
-            case ShellAction.NextPanel:
-                shell.SelectNext();
-                ShowActivePanel(panels, search, tests);
-                return;
-            case ShellAction.AwaitPanelTarget:
-            case ShellAction.StopNavigating:
-                return;
-
-            case ShellAction.SelectNumberedPanel numbered:
-                shell.SelectNumbered(numbered.Number);
+            case ShellAction.SelectPanel selected:
+                shell.Select((int)selected.Panel);
                 ShowActivePanel(panels, search, tests);
                 return;
             case ShellAction.ShowCommands:
@@ -441,14 +390,12 @@ internal sealed class TestRunnerApplication(
         IApplication application,
         Key key,
         TextField search,
-        ListView tests,
-        bool awaitingNavigation)
+        ListView tests)
     {
         var action = TestPanelKeyBindings.ActionFor(
             key,
             session.State.SearchQuery,
-            tests.HasFocus,
-            awaitingNavigation);
+            tests.HasFocus);
         if (action is null)
         {
             return;
@@ -559,9 +506,12 @@ internal sealed class TestRunnerApplication(
     {
         if (searchQuery.Length > 0 && Is(key, KeyCode.N))
         {
-            return key.IsShift
-                ? new FileExplorerCommand.PreviousSearchMatch()
-                : new FileExplorerCommand.NextSearchMatch();
+            return new FileExplorerCommand.NextSearchMatch();
+        }
+
+        if (searchQuery.Length > 0 && Is(key, KeyCode.B))
+        {
+            return new FileExplorerCommand.PreviousSearchMatch();
         }
 
         if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
@@ -648,7 +598,12 @@ internal sealed class TestRunnerApplication(
     {
         if (searchQuery.Length > 0 && Is(key, KeyCode.N))
         {
-            return key.IsShift ? new ChangesetCommand.MoveUp() : new ChangesetCommand.MoveDown();
+            return new ChangesetCommand.MoveDown();
+        }
+
+        if (searchQuery.Length > 0 && Is(key, KeyCode.B))
+        {
+            return new ChangesetCommand.MoveUp();
         }
 
         if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
@@ -1182,5 +1137,6 @@ internal sealed class TestRunnerApplication(
         ExplorerCommand.RerunLast or
         ExplorerCommand.RerunFailed;
 
-    private static bool Is(Key key, KeyCode keyCode) => key.NoShift.KeyCode == keyCode;
+    private static bool Is(Key key, KeyCode keyCode) =>
+        !key.IsShift && key.NoShift.KeyCode == keyCode;
 }

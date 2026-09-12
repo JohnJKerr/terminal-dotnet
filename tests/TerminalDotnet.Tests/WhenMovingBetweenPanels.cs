@@ -62,77 +62,77 @@ public sealed class WhenMovingBetweenPanels
     }
 
     [Fact]
-    public void Pressing_g_waits_for_a_panel_to_be_named()
+    public void Pressing_capital_E_goes_to_the_explorer()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.G));
+        var action = ActionFor(new Key(KeyCode.E | KeyCode.ShiftMask));
 
         // Assert
-        Assert.Equal(new ShellAction.AwaitPanelTarget(), action);
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Explorer), action);
     }
 
     [Fact]
-    public void Pressing_g_then_1_targets_the_first_panel()
+    public void Pressing_capital_T_goes_to_the_tests()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.D1), awaitingPanelTarget: true);
+        var action = ActionFor(new Key(KeyCode.T | KeyCode.ShiftMask));
 
         // Assert
-        Assert.Equal(new ShellAction.SelectNumberedPanel(1), action);
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Tests), action);
     }
 
     [Fact]
-    public void Pressing_g_then_3_targets_the_third_panel()
+    public void Pressing_capital_C_goes_to_the_changes()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.D3), awaitingPanelTarget: true);
+        var action = ActionFor(new Key(KeyCode.C | KeyCode.ShiftMask));
 
         // Assert
-        Assert.Equal(new ShellAction.SelectNumberedPanel(3), action);
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Changes), action);
     }
 
     [Fact]
-    public void Pressing_g_then_the_down_arrow_moves_to_the_panel_below()
+    public void Pressing_lowercase_e_leaves_the_panel_alone()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.CursorDown), awaitingPanelTarget: true);
+        var action = ActionFor(new Key(KeyCode.E));
 
         // Assert
-        Assert.Equal(new ShellAction.NextPanel(), action);
+        Assert.Null(action);
     }
 
     [Fact]
-    public void Pressing_g_then_the_up_arrow_moves_to_the_panel_above()
+    public void Pressing_lowercase_c_leaves_the_panel_alone()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.CursorUp), awaitingPanelTarget: true);
+        var action = ActionFor(new Key(KeyCode.C));
 
         // Assert
-        Assert.Equal(new ShellAction.PreviousPanel(), action);
+        Assert.Null(action);
     }
 
     [Fact]
-    public void Pressing_g_then_an_unrelated_key_gives_up_the_wait()
+    public void Pressing_capital_T_in_the_search_types_it()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.Q), awaitingPanelTarget: true);
-
-        // Assert
-        Assert.Equal(new ShellAction.Quit(), action);
-    }
-
-    [Fact]
-    public void Pressing_g_in_the_search_types_it()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.G), searchFocused: true);
+        var action = ActionFor(new Key(KeyCode.T | KeyCode.ShiftMask), searchFocused: true);
 
         // Assert
         Assert.Equal(new ShellAction.TypeIntoSearch(), action);
     }
 
     [Fact]
-    public void Pressing_a_number_on_its_own_still_reaches_the_panel_filters()
+    public void Pressing_capital_Q_does_not_quit()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Q | KeyCode.ShiftMask));
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_a_number_still_reaches_the_panel_filters()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.D1));
@@ -142,7 +142,7 @@ public sealed class WhenMovingBetweenPanels
     }
 
     [Fact]
-    public void Pressing_the_down_arrow_on_its_own_still_moves_the_selection()
+    public void Pressing_the_down_arrow_still_moves_the_selection()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.CursorDown));
@@ -151,20 +151,9 @@ public sealed class WhenMovingBetweenPanels
         Assert.Null(action);
     }
 
-    [Fact]
-    public void Pressing_escape_while_waiting_stops_navigating_rather_than_quitting()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.Esc), awaitingPanelTarget: true);
-
-        // Assert
-        Assert.Equal(new ShellAction.StopNavigating(), action);
-    }
-
     private static ShellAction? ActionFor(
         Key key,
         bool searchFocused = false,
-        bool panelsFocused = false,
-        bool awaitingPanelTarget = false) =>
-        ShellKeyBindings.ActionFor(key, searchFocused, panelsFocused, awaitingPanelTarget);
+        bool panelsFocused = false) =>
+        ShellKeyBindings.ActionFor(key, searchFocused, panelsFocused);
 }

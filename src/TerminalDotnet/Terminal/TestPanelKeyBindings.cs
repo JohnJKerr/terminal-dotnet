@@ -18,14 +18,16 @@ public static class TestPanelKeyBindings
     public static TestPanelAction? ActionFor(
         Key key,
         string searchQuery,
-        bool hasFocus,
-        bool awaitingNavigation)
+        bool hasFocus)
     {
         if (hasFocus && searchQuery.Length > 0 && Is(key, KeyCode.N))
         {
-            return Dispatched(key.IsShift
-                ? new ExplorerCommand.PreviousSearchMatch()
-                : new ExplorerCommand.NextSearchMatch());
+            return Dispatched(new ExplorerCommand.NextSearchMatch());
+        }
+
+        if (hasFocus && searchQuery.Length > 0 && Is(key, KeyCode.B))
+        {
+            return Dispatched(new ExplorerCommand.PreviousSearchMatch());
         }
 
         if (hasFocus && FilterKeyBindings.FilterFor(key) is { } filter)
@@ -33,7 +35,7 @@ public static class TestPanelKeyBindings
             return Dispatched(new ExplorerCommand.ToggleFilter(filter));
         }
 
-        if (hasFocus && awaitingNavigation && Is(key, KeyCode.F))
+        if (hasFocus && Is(key, KeyCode.F))
         {
             return Dispatched(new ExplorerCommand.NextFailure());
         }
@@ -78,17 +80,17 @@ public static class TestPanelKeyBindings
             return Dispatched(new ExplorerCommand.ToggleAllExpanded());
         }
 
-        if (Is(key, KeyCode.Enter) || Is(key, KeyCode.R) && !key.IsShift)
+        if (Is(key, KeyCode.Enter) || Is(key, KeyCode.R))
         {
             return Dispatched(new ExplorerCommand.RunSelected());
         }
 
-        if (Is(key, KeyCode.R) && key.IsShift)
+        if (Is(key, KeyCode.L))
         {
             return Dispatched(new ExplorerCommand.RerunLast());
         }
 
-        if (Is(key, KeyCode.F) && key.IsShift)
+        if (Is(key, KeyCode.U))
         {
             return Dispatched(new ExplorerCommand.RerunFailed());
         }
@@ -99,5 +101,6 @@ public static class TestPanelKeyBindings
     private static TestPanelAction Dispatched(ExplorerCommand command) =>
         new TestPanelAction.Dispatch(command);
 
-    private static bool Is(Key key, KeyCode keyCode) => key.NoShift.KeyCode == keyCode;
+    private static bool Is(Key key, KeyCode keyCode) =>
+        !key.IsShift && key.NoShift.KeyCode == keyCode;
 }

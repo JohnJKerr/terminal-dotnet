@@ -64,7 +64,7 @@ public sealed class WhenPressingAKeyInTheShell
         var action = ActionFor(new Key(KeyCode.Enter), panelsFocused: true);
 
         // Assert
-        Assert.Equal(new ShellAction.SelectPanel(), action);
+        Assert.Equal(new ShellAction.SelectFocusedPanel(), action);
     }
 
     [Fact]

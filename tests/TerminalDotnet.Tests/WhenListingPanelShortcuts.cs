@@ -130,7 +130,7 @@ public sealed class WhenListingPanelShortcuts
         var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
 
         // Assert
-        Assert.Contains("F failures", shortcuts);
+        Assert.Contains("u failures", shortcuts);
     }
 
     [Fact]
