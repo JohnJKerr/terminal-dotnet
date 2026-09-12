@@ -173,10 +173,14 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
                 element => (string)element.Attribute("id")!,
                 element => element.Descendants().Single(child => child.Name.LocalName == "TestMethod"));
 
+        var requestedByName = requestedTests
+            .GroupBy(test => test.FullyQualifiedName, StringComparer.Ordinal)
+            .ToDictionary(name => name.Key, name => name.ToArray(), StringComparer.Ordinal);
+
         return document
             .Descendants()
             .Where(element => element.Name.LocalName == "UnitTestResult")
-            .Select(result => ToTestResult(result, definitions, requestedTests))
+            .Select(result => ToTestResult(result, definitions, requestedByName))
             .OfType<TestResult>()
             .ToArray();
     }
@@ -184,7 +188,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     private static TestResult? ToTestResult(
         XElement result,
         IReadOnlyDictionary<string, XElement> definitions,
-        IReadOnlyCollection<TestCase> requestedTests)
+        IReadOnlyDictionary<string, TestCase[]> requestedByName)
     {
         var testId = (string?)result.Attribute("testId");
         if (testId is null || !definitions.TryGetValue(testId, out var definition))
@@ -193,15 +197,15 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         }
 
         var fullyQualifiedName = $"{definition.Attribute("className")?.Value}.{definition.Attribute("name")?.Value}";
-        var resultDisplayName = result.Attribute("testName")?.Value.Replace('_', ' ');
-        var test = requestedTests.FirstOrDefault(candidate =>
-                candidate.FullyQualifiedName == fullyQualifiedName &&
-                resultDisplayName?.EndsWith(candidate.DisplayName, StringComparison.Ordinal) == true)
-            ?? requestedTests.FirstOrDefault(candidate => candidate.FullyQualifiedName == fullyQualifiedName);
-        if (test is null)
+        if (!requestedByName.TryGetValue(fullyQualifiedName, out var candidates))
         {
             return null;
         }
+
+        var resultDisplayName = result.Attribute("testName")?.Value.Replace('_', ' ');
+        var test = candidates.FirstOrDefault(candidate =>
+                resultDisplayName?.EndsWith(candidate.DisplayName, StringComparison.Ordinal) == true)
+            ?? candidates[0];
 
         var stackTrace = result.Descendants().SingleOrDefault(element => element.Name.LocalName == "StackTrace")?.Value;
         var source = stackTrace is null ? null : SourceLocation().Match(stackTrace);
