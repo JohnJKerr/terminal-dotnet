@@ -5,23 +5,27 @@ namespace TerminalDotnet.Terminal;
 public sealed record ChangesetPanelRow(string Text, FileRowTone Tone);
 
 public sealed record ChangesetPanelSnapshot(
-    IReadOnlyList<ChangesetPanelRow> Rows,
+    IReadOnlyList<ChangedFile> Files,
     int SelectedIndex,
     string SearchQuery,
     int SearchHitCount,
     IReadOnlyList<FileStatusSegment> StatusSegments,
-    string DiffTitle,
-    IReadOnlyList<DiffLine> DiffLines,
+    DiffContext? Diff,
     string EmptyMessage)
 {
+    public IReadOnlyList<ChangesetPanelRow> Rows => Snapshot.Of(Files.Select(RowFrom));
+
+    public string DiffTitle => Diff?.DisplayPath ?? "";
+
+    public IReadOnlyList<DiffLine> DiffLines => DiffAppearance.LinesFrom(Diff?.Diff ?? "");
+
     public static ChangesetPanelSnapshot From(ChangesetState state) => new(
-        state.Files.Select(RowFrom).ToArray(),
+        state.Files,
         state.SelectedIndex,
         state.SearchQuery,
         state.Files.Count,
         StatusSegmentsFrom(state.Summary, state.Notice),
-        state.Diff?.DisplayPath ?? "",
-        DiffAppearance.LinesFrom(state.Diff?.Diff ?? ""),
+        state.Diff,
         EmptyMessageFrom(state));
 
     private static string EmptyMessageFrom(ChangesetState state) => state.Loading

@@ -72,7 +72,6 @@ public static class FileRowAppearance
 
 public sealed record FilePanelSnapshot(
     IReadOnlyList<VisibleFileNode> Nodes,
-    IReadOnlyList<FilePanelRow> Rows,
     int SelectedIndex,
     string SearchQuery,
     int SearchHitCount,
@@ -80,9 +79,10 @@ public sealed record FilePanelSnapshot(
     IReadOnlyList<FilterChip> Filters,
     string EmptyMessage)
 {
+    public IReadOnlyList<FilePanelRow> Rows => Snapshot.Of(Nodes.Select(RowFrom));
+
     public static FilePanelSnapshot From(FileExplorerState state) => new(
         state.VisibleNodes,
-        state.VisibleNodes.Select(RowFrom).ToArray(),
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == FileNodeKind.File),

@@ -39,6 +39,7 @@ internal sealed class TestRunnerApplication(
     private readonly Stopwatch sincePanelsAppeared = new();
     private IReadOnlyList<VisibleTestNode> testNodes = [];
     private IReadOnlyList<FileRowTone> rowTones = [];
+    private object? listedContent;
     private readonly PanelShell shell = new();
     private bool openSourceRequested;
     private string? openPath;
@@ -66,6 +67,7 @@ internal sealed class TestRunnerApplication(
         openSourceRequested = false;
         openPath = null;
         openLine = 1;
+        listedContent = null;
         using IApplication application = Application.Create();
         application.Init(TerminalDriver());
 
@@ -989,11 +991,38 @@ internal sealed class TestRunnerApplication(
             : $"Search — {snapshot.SearchHitCount} hits";
         search.Text = snapshot.SearchQuery;
         testNodes = snapshot.Tests;
-        tests.SetSource(new ObservableCollection<string>(snapshot.TestRows));
+        ListRows(tests, snapshot.Tests, () => snapshot.TestRows);
         if (snapshot.Tests.Count > 0)
         {
             tests.SelectedItem = snapshot.SelectedIndex;
         }
+    }
+
+    private void ListRows(ListView list, object content, Func<IReadOnlyList<string>> rows)
+    {
+        if (ReferenceEquals(listedContent, content))
+        {
+            return;
+        }
+
+        listedContent = content;
+        list.SetSource(new ObservableCollection<string>(rows()));
+    }
+
+    private void ListTonedRows(
+        ListView list,
+        object content,
+        Func<IReadOnlyList<(string Text, FileRowTone Tone)>> rows)
+    {
+        if (ReferenceEquals(listedContent, content))
+        {
+            return;
+        }
+
+        var listed = rows();
+        listedContent = content;
+        rowTones = listed.Select(row => row.Tone).ToArray();
+        list.SetSource(new ObservableCollection<string>(listed.Select(row => row.Text)));
     }
 
     private void RenderFiles(TextField search, ListView files)
@@ -1005,7 +1034,8 @@ internal sealed class TestRunnerApplication(
             files,
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
-            snapshot.Rows.Select(row => (row.Text, row.Tone)).ToArray(),
+            snapshot.Nodes,
+            () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
             snapshot.SelectedIndex,
             snapshot.StatusSegments,
             snapshot.Filters,
@@ -1021,7 +1051,8 @@ internal sealed class TestRunnerApplication(
             files,
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
-            snapshot.Rows.Select(row => (row.Text, row.Tone)).ToArray(),
+            snapshot.Files,
+            () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
             snapshot.SelectedIndex,
             snapshot.StatusSegments,
             [],
@@ -1033,7 +1064,8 @@ internal sealed class TestRunnerApplication(
         ListView files,
         string searchQuery,
         int searchHitCount,
-        IReadOnlyList<(string Text, FileRowTone Tone)> rows,
+        object content,
+        Func<IReadOnlyList<(string Text, FileRowTone Tone)>> rows,
         int selectedIndex,
         IReadOnlyList<FileStatusSegment> segments,
         IReadOnlyList<FilterChip> filters,
@@ -1041,14 +1073,13 @@ internal sealed class TestRunnerApplication(
     {
         search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
         search.Text = searchQuery;
-        rowTones = rows.Select(row => row.Tone).ToArray();
-        files.SetSource(new ObservableCollection<string>(rows.Select(row => row.Text)));
+        ListTonedRows(files, content, rows);
         files.Height = Dim.Fill(3);
         testStatus!.Visible = false;
         ShowSegments(segments);
         ShowFilters(filters);
         ShowEmptyState(emptyMessage);
-        if (rows.Count > 0)
+        if (rowTones.Count > 0)
         {
             files.SelectedItem = selectedIndex;
         }

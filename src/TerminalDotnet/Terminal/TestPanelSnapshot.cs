@@ -8,7 +8,7 @@ public sealed record TestPanelSnapshot(
     string Target,
     string Breadcrumb,
     IReadOnlyList<VisibleTestNode> Tests,
-    IReadOnlyList<string> TestRows,
+    TestRun? LastRun,
     int SelectedIndex,
     string SearchQuery,
     int SearchHitCount,
@@ -18,6 +18,8 @@ public sealed record TestPanelSnapshot(
     IReadOnlyList<FilterChip> Filters,
     string EmptyMessage)
 {
+    public IReadOnlyList<string> TestRows => RowsFrom(ResultsByTest());
+
     public static TestPanelSnapshot From(
         ExplorerState state,
         string target,
@@ -25,7 +27,7 @@ public sealed record TestPanelSnapshot(
         Path.GetFileName(target),
         BreadcrumbFrom(state, target),
         state.VisibleNodes,
-        TestRowsFrom(state),
+        state.LastRun,
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
@@ -75,15 +77,12 @@ public sealed record TestPanelSnapshot(
         };
     }
 
-    private static IReadOnlyList<string> TestRowsFrom(ExplorerState state)
-    {
-        var results = state.LastRun?.Results
-            .GroupBy(result => result.Test)
-            .ToDictionary(group => group.Key, group => group.First()) ?? [];
-        return state.VisibleNodes
-            .Select(node => TestRow(node, results))
-            .ToArray();
-    }
+    private IReadOnlyList<string> RowsFrom(IReadOnlyDictionary<TestCase, TestResult> results) =>
+        Snapshot.Of(Tests.Select(node => TestRow(node, results)));
+
+    private IReadOnlyDictionary<TestCase, TestResult> ResultsByTest() => LastRun?.Results
+        .GroupBy(result => result.Test)
+        .ToDictionary(group => group.Key, group => group.First()) ?? [];
 
     private static string TestRow(
         VisibleTestNode node,
