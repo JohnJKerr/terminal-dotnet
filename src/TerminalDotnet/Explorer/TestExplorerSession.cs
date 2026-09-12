@@ -7,7 +7,6 @@ namespace TerminalDotnet.Explorer;
 
 public sealed class TestExplorerSession(
     ITestBackend backend,
-    ISourceProvider? sourceProvider = null,
     ITestSourceLocator? testSourceLocator = null,
     IUpdatedSourceProvider? updatedSourceProvider = null)
 {
@@ -87,7 +86,7 @@ public sealed class TestExplorerSession(
 
         var selected = State.VisibleNodes[State.SelectedIndex];
         var source = await testSourceLocator.LocateAsync(selected.Tests[0], cancellationToken);
-        State = State with { SourceContext = source };
+        State = State with { SourceLocation = source };
     }
 
     private async Task<IReadOnlyDictionary<string, TestNodeUpdate>> UpdatedSuitesAsync(
@@ -372,7 +371,6 @@ public sealed class TestExplorerSession(
             return;
         }
 
-        var sourceContext = await ReadFailureSourceAsync(run, cancellationToken);
         foreach (var (test, outcome) in CompletedOutcomes(tests, run))
         {
             completedOutcomes[test] = outcome;
@@ -385,7 +383,7 @@ public sealed class TestExplorerSession(
             VisibleNodes = CurrentNodes(),
             Message = run.Output,
             LastRun = run,
-            SourceContext = sourceContext
+            SourceLocation = FailureSourceFrom(run)
         };
     }
 
@@ -405,23 +403,13 @@ public sealed class TestExplorerSession(
                 group => NodeOutcomeFrom(group.Select(result => NodeOutcomeFor(result.Outcome))));
     }
 
-    private async Task<SourceContext?> ReadFailureSourceAsync(
-        TestRun run,
-        CancellationToken cancellationToken)
+    private static SourceLocation? FailureSourceFrom(TestRun run)
     {
         var failure = run.Results.FirstOrDefault(result =>
             result.Outcome == TestOutcome.Failed &&
             result.SourceFile is not null &&
             result.SourceLine is not null);
-        if (failure is null || sourceProvider is null)
-        {
-            return null;
-        }
-
-        return await sourceProvider.ReadAsync(
-            failure.SourceFile!,
-            failure.SourceLine!.Value,
-            cancellationToken);
+        return failure is null ? null : new SourceLocation(failure.SourceFile!, failure.SourceLine!.Value);
     }
 
     private static TestNodeOutcome OutcomeFor(TestRun run) =>

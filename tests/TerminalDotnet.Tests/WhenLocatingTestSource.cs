@@ -31,7 +31,7 @@ public sealed class WhenLocatingTestSource
             var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", project);
 
             // Act
-            var source = await new FileTestSourceLocator(new FileSourceProvider()).LocateAsync(test);
+            var source = await new FileTestSourceLocator().LocateAsync(test);
 
             // Assert
             Assert.Equal((sourcePath, 6), (source!.Path, source.HighlightLine));

@@ -11,7 +11,7 @@ public sealed class WhenUsingTheTestExplorer
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var source = new SourceContext("CartTests.cs", 1, 5, ["public void Adds_item()"]);
+        var source = new SourceLocation("CartTests.cs", 5);
         var session = new TestExplorerSession(
             new InMemoryTestBackend([test]),
             testSourceLocator: new InMemoryTestSourceLocator(source));
@@ -23,7 +23,7 @@ public sealed class WhenUsingTheTestExplorer
         await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
 
         // Assert
-        Assert.Same(source, session.State.SourceContext);
+        Assert.Same(source, session.State.SourceLocation);
     }
 
     [Fact]
@@ -602,7 +602,7 @@ public sealed class WhenUsingTheTestExplorer
     }
 
     [Fact]
-    public async Task It_loads_source_context_around_the_failure_line_after_a_failed_run()
+    public async Task It_locates_the_failure_line_after_a_failed_run()
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
@@ -614,14 +614,8 @@ public sealed class WhenUsingTheTestExplorer
             null,
             "/repo/CartTests.cs",
             42);
-        var source = new SourceContext(
-            "/repo/CartTests.cs",
-            41,
-            42,
-            ["var cart = new Cart();", "Assert.Equal(10, cart.Total);"]);
         var session = new TestExplorerSession(
-            new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])),
-            new InMemorySourceProvider(source));
+            new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])));
         await session.LoadAsync("/repo/Shop.sln");
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
@@ -630,7 +624,7 @@ public sealed class WhenUsingTheTestExplorer
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
 
         // Assert
-        Assert.Same(source, session.State.SourceContext);
+        Assert.Equal(new SourceLocation("/repo/CartTests.cs", 42), session.State.SourceLocation);
     }
 
     [Fact]
@@ -814,19 +808,11 @@ public sealed class WhenUsingTheTestExplorer
         }
     }
 
-    private sealed class InMemorySourceProvider(SourceContext source) : ISourceProvider
+    private sealed class InMemoryTestSourceLocator(SourceLocation source) : ITestSourceLocator
     {
-        public Task<SourceContext> ReadAsync(
-            string path,
-            int line,
-            CancellationToken cancellationToken = default) => Task.FromResult(source);
-    }
-
-    private sealed class InMemoryTestSourceLocator(SourceContext source) : ITestSourceLocator
-    {
-        public Task<SourceContext?> LocateAsync(
+        public Task<SourceLocation?> LocateAsync(
             TestCase test,
-            CancellationToken cancellationToken = default) => Task.FromResult<SourceContext?>(source);
+            CancellationToken cancellationToken = default) => Task.FromResult<SourceLocation?>(source);
     }
 
     private sealed class CancellableTestBackend(TestCase test) : ITestBackend

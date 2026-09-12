@@ -49,7 +49,7 @@ public sealed record ExplorerState(
     int SelectedIndex,
     string Message,
     TestRun? LastRun = null,
-    SourceContext? SourceContext = null,
+    SourceLocation? SourceLocation = null,
     string SearchQuery = "",
     ExplorerFilter? ActiveFilter = null);
 

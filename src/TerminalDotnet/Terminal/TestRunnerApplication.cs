@@ -775,7 +775,7 @@ public sealed class TestRunnerApplication(
     private async Task RequestTestSourceAsync(IApplication application, bool preview)
     {
         await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
-        if (session.State.SourceContext is not { } source)
+        if (session.State.SourceLocation is not { } source)
         {
             return;
         }

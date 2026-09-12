@@ -14,11 +14,9 @@ if (target is null)
 var commandRunner = new ProcessCommandRunner();
 var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandRunner));
 var changesetSession = new ChangesetSession(new GitChangesetBackend(commandRunner));
-var sourceProvider = new FileSourceProvider();
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
-    sourceProvider,
-    new FileTestSourceLocator(sourceProvider),
+    new FileTestSourceLocator(),
     new ChangesetUpdatedSourceProvider(new GitChangesetBackend(commandRunner)));
 
 var editor = Environment.GetEnvironmentVariable("VISUAL") ??
