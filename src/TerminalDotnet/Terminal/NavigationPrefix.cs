@@ -3,29 +3,43 @@ namespace TerminalDotnet.Terminal;
 /// <summary>
 /// The "g" prefix, and how long it waits for somewhere to go.
 ///
-/// Holding g down and naming one panel after another is the gesture worth
-/// serving, but a terminal only reports a key being released under the kitty
-/// keyboard protocol. Where that is negotiated, letting g up after arriving
-/// somewhere ends the wait. Where it is not, no release is ever reported and
-/// the wait simply stays open. Either way a key that names nowhere ends it,
-/// so a tap of g still arms the prefix for the key that follows.
+/// Held down, it keeps waiting, so one panel after another can be named
+/// without reaching for g again, and letting go ends it. Tapped, it waits
+/// only for the key that follows and is spent on it, so a tap never leaves
+/// the keyboard locked into navigating.
+///
+/// A terminal only reports a key being released under the kitty keyboard
+/// protocol. Where it is not negotiated no release ever arrives, g reads as
+/// held, and the wait stays open until a key names nowhere.
 /// </summary>
 public sealed class NavigationPrefix
 {
+    private bool isHeld;
     private bool reachedSomewhere;
 
     public bool IsWaiting { get; private set; }
 
-    public void Arm() => IsWaiting = true;
+    public void Arm()
+    {
+        IsWaiting = true;
+        isHeld = true;
+    }
 
     public void Reached()
     {
+        if (!isHeld)
+        {
+            Stop();
+            return;
+        }
+
         IsWaiting = true;
         reachedSomewhere = true;
     }
 
     public void Released()
     {
+        isHeld = false;
         if (reachedSomewhere)
         {
             Stop();
@@ -35,6 +49,7 @@ public sealed class NavigationPrefix
     public void Stop()
     {
         IsWaiting = false;
+        isHeld = false;
         reachedSomewhere = false;
     }
 }
