@@ -106,8 +106,6 @@ public sealed class TestRunnerApplication(
 
         application.Run(window);
         runCancellation?.Cancel();
-        runCancellation?.Dispose();
-        runCancellation = null;
         loadCancellation?.Cancel();
         loadCancellation?.Dispose();
         loadCancellation = null;
@@ -746,11 +744,26 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        runCancellation?.Dispose();
-        runCancellation = new CancellationTokenSource();
-        var run = session.DispatchAsync(command, runCancellation.Token);
-        Render(search, tests);
-        await run;
+        if (runCancellation is not null)
+        {
+            // The run already going owns its cancellation source until it ends,
+            // so Esc still reaches the run the panel is showing.
+            return;
+        }
+
+        using var cancellation = new CancellationTokenSource();
+        runCancellation = cancellation;
+        try
+        {
+            var run = session.DispatchAsync(command, cancellation.Token);
+            Render(search, tests);
+            await run;
+        }
+        finally
+        {
+            runCancellation = null;
+        }
+
         application.Invoke(() => Render(search, tests));
     }
 

@@ -15,6 +15,7 @@ public sealed class TestExplorerSession(
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
     private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
+    private bool running;
     private IReadOnlyDictionary<string, TestNodeUpdate> updatedSuites =
         new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
 
@@ -298,6 +299,28 @@ public sealed class TestExplorerSession(
         SearchMatch.Matches(test.DisplayName, query);
 
     private async Task RunTestsAsync(
+        IReadOnlyList<TestCase> tests,
+        CancellationToken cancellationToken)
+    {
+        // One run owns the session at a time; a command arriving while it is
+        // still going would otherwise overwrite its outcomes out of order.
+        if (running)
+        {
+            return;
+        }
+
+        running = true;
+        try
+        {
+            await RunAdmittedTestsAsync(tests, cancellationToken);
+        }
+        finally
+        {
+            running = false;
+        }
+    }
+
+    private async Task RunAdmittedTestsAsync(
         IReadOnlyList<TestCase> tests,
         CancellationToken cancellationToken)
     {
