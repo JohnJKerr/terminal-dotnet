@@ -51,12 +51,21 @@ public sealed record TestRun(bool Passed, string Output, IReadOnlyList<TestResul
     /// individual tests went, whatever the exit code was.</summary>
     public string? Diagnostic { get; init; }
 
-    public TestRunSummary Summary => new(
-        CountOf(TestOutcome.Passed),
-        CountOf(TestOutcome.Failed),
-        CountOf(TestOutcome.Skipped));
+    /// <summary>Every navigation redraws the panel's status line, so the
+    /// outcomes are counted in one pass rather than once per outcome.</summary>
+    public TestRunSummary Summary => SummaryOf(Results.CountBy(result => result.Outcome));
 
-    private int CountOf(TestOutcome outcome) => Results.Count(result => result.Outcome == outcome);
+    private static TestRunSummary SummaryOf(IEnumerable<KeyValuePair<TestOutcome, int>> counted)
+    {
+        var counts = counted.ToDictionary();
+        return new TestRunSummary(
+            CountOf(counts, TestOutcome.Passed),
+            CountOf(counts, TestOutcome.Failed),
+            CountOf(counts, TestOutcome.Skipped));
+    }
+
+    private static int CountOf(IReadOnlyDictionary<TestOutcome, int> counts, TestOutcome outcome) =>
+        counts.TryGetValue(outcome, out var count) ? count : 0;
 }
 
 public interface ITestBackend
