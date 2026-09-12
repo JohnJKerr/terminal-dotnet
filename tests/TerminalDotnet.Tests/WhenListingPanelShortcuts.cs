@@ -120,7 +120,7 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
-    public void It_still_offers_stepping_through_matches_on_the_tests()
+    public void It_leaves_stepping_through_matches_off_the_tests()
     {
         // Arrange
         var state = TestState() with { SearchQuery = "cart" };
@@ -133,7 +133,7 @@ public sealed class WhenListingPanelShortcuts
             state);
 
         // Assert
-        Assert.Contains("n/b match", shortcuts);
+        Assert.DoesNotContain("match", shortcuts);
     }
 
     [Fact]

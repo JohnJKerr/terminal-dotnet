@@ -39,7 +39,7 @@ public static class PanelShortcuts
             return [];
         }
 
-        var navigation = Navigation(state.SearchQuery);
+        var navigation = Navigation();
         IReadOnlyList<string> selection = state.VisibleNodes[state.SelectedIndex].Kind == FileNodeKind.File
             ? [.. navigation, "Enter/e edit", "p preview"]
             : [.. navigation, "Space/Enter fold"];
@@ -53,7 +53,7 @@ public static class PanelShortcuts
             return [];
         }
 
-        IReadOnlyList<string> navigation = [.. Navigation(state.SearchQuery), "Enter/d diff"];
+        IReadOnlyList<string> navigation = [.. Navigation(), "Enter/d diff"];
         return state.Files[state.SelectedIndex].Kind == ChangeKind.Deleted
             ? [.. navigation, "r restore"]
             : [.. navigation, "e edit", "p preview"];
@@ -69,7 +69,7 @@ public static class PanelShortcuts
             return [];
         }
 
-        var shortcuts = new List<string>(MatchShortcut(state.SearchQuery));
+        var shortcuts = new List<string>();
         if (state.VisibleNodes[state.SelectedIndex].Kind != TestNodeKind.Test)
         {
             shortcuts.Add("Space fold");
@@ -122,13 +122,7 @@ public static class PanelShortcuts
         return expansion.Any(isExpanded => isExpanded) ? ["z fold all"] : ["z unfold all"];
     }
 
-    private static IReadOnlyList<string> Navigation(string searchQuery) =>
-        ["↑/k up", "↓/j down", .. MatchShortcut(searchQuery)];
-
-    /// <summary>Moving up and down is left off the tests, where the status line
-    /// is busiest and the Explorer has already shown how it is done.</summary>
-    private static IReadOnlyList<string> MatchShortcut(string searchQuery) =>
-        searchQuery.Length == 0 ? [] : ["n/b match"];
+    private static IReadOnlyList<string> Navigation() => ["↑/k up", "↓/j down"];
 
     private static bool IsRunning(ExplorerState state) => state.Status == ExplorerStatus.Running;
 

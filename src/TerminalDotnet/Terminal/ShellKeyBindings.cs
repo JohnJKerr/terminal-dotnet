@@ -22,7 +22,8 @@ public static class ShellKeyBindings
     public static ShellAction? ActionFor(
         Key key,
         bool searchFocused,
-        bool panelsFocused)
+        bool panelsFocused,
+        bool searchActive = false)
     {
         if (IsCtrl(key, KeyCode.K))
         {
@@ -37,6 +38,11 @@ public static class ShellKeyBindings
         if (PanelFor(key) is { } panel)
         {
             return new ShellAction.SelectPanel(panel);
+        }
+
+        if (searchActive && Is(key, KeyCode.Esc))
+        {
+            return new ShellAction.ClearSearch();
         }
 
         if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))

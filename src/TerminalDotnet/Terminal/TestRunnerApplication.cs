@@ -309,7 +309,11 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var shellAction = ShellKeyBindings.ActionFor(key, search.HasFocus, panels.HasFocus);
+        var shellAction = ShellKeyBindings.ActionFor(
+            key,
+            search.HasFocus,
+            panels.HasFocus,
+            ActiveSearchQuery().Length > 0);
         if (shellAction is not null)
         {
             HandleShellAction(application, shellAction, key, panels, search, tests);
@@ -431,6 +435,13 @@ internal sealed class TestRunnerApplication(
         }
     }
 
+    private string ActiveSearchQuery() => shell.State.ActivePanel switch
+    {
+        PanelKind.Explorer => fileSession.State.SearchQuery,
+        PanelKind.Changes => changesetSession.State.SearchQuery,
+        _ => session.State.SearchQuery
+    };
+
     private Task SearchAsync(string query) => shell.State.ActivePanel switch
     {
         PanelKind.Explorer => fileSession.DispatchAsync(new FileExplorerCommand.Search(query)),
@@ -504,16 +515,6 @@ internal sealed class TestRunnerApplication(
 
     private static FileExplorerCommand? FileCommandFor(Key key, string searchQuery)
     {
-        if (searchQuery.Length > 0 && Is(key, KeyCode.N))
-        {
-            return new FileExplorerCommand.NextSearchMatch();
-        }
-
-        if (searchQuery.Length > 0 && Is(key, KeyCode.B))
-        {
-            return new FileExplorerCommand.PreviousSearchMatch();
-        }
-
         if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
         {
             return new FileExplorerCommand.MoveUp();
@@ -596,16 +597,6 @@ internal sealed class TestRunnerApplication(
 
     private static ChangesetCommand? ChangesetCommandFor(Key key, string searchQuery)
     {
-        if (searchQuery.Length > 0 && Is(key, KeyCode.N))
-        {
-            return new ChangesetCommand.MoveDown();
-        }
-
-        if (searchQuery.Length > 0 && Is(key, KeyCode.B))
-        {
-            return new ChangesetCommand.MoveUp();
-        }
-
         if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
         {
             return new ChangesetCommand.MoveUp();

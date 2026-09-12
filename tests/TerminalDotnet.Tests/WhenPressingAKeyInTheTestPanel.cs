@@ -140,30 +140,10 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_n_during_a_search_moves_to_the_next_match()
+    public void Pressing_n_during_a_search_does_nothing()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.N), searchQuery: "cart");
-
-        // Assert
-        Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.NextSearchMatch()), action);
-    }
-
-    [Fact]
-    public void Pressing_b_during_a_search_moves_to_the_previous_match()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.B), searchQuery: "cart");
-
-        // Assert
-        Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.PreviousSearchMatch()), action);
-    }
-
-    [Fact]
-    public void Pressing_n_without_a_search_does_nothing()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.N));
 
         // Assert
         Assert.Null(action);

@@ -56,7 +56,7 @@ public static class CommandMenu
         new("←", "focus the panel list"),
         new("→", "focus the rows"),
         new("s", "search the active panel"),
-        new("Esc", "clear the search"),
+        new("Esc", "clear the search, or quit"),
         new("Ctrl+K", "show this list"),
         new("q", "quit")
     ];
@@ -99,7 +99,6 @@ public static class CommandMenu
     private static IReadOnlyList<CommandMenuEntry> Navigation =>
     [
         new("↑/k", "move up"),
-        new("↓/j", "move down"),
-        new("n/b", "next or previous search match")
+        new("↓/j", "move down")
     ];
 }

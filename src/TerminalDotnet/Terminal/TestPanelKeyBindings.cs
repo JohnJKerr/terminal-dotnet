@@ -20,16 +20,6 @@ public static class TestPanelKeyBindings
         string searchQuery,
         bool hasFocus)
     {
-        if (hasFocus && searchQuery.Length > 0 && Is(key, KeyCode.N))
-        {
-            return Dispatched(new ExplorerCommand.NextSearchMatch());
-        }
-
-        if (hasFocus && searchQuery.Length > 0 && Is(key, KeyCode.B))
-        {
-            return Dispatched(new ExplorerCommand.PreviousSearchMatch());
-        }
-
         if (hasFocus && FilterKeyBindings.FilterFor(key) is { } filter)
         {
             return Dispatched(new ExplorerCommand.ToggleFilter(filter));

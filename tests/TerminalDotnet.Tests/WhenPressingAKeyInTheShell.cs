@@ -137,9 +137,40 @@ public sealed class WhenPressingAKeyInTheShell
         Assert.Null(action);
     }
 
+    [Fact]
+    public void Pressing_escape_in_the_rows_clears_a_search_that_is_running()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Esc), searchActive: true);
+
+        // Assert
+        Assert.Equal(new ShellAction.ClearSearch(), action);
+    }
+
+    [Fact]
+    public void Pressing_escape_in_the_rows_quits_when_nothing_is_searched()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Esc));
+
+        // Assert
+        Assert.Equal(new ShellAction.Quit(), action);
+    }
+
+    [Fact]
+    public void Pressing_q_still_quits_while_a_search_is_running()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Q), searchActive: true);
+
+        // Assert
+        Assert.Equal(new ShellAction.Quit(), action);
+    }
+
     private static ShellAction? ActionFor(
         Key key,
         bool searchFocused = false,
-        bool panelsFocused = false) =>
-        ShellKeyBindings.ActionFor(key, searchFocused, panelsFocused);
+        bool panelsFocused = false,
+        bool searchActive = false) =>
+        ShellKeyBindings.ActionFor(key, searchFocused, panelsFocused, searchActive);
 }
