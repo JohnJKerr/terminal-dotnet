@@ -34,12 +34,39 @@ public sealed class ProcessCommandRunner : ICommandRunner
         using var process = Process.Start(startInfo) ??
             throw new InvalidOperationException($"Could not start {request.FileName}.");
         var standardOutput = request.CaptureOutput
-            ? process.StandardOutput.ReadToEndAsync(cancellationToken)
+            ? process.StandardOutput.ReadToEndAsync(CancellationToken.None)
             : Task.FromResult(string.Empty);
         var standardError = request.CaptureOutput
-            ? process.StandardError.ReadToEndAsync(cancellationToken)
+            ? process.StandardError.ReadToEndAsync(CancellationToken.None)
             : Task.FromResult(string.Empty);
-        await process.WaitForExitAsync(cancellationToken);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            await EndedAsync(process, standardOutput, standardError);
+            throw;
+        }
+
         return new CommandResult(process.ExitCode, await standardOutput, await standardError);
+    }
+
+    private static async Task EndedAsync(Process process, params Task<string>[] readers)
+    {
+        KillProcessTree(process);
+        await process.WaitForExitAsync(CancellationToken.None);
+        await Task.WhenAll(readers);
+    }
+
+    private static void KillProcessTree(Process process)
+    {
+        try
+        {
+            process.Kill(entireProcessTree: true);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException)
+        {
+        }
     }
 }
