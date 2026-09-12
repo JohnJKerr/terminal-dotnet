@@ -15,37 +15,37 @@ public abstract record ShellAction
     public sealed record ShowCommands : ShellAction;
     public sealed record PreviousPanel : ShellAction;
     public sealed record NextPanel : ShellAction;
+    public sealed record AwaitPanelTarget : ShellAction;
     public sealed record SelectNumberedPanel(int Number) : ShellAction;
     public sealed record Quit : ShellAction;
 }
 
 public static class ShellKeyBindings
 {
-    public static ShellAction? ActionFor(Key key, bool searchFocused, bool panelsFocused)
+    public static ShellAction? ActionFor(
+        Key key,
+        bool searchFocused,
+        bool panelsFocused,
+        bool awaitingPanelTarget = false)
     {
         if (IsCtrl(key, KeyCode.K))
         {
             return new ShellAction.ShowCommands();
         }
 
-        if (IsAlt(key, KeyCode.CursorUp))
-        {
-            return new ShellAction.PreviousPanel();
-        }
-
-        if (IsAlt(key, KeyCode.CursorDown))
-        {
-            return new ShellAction.NextPanel();
-        }
-
-        if (AltNumber(key) is { } number)
-        {
-            return new ShellAction.SelectNumberedPanel(number);
-        }
-
         if (searchFocused)
         {
             return SearchActionFor(key);
+        }
+
+        if (awaitingPanelTarget && PanelActionFor(key) is { } panelAction)
+        {
+            return panelAction;
+        }
+
+        if (Is(key, KeyCode.G))
+        {
+            return new ShellAction.AwaitPanelTarget();
         }
 
         if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))
@@ -93,17 +93,31 @@ public static class ShellKeyBindings
     private static bool IsCtrl(Key key, KeyCode keyCode) =>
         key.IsCtrl && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
 
-    private static bool IsAlt(Key key, KeyCode keyCode) =>
-        key.IsAlt && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
-
-    private static int? AltNumber(Key key)
+    /// <summary>
+    /// The panel a "g" is waiting on: an arrow to step between panels, or the
+    /// number a panel carries. A key that names neither gives up the wait and
+    /// is handled as it would have been on its own.
+    /// </summary>
+    private static ShellAction? PanelActionFor(Key key)
     {
-        if (!key.IsAlt)
+        if (Is(key, KeyCode.CursorUp))
         {
-            return null;
+            return new ShellAction.PreviousPanel();
         }
 
-        var code = (int)key.NoShift.NoCtrl.NoAlt.KeyCode;
+        if (Is(key, KeyCode.CursorDown))
+        {
+            return new ShellAction.NextPanel();
+        }
+
+        return PanelNumber(key) is { } number
+            ? new ShellAction.SelectNumberedPanel(number)
+            : null;
+    }
+
+    private static int? PanelNumber(Key key)
+    {
+        var code = (int)key.NoShift.KeyCode;
         return code >= (int)KeyCode.D1 && code <= (int)KeyCode.D9
             ? code - (int)KeyCode.D1 + 1
             : null;

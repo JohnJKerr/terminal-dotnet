@@ -44,6 +44,7 @@ public sealed class TestRunnerApplication(
     private string? openPath;
     private int openLine = 1;
     private bool failureNavigationPending;
+    private bool panelTargetPending;
     private bool previewVisible;
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
@@ -333,7 +334,13 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        var shellAction = ShellKeyBindings.ActionFor(key, search.HasFocus, panels.HasFocus);
+        var awaitingPanelTarget = panelTargetPending;
+        panelTargetPending = false;
+        var shellAction = ShellKeyBindings.ActionFor(
+            key,
+            search.HasFocus,
+            panels.HasFocus,
+            awaitingPanelTarget);
         if (shellAction is not null)
         {
             HandleShellAction(application, shellAction, key, panels, search, tests);
@@ -397,6 +404,9 @@ public sealed class TestRunnerApplication(
             case ShellAction.NextPanel:
                 shell.SelectNext();
                 ShowActivePanel(panels, search, tests);
+                return;
+            case ShellAction.AwaitPanelTarget:
+                panelTargetPending = true;
                 return;
             case ShellAction.SelectNumberedPanel numbered:
                 shell.SelectNumbered(numbered.Number);
