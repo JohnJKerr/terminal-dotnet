@@ -43,7 +43,7 @@ public sealed class TestRunnerApplication(
     private bool openSourceRequested;
     private string? openPath;
     private int openLine = 1;
-    private bool navigationPending;
+    private readonly NavigationPrefix navigation = new();
     private bool previewVisible;
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
@@ -97,6 +97,7 @@ public sealed class TestRunnerApplication(
         };
         application.Keyboard.KeyDown += (_, key) =>
             HandleKey(application, key, panels, search, tests);
+        application.Keyboard.KeyUp += (_, key) => HandleKeyUp(key);
         Render(search, tests);
         sincePanelsAppeared.Restart();
         panels.SelectedItem = shell.State.ActiveIndex;
@@ -333,8 +334,7 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        var awaitingNavigation = navigationPending;
-        navigationPending = false;
+        var awaitingNavigation = navigation.IsWaiting;
         var shellAction = ShellKeyBindings.ActionFor(
             key,
             search.HasFocus,
@@ -342,10 +342,12 @@ public sealed class TestRunnerApplication(
             awaitingNavigation);
         if (shellAction is not null)
         {
-            navigationPending = ShellKeyBindings.ContinuesNavigating(shellAction);
+            RecordNavigation(shellAction);
             HandleShellAction(application, shellAction, key, panels, search, tests);
             return;
         }
+
+        navigation.Stop();
 
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
@@ -360,6 +362,33 @@ public sealed class TestRunnerApplication(
         }
 
         HandleTestKey(application, key, search, tests, awaitingNavigation);
+    }
+
+    /// <summary>Letting go of the navigation key ends the wait it opened, once
+    /// it has actually taken the reader somewhere.</summary>
+    private void HandleKeyUp(Key key)
+    {
+        if (Is(key, KeyCode.G))
+        {
+            navigation.Released();
+        }
+    }
+
+    private void RecordNavigation(ShellAction action)
+    {
+        if (action is ShellAction.AwaitPanelTarget)
+        {
+            navigation.Arm();
+            return;
+        }
+
+        if (ShellKeyBindings.ContinuesNavigating(action))
+        {
+            navigation.Reached();
+            return;
+        }
+
+        navigation.Stop();
     }
 
     private void HandleShellAction(
@@ -408,6 +437,7 @@ public sealed class TestRunnerApplication(
             case ShellAction.AwaitPanelTarget:
             case ShellAction.StopNavigating:
                 return;
+
             case ShellAction.SelectNumberedPanel numbered:
                 shell.SelectNumbered(numbered.Number);
                 ShowActivePanel(panels, search, tests);
@@ -445,7 +475,11 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        navigationPending = TestPanelKeyBindings.ContinuesNavigating(action);
+        if (TestPanelKeyBindings.ContinuesNavigating(action))
+        {
+            navigation.Reached();
+        }
+
         key.Handled = true;
         HandleTestAction(application, action, search, tests);
     }
