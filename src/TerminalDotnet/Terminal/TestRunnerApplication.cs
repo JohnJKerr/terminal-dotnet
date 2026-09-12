@@ -324,8 +324,6 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        navigation.Stop();
-
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
             HandleFileKey(application, key, tests, search);
@@ -348,11 +346,11 @@ internal sealed class TestRunnerApplication(
         application.Driver?.KittyKeyboardCapabilities?.Flags
             .HasFlag(KittyKeyboardFlags.ReportEventTypes) == true;
 
-    /// <summary>Letting go of the navigation key ends the wait it opened, once
-    /// it has actually taken the reader somewhere.</summary>
+    /// <summary>Letting go of the navigation key unlocks navigation. A repeat
+    /// reported while g is still down is not a release.</summary>
     private void HandleKeyUp(Key key)
     {
-        if (Is(key, KeyCode.G))
+        if (Is(key, KeyCode.G) && key.EventType != KeyEventType.Repeat)
         {
             navigation.Released();
         }
@@ -362,17 +360,14 @@ internal sealed class TestRunnerApplication(
     {
         if (action is ShellAction.AwaitPanelTarget)
         {
-            navigation.Arm(ReportsKeyReleases(application));
+            navigation.Pressed(ReportsKeyReleases(application));
             return;
         }
 
-        if (ShellKeyBindings.ContinuesNavigating(action))
+        if (action is ShellAction.StopNavigating)
         {
-            navigation.Reached();
-            return;
+            navigation.Stop();
         }
-
-        navigation.Stop();
     }
 
     private void HandleShellAction(
@@ -457,11 +452,6 @@ internal sealed class TestRunnerApplication(
         if (action is null)
         {
             return;
-        }
-
-        if (TestPanelKeyBindings.ContinuesNavigating(action))
-        {
-            navigation.Reached();
         }
 
         key.Handled = true;

@@ -85,18 +85,6 @@ public static class ShellKeyBindings
         return Is(key, KeyCode.Enter) ? new ShellAction.SelectPanel() : null;
     }
 
-    /// <summary>
-    /// Whether the reader is still naming somewhere to go. A terminal cannot
-    /// report a key held down — holding "g" only repeats it — so the prefix
-    /// stays armed across one destination after another, and gives up on the
-    /// first key that names none.
-    /// </summary>
-    public static bool ContinuesNavigating(ShellAction action) => action is
-        ShellAction.AwaitPanelTarget or
-        ShellAction.PreviousPanel or
-        ShellAction.NextPanel or
-        ShellAction.SelectNumberedPanel;
-
     private static ShellAction SearchActionFor(Key key)
     {
         if (Is(key, KeyCode.Esc))
@@ -114,11 +102,6 @@ public static class ShellKeyBindings
     private static bool IsCtrl(Key key, KeyCode keyCode) =>
         key.IsCtrl && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
 
-    /// <summary>
-    /// The panel a "g" is waiting on: an arrow to step between panels, or the
-    /// number a panel carries. A key that names neither gives up the wait and
-    /// is handled as it would have been on its own.
-    /// </summary>
     private static ShellAction? PanelActionFor(Key key)
     {
         if (Is(key, KeyCode.CursorUp))

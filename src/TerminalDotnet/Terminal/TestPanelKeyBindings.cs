@@ -41,11 +41,6 @@ public static class TestPanelKeyBindings
         return SourceActionFor(key) ?? (hasFocus ? RunActionFor(key) : null);
     }
 
-    /// <summary>Whether a "g" is still waiting: walking failures keeps it
-    /// armed, so f after f steps through them.</summary>
-    public static bool ContinuesNavigating(TestPanelAction action) =>
-        action is TestPanelAction.Dispatch { Command: ExplorerCommand.NextFailure };
-
     private static TestPanelAction? SourceActionFor(Key key)
     {
         if (Is(key, KeyCode.E))

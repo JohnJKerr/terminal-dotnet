@@ -180,32 +180,6 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void It_keeps_waiting_after_jumping_to_a_failure()
-    {
-        // Arrange
-        var action = ActionFor(new Key(KeyCode.F), awaitingNavigation: true);
-
-        // Act
-        var keepsWaiting = TestPanelKeyBindings.ContinuesNavigating(action!);
-
-        // Assert
-        Assert.True(keepsWaiting);
-    }
-
-    [Fact]
-    public void It_gives_up_waiting_after_anything_else()
-    {
-        // Arrange
-        var action = ActionFor(new Key(KeyCode.P));
-
-        // Act
-        var keepsWaiting = TestPanelKeyBindings.ContinuesNavigating(action!);
-
-        // Assert
-        Assert.False(keepsWaiting);
-    }
-
-    [Fact]
     public void Pressing_1_toggles_the_updated_filter()
     {
         // Act

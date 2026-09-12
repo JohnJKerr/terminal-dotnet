@@ -1,56 +1,22 @@
 namespace TerminalDotnet.Terminal;
 
 /// <summary>
-/// The "g" prefix, and how long it waits for somewhere to go.
-///
-/// Held down, it keeps waiting, so one panel after another can be named
-/// without reaching for g again, and letting go ends it. Tapped, it waits
-/// only for the key that follows and is spent on it, so a tap never leaves
-/// the keyboard locked into navigating.
+/// The "g" prefix, which locks navigation on for exactly as long as g is held
+/// down. One panel after another can be named without reaching for g again,
+/// and letting go unlocks it, so the keyboard is never left navigating.
 ///
 /// A terminal only reports a key being released under the kitty keyboard
-/// protocol. Holding is only offered where that is negotiated, because a wait
-/// that no release can close would lock the keyboard into navigating; where it
-/// is not, every g is spent like a tap.
+/// protocol. Where that is not negotiated there is no way to know g is still
+/// down, so the lock is never offered rather than left with nothing to close
+/// it.
 /// </summary>
 public sealed class NavigationPrefix
 {
-    private bool isHeld;
-    private bool reachedSomewhere;
-
     public bool IsWaiting { get; private set; }
 
-    public void Arm(bool keyReleasesReported)
-    {
-        IsWaiting = true;
-        isHeld = keyReleasesReported;
-    }
+    public void Pressed(bool keyReleasesReported) => IsWaiting = keyReleasesReported;
 
-    public void Reached()
-    {
-        if (!isHeld)
-        {
-            Stop();
-            return;
-        }
+    public void Released() => IsWaiting = false;
 
-        IsWaiting = true;
-        reachedSomewhere = true;
-    }
-
-    public void Released()
-    {
-        isHeld = false;
-        if (reachedSomewhere)
-        {
-            Stop();
-        }
-    }
-
-    public void Stop()
-    {
-        IsWaiting = false;
-        isHeld = false;
-        reachedSomewhere = false;
-    }
+    public void Stop() => IsWaiting = false;
 }
