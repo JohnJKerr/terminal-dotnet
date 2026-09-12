@@ -55,7 +55,7 @@ public static class CommandMenu
         new("←", "focus the panel list"),
         new("→", "focus the rows"),
         new("s", "search the active panel"),
-        new("Esc", "clear the search"),
+        new("Esc", "clear the search, or stop navigating"),
         new("Ctrl+K", "show this list"),
         new("q", "quit")
     ];
@@ -78,7 +78,7 @@ public static class CommandMenu
         new("Enter/r", "run the selection"),
         new("R", "rerun the last run"),
         new("F", "rerun the failures"),
-        new("] f", "jump to the next failure"),
+        new("g f", "jump to the next failure"),
         new("c", "cancel the run"),
         new("o", "show the captured output"),
         new("e", "edit the test"),

@@ -170,23 +170,39 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_the_closing_bracket_awaits_a_failure_key()
+    public void Pressing_g_then_f_moves_to_the_next_failure()
     {
         // Act
-        var action = ActionFor(new Key((KeyCode)']'));
-
-        // Assert
-        Assert.Equal(new TestPanelAction.AwaitFailureNavigation(), action);
-    }
-
-    [Fact]
-    public void Pressing_f_after_the_closing_bracket_moves_to_the_next_failure()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.F), awaitingFailureNavigation: true);
+        var action = ActionFor(new Key(KeyCode.F), awaitingNavigation: true);
 
         // Assert
         Assert.Equal(new TestPanelAction.Dispatch(new ExplorerCommand.NextFailure()), action);
+    }
+
+    [Fact]
+    public void It_keeps_waiting_after_jumping_to_a_failure()
+    {
+        // Arrange
+        var action = ActionFor(new Key(KeyCode.F), awaitingNavigation: true);
+
+        // Act
+        var keepsWaiting = TestPanelKeyBindings.ContinuesNavigating(action!);
+
+        // Assert
+        Assert.True(keepsWaiting);
+    }
+
+    [Fact]
+    public void It_gives_up_waiting_after_anything_else()
+    {
+        // Arrange
+        var action = ActionFor(new Key(KeyCode.P));
+
+        // Act
+        var keepsWaiting = TestPanelKeyBindings.ContinuesNavigating(action!);
+
+        // Assert
+        Assert.False(keepsWaiting);
     }
 
     [Fact]
@@ -217,6 +233,6 @@ public sealed class WhenPressingAKeyInTheTestPanel
         Key key,
         string searchQuery = "",
         bool hasFocus = true,
-        bool awaitingFailureNavigation = false) =>
-        TestPanelKeyBindings.ActionFor(key, searchQuery, hasFocus, awaitingFailureNavigation);
+        bool awaitingNavigation = false) =>
+        TestPanelKeyBindings.ActionFor(key, searchQuery, hasFocus, awaitingNavigation);
 }

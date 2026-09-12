@@ -151,6 +151,78 @@ public sealed class WhenMovingBetweenPanels
         Assert.Null(action);
     }
 
+    [Fact]
+    public void It_keeps_waiting_after_a_panel_is_named()
+    {
+        // Arrange
+        var action = ActionFor(new Key(KeyCode.D1), awaitingPanelTarget: true);
+
+        // Act
+        var keepsWaiting = ShellKeyBindings.ContinuesNavigating(action!);
+
+        // Assert
+        Assert.True(keepsWaiting);
+    }
+
+    [Fact]
+    public void It_keeps_waiting_after_stepping_to_the_next_panel()
+    {
+        // Arrange
+        var action = ActionFor(new Key(KeyCode.CursorDown), awaitingPanelTarget: true);
+
+        // Act
+        var keepsWaiting = ShellKeyBindings.ContinuesNavigating(action!);
+
+        // Assert
+        Assert.True(keepsWaiting);
+    }
+
+    [Fact]
+    public void It_keeps_waiting_when_g_repeats_under_a_held_key()
+    {
+        // Arrange
+        var action = ActionFor(new Key(KeyCode.G), awaitingPanelTarget: true);
+
+        // Act
+        var keepsWaiting = ShellKeyBindings.ContinuesNavigating(action!);
+
+        // Assert
+        Assert.True(keepsWaiting);
+    }
+
+    [Fact]
+    public void It_gives_up_waiting_once_a_key_names_nowhere()
+    {
+        // Arrange
+        var action = ActionFor(new Key(KeyCode.Q), awaitingPanelTarget: true);
+
+        // Act
+        var keepsWaiting = ShellKeyBindings.ContinuesNavigating(action!);
+
+        // Assert
+        Assert.False(keepsWaiting);
+    }
+
+    [Fact]
+    public void Pressing_escape_while_waiting_stops_navigating_rather_than_quitting()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Esc), awaitingPanelTarget: true);
+
+        // Assert
+        Assert.Equal(new ShellAction.StopNavigating(), action);
+    }
+
+    [Fact]
+    public void It_gives_up_waiting_once_navigating_has_stopped()
+    {
+        // Act
+        var keepsWaiting = ShellKeyBindings.ContinuesNavigating(new ShellAction.StopNavigating());
+
+        // Assert
+        Assert.False(keepsWaiting);
+    }
+
     private static ShellAction? ActionFor(
         Key key,
         bool searchFocused = false,

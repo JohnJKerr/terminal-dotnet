@@ -16,6 +16,7 @@ public abstract record ShellAction
     public sealed record PreviousPanel : ShellAction;
     public sealed record NextPanel : ShellAction;
     public sealed record AwaitPanelTarget : ShellAction;
+    public sealed record StopNavigating : ShellAction;
     public sealed record SelectNumberedPanel(int Number) : ShellAction;
     public sealed record Quit : ShellAction;
 }
@@ -26,7 +27,7 @@ public static class ShellKeyBindings
         Key key,
         bool searchFocused,
         bool panelsFocused,
-        bool awaitingPanelTarget = false)
+        bool awaitingNavigation = false)
     {
         if (IsCtrl(key, KeyCode.K))
         {
@@ -38,9 +39,17 @@ public static class ShellKeyBindings
             return SearchActionFor(key);
         }
 
-        if (awaitingPanelTarget && PanelActionFor(key) is { } panelAction)
+        if (awaitingNavigation)
         {
-            return panelAction;
+            if (Is(key, KeyCode.Esc))
+            {
+                return new ShellAction.StopNavigating();
+            }
+
+            if (PanelActionFor(key) is { } panelAction)
+            {
+                return panelAction;
+            }
         }
 
         if (Is(key, KeyCode.G))
@@ -75,6 +84,18 @@ public static class ShellKeyBindings
 
         return Is(key, KeyCode.Enter) ? new ShellAction.SelectPanel() : null;
     }
+
+    /// <summary>
+    /// Whether the reader is still naming somewhere to go. A terminal cannot
+    /// report a key held down — holding "g" only repeats it — so the prefix
+    /// stays armed across one destination after another, and gives up on the
+    /// first key that names none.
+    /// </summary>
+    public static bool ContinuesNavigating(ShellAction action) => action is
+        ShellAction.AwaitPanelTarget or
+        ShellAction.PreviousPanel or
+        ShellAction.NextPanel or
+        ShellAction.SelectNumberedPanel;
 
     private static ShellAction SearchActionFor(Key key)
     {

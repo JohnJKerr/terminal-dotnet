@@ -43,8 +43,7 @@ public sealed class TestRunnerApplication(
     private bool openSourceRequested;
     private string? openPath;
     private int openLine = 1;
-    private bool failureNavigationPending;
-    private bool panelTargetPending;
+    private bool navigationPending;
     private bool previewVisible;
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
@@ -334,15 +333,16 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        var awaitingPanelTarget = panelTargetPending;
-        panelTargetPending = false;
+        var awaitingNavigation = navigationPending;
+        navigationPending = false;
         var shellAction = ShellKeyBindings.ActionFor(
             key,
             search.HasFocus,
             panels.HasFocus,
-            awaitingPanelTarget);
+            awaitingNavigation);
         if (shellAction is not null)
         {
+            navigationPending = ShellKeyBindings.ContinuesNavigating(shellAction);
             HandleShellAction(application, shellAction, key, panels, search, tests);
             return;
         }
@@ -359,7 +359,7 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        HandleTestKey(application, key, search, tests);
+        HandleTestKey(application, key, search, tests, awaitingNavigation);
     }
 
     private void HandleShellAction(
@@ -406,7 +406,7 @@ public sealed class TestRunnerApplication(
                 ShowActivePanel(panels, search, tests);
                 return;
             case ShellAction.AwaitPanelTarget:
-                panelTargetPending = true;
+            case ShellAction.StopNavigating:
                 return;
             case ShellAction.SelectNumberedPanel numbered:
                 shell.SelectNumbered(numbered.Number);
@@ -432,24 +432,20 @@ public sealed class TestRunnerApplication(
         IApplication application,
         Key key,
         TextField search,
-        ListView tests)
+        ListView tests,
+        bool awaitingNavigation)
     {
-        var awaitingFailureNavigation = failureNavigationPending;
-        if (tests.HasFocus && awaitingFailureNavigation)
-        {
-            failureNavigationPending = false;
-        }
-
         var action = TestPanelKeyBindings.ActionFor(
             key,
             session.State.SearchQuery,
             tests.HasFocus,
-            awaitingFailureNavigation);
+            awaitingNavigation);
         if (action is null)
         {
             return;
         }
 
+        navigationPending = TestPanelKeyBindings.ContinuesNavigating(action);
         key.Handled = true;
         HandleTestAction(application, action, search, tests);
     }
@@ -462,9 +458,6 @@ public sealed class TestRunnerApplication(
     {
         switch (action)
         {
-            case TestPanelAction.AwaitFailureNavigation:
-                failureNavigationPending = true;
-                return;
             case TestPanelAction.OpenSource:
                 RequestTestSource(application, preview: false);
                 return;

@@ -11,7 +11,6 @@ public abstract record TestPanelAction
     public sealed record OpenSource : TestPanelAction;
     public sealed record PreviewSource : TestPanelAction;
     public sealed record ShowOutput : TestPanelAction;
-    public sealed record AwaitFailureNavigation : TestPanelAction;
 }
 
 public static class TestPanelKeyBindings
@@ -20,7 +19,7 @@ public static class TestPanelKeyBindings
         Key key,
         string searchQuery,
         bool hasFocus,
-        bool awaitingFailureNavigation)
+        bool awaitingNavigation)
     {
         if (hasFocus && searchQuery.Length > 0 && Is(key, KeyCode.N))
         {
@@ -34,18 +33,18 @@ public static class TestPanelKeyBindings
             return Dispatched(new ExplorerCommand.ToggleFilter(filter));
         }
 
-        if (hasFocus && awaitingFailureNavigation && Is(key, KeyCode.F))
+        if (hasFocus && awaitingNavigation && Is(key, KeyCode.F))
         {
             return Dispatched(new ExplorerCommand.NextFailure());
         }
 
-        if (hasFocus && Is(key, (KeyCode)']'))
-        {
-            return new TestPanelAction.AwaitFailureNavigation();
-        }
-
         return SourceActionFor(key) ?? (hasFocus ? RunActionFor(key) : null);
     }
+
+    /// <summary>Whether a "g" is still waiting: walking failures keeps it
+    /// armed, so f after f steps through them.</summary>
+    public static bool ContinuesNavigating(TestPanelAction action) =>
+        action is TestPanelAction.Dispatch { Command: ExplorerCommand.NextFailure };
 
     private static TestPanelAction? SourceActionFor(Key key)
     {
