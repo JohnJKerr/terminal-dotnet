@@ -42,6 +42,7 @@ internal sealed class TestRunnerApplication(
     private IReadOnlyList<FileRowTone> rowTones = [];
     private object? listedContent;
     private readonly PanelShell shell = new();
+    private readonly BackgroundWork panelWork = new();
     private bool openSourceRequested;
     private string? openPath;
     private int openLine = 1;
@@ -108,11 +109,22 @@ internal sealed class TestRunnerApplication(
         FillPanels(application, search, tests);
 
         application.Run(window);
+        ShutDown();
+        return openSourceRequested;
+    }
+
+    /// <summary>
+    /// Cancelling a run only asks its process tree to end, so the panels'
+    /// work is waited out before the application is torn down. Returning
+    /// first would leave `dotnet test` orphaned behind the exiting terminal.
+    /// </summary>
+    private void ShutDown()
+    {
         runCancellation?.Cancel();
         loadCancellation?.Cancel();
+        panelWork.EndedAsync().GetAwaiter().GetResult();
         loadCancellation?.Dispose();
         loadCancellation = null;
-        return openSourceRequested;
     }
 
     /// <summary>
@@ -125,7 +137,7 @@ internal sealed class TestRunnerApplication(
         loadCancellation = new CancellationTokenSource();
         sinceLoadStarted.Restart();
         TurnActivityMarker(application);
-        _ = FillPanelsAsync(application, search, tests, loadCancellation.Token);
+        panelWork.Track(FillPanelsAsync(application, search, tests, loadCancellation.Token));
     }
 
     /// <summary>
@@ -366,7 +378,7 @@ internal sealed class TestRunnerApplication(
         {
             case ShellAction.ClearSearch:
                 search.Text = "";
-                _ = ClearSearchAsync(application, search, tests);
+                panelWork.Track(ClearSearchAsync(application, search, tests));
                 tests.SetFocus();
                 return;
             case ShellAction.LeaveSearch:
@@ -448,7 +460,7 @@ internal sealed class TestRunnerApplication(
                 runCancellation?.Cancel();
                 return;
             case TestPanelAction.Dispatch dispatch:
-                _ = DispatchAsync(application, dispatch.Command, search, tests);
+                panelWork.Track(DispatchAsync(application, dispatch.Command, search, tests));
                 return;
         }
     }
@@ -499,7 +511,8 @@ internal sealed class TestRunnerApplication(
         if (action is FilePanelAction.ToggleFilter toggle)
         {
             key.Handled = true;
-            _ = DispatchFileAsync(new FileExplorerCommand.ToggleFilter(toggle.Filter), search, files);
+            panelWork.Track(
+                DispatchFileAsync(new FileExplorerCommand.ToggleFilter(toggle.Filter), search, files));
             return;
         }
 
@@ -524,7 +537,7 @@ internal sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        _ = DispatchFileAsync(command, search, files);
+        panelWork.Track(DispatchFileAsync(command, search, files));
     }
 
     private VisibleFileNode? SelectedFile() => fileSession.State.VisibleNodes.Count == 0
@@ -599,7 +612,7 @@ internal sealed class TestRunnerApplication(
         if (action is ChangesetAction.RestoreFile)
         {
             key.Handled = true;
-            _ = RestoreSelectedAsync(application, search, files);
+            panelWork.Track(RestoreSelectedAsync(application, search, files));
             return;
         }
 
@@ -610,7 +623,7 @@ internal sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        _ = DispatchChangesetAsync(command, search, files);
+        panelWork.Track(DispatchChangesetAsync(command, search, files));
     }
 
     private static ChangesetCommand? ChangesetCommandFor(Key key, string searchQuery)
@@ -643,7 +656,7 @@ internal sealed class TestRunnerApplication(
         application.Invoke(() => Render(search, files));
     }
 
-    private void ShowDiff(IApplication application) => _ = ShowDiffAsync(application);
+    private void ShowDiff(IApplication application) => panelWork.Track(ShowDiffAsync(application));
 
     private async Task ShowDiffAsync(IApplication application)
     {
@@ -700,7 +713,7 @@ internal sealed class TestRunnerApplication(
 
     private void RequestTestSource(IApplication application, bool preview)
     {
-        _ = RequestTestSourceAsync(application, preview);
+        panelWork.Track(RequestTestSourceAsync(application, preview));
     }
 
     private async Task RequestTestSourceAsync(IApplication application, bool preview)
