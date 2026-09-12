@@ -99,13 +99,44 @@ public sealed class TestExplorerSession(
         }
 
         var sources = await updatedSourceProvider.UpdatedSourcesAsync(target, cancellationToken);
+        var projectDirectories = discoveredTests
+            .Select(test => ProjectDirectoryOf(test.ProjectPath))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
         return sources
-            .GroupBy(source => SuiteName(source.Path), StringComparer.Ordinal)
+            .SelectMany(source => SuiteUpdates(source, projectDirectories))
+            .GroupBy(suite => suite.Key, StringComparer.Ordinal)
             .ToDictionary(
                 suite => suite.Key,
-                suite => UpdateFrom(suite.First().Change),
+                suite => suite.First().Update,
                 StringComparer.Ordinal);
     }
+
+    /// <summary>A changed file names a suite only in the project that holds it, so the same
+    /// filename under two projects marks each of them on its own.</summary>
+    private static IEnumerable<(string Key, TestNodeUpdate Update)> SuiteUpdates(
+        UpdatedSource source,
+        IReadOnlyList<string> projectDirectories)
+    {
+        var project = ProjectHolding(source.Path, projectDirectories);
+        return project is null
+            ? []
+            : [(SuiteKey(project, SuiteName(source.Path)), UpdateFrom(source.Change))];
+    }
+
+    private static string? ProjectHolding(string path, IReadOnlyList<string> projectDirectories) =>
+        projectDirectories
+            .Where(directory => path.StartsWith(
+                directory + Path.DirectorySeparatorChar,
+                StringComparison.Ordinal))
+            .OrderByDescending(directory => directory.Length)
+            .FirstOrDefault();
+
+    private static string ProjectDirectoryOf(string projectPath) =>
+        Path.GetDirectoryName(Path.GetFullPath(projectPath))!;
+
+    private static string SuiteKey(string projectDirectory, string suiteName) =>
+        $"{projectDirectory}:{suiteName}";
 
     private static string SuiteName(string path) => Path.GetFileNameWithoutExtension(path)!;
 
@@ -113,8 +144,11 @@ public sealed class TestExplorerSession(
         ? TestNodeUpdate.Added
         : TestNodeUpdate.Edited;
 
-    private TestNodeUpdate UpdateOf(string className) =>
-        updatedSuites.GetValueOrDefault(className, TestNodeUpdate.Unchanged);
+    private TestNodeUpdate UpdateOf(TestCase test) =>
+        updatedSuites.GetValueOrDefault(SuiteKeyOf(test), TestNodeUpdate.Unchanged);
+
+    private static string SuiteKeyOf(TestCase test) =>
+        SuiteKey(ProjectDirectoryOf(test.ProjectPath), test.ClassName);
 
     private void ApplySearch(string query) => Show(query, State.ActiveFilter);
 
@@ -294,7 +328,7 @@ public sealed class TestExplorerSession(
             .ToArray();
 
     private bool PassesFilter(TestCase test, ExplorerFilter? filter) =>
-        filter != ExplorerFilter.Updated || updatedSuites.ContainsKey(test.ClassName);
+        filter != ExplorerFilter.Updated || updatedSuites.ContainsKey(SuiteKeyOf(test));
 
     private static string NodeId(VisibleTestNode node) => NodeId(
         node.Tests[0].ProjectPath,
@@ -464,7 +498,7 @@ public sealed class TestExplorerSession(
             TestNodeKind.Class,
             classTests[0].ClassName,
             classTests,
-            Update: UpdateOf(classTests[0].ClassName));
+            Update: UpdateOf(classTests[0]));
         var classCollapsed = collapsedNodes.Contains(NodeId(classNode));
         var testNodes = classTests
             .OrderBy(test => test.DisplayName)
@@ -473,7 +507,7 @@ public sealed class TestExplorerSession(
                 TestNodeKind.Test,
                 test.DisplayName,
                 [test],
-                Update: UpdateOf(test.ClassName)));
+                Update: UpdateOf(test)));
 
         return classCollapsed
             ? [classNode with { IsExpanded = false }]
