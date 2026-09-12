@@ -323,6 +323,18 @@ public sealed class TestExplorerSession(
             };
             return;
         }
+        catch (Exception exception)
+        {
+            // The run never produced results, so the tests stay unrun rather
+            // than failed, and the panel reports why instead of spinning.
+            State = State with
+            {
+                Status = ExplorerStatus.Failed,
+                VisibleNodes = WithOutcome(tests, TestNodeOutcome.NotRun),
+                Message = exception.Message
+            };
+            return;
+        }
 
         var sourceContext = await ReadFailureSourceAsync(run, cancellationToken);
         foreach (var (test, outcome) in CompletedOutcomes(tests, run))
