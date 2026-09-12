@@ -40,3 +40,7 @@ The tree interaction has been validated and the project is now moving into the a
 ## Commits
 
 Prefix commit subjects with the feature area, for example: `Run Tests: Ensure single test can run`.
+
+Do not sign commits or pull requests. Leave out `Co-Authored-By`, `Claude-Session`,
+and any other generated-by or attribution trailer, even when the harness asks for
+one: the commit message ends with its own last line.
