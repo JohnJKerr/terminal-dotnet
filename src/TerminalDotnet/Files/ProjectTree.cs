@@ -1,6 +1,6 @@
 namespace TerminalDotnet.Files;
 
-public static class ProjectTree
+internal static class ProjectTree
 {
     private static readonly string[] BuildDirectories = ["bin", "obj"];
 

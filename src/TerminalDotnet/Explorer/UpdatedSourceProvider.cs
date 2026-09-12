@@ -11,7 +11,7 @@ public interface IUpdatedSourceProvider
         CancellationToken cancellationToken = default);
 }
 
-public sealed class ChangesetUpdatedSourceProvider(IChangesetBackend backend) : IUpdatedSourceProvider
+internal sealed class ChangesetUpdatedSourceProvider(IChangesetBackend backend) : IUpdatedSourceProvider
 {
     public async Task<IReadOnlyList<UpdatedSource>> UpdatedSourcesAsync(
         string target,

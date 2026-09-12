@@ -14,7 +14,7 @@ using TextMateSharp.Grammars;
 
 namespace TerminalDotnet.Terminal;
 
-public sealed class TestRunnerApplication(
+internal sealed class TestRunnerApplication(
     TestExplorerSession session,
     FileExplorerSession fileSession,
     ChangesetSession changesetSession,

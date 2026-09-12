@@ -11,7 +11,7 @@ namespace TerminalDotnet.Terminal;
 /// wrapped row, which renders the content in a single flat colour.
 /// </summary>
 #pragma warning disable CS0618
-public sealed class ColoredTextView : TextView
+internal sealed class ColoredTextView : TextView
 {
     public ColoredTextView(bool wordWrap = true)
     {

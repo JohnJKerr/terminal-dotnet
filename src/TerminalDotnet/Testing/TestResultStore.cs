@@ -7,7 +7,7 @@ public interface ITestResultStore
     Task<string> ReadAsync(string path, CancellationToken cancellationToken = default);
 }
 
-public sealed class TemporaryTrxResultStore : ITestResultStore
+internal sealed class TemporaryTrxResultStore : ITestResultStore
 {
     public string CreatePath() =>
         Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}.trx");
