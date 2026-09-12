@@ -20,17 +20,6 @@ var session = new TestExplorerSession(
     sourceProvider,
     new FileTestSourceLocator(sourceProvider),
     new ChangesetUpdatedSourceProvider(new GitChangesetBackend(commandRunner)));
-try
-{
-    await fileSession.LoadAsync(target);
-    await changesetSession.LoadAsync(target);
-    await session.LoadAsync(target);
-}
-catch (Exception exception)
-{
-    Console.Error.WriteLine(exception.Message);
-    return 1;
-}
 
 var editor = Environment.GetEnvironmentVariable("VISUAL") ??
     Environment.GetEnvironmentVariable("EDITOR") ??

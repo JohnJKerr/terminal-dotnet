@@ -9,14 +9,29 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
     private IReadOnlyList<FileEntry> discoveredFiles = [];
     private readonly HashSet<string> collapsedNodes = [];
 
-    public FileExplorerState State { get; private set; } = new([]);
+    public FileExplorerState State { get; private set; } = new([]) { Loading = true };
 
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            State = await DiscoveredStateAsync(target, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            State = new FileExplorerState([]);
+        }
+    }
+
+    private async Task<FileExplorerState> DiscoveredStateAsync(
+        string target,
+        CancellationToken cancellationToken)
     {
         var files = await backend.DiscoverAsync(target, cancellationToken);
         discoveredFiles = files;
         tree = TreeFrom(files);
-        State = new FileExplorerState(VisibleNodes()) { Changes = SummaryFrom(files) };
+
+        return new FileExplorerState(VisibleNodes()) { Changes = SummaryFrom(files) };
     }
 
     public Task DispatchAsync(FileExplorerCommand command)

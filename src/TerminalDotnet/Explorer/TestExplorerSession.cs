@@ -23,12 +23,33 @@ public sealed class TestExplorerSession(
 
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
+        try
+        {
+            State = await DiscoveredStateAsync(target, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            State = new ExplorerState(ExplorerStatus.Failed, [], 0, exception.Message);
+        }
+    }
+
+    private async Task<ExplorerState> DiscoveredStateAsync(
+        string target,
+        CancellationToken cancellationToken)
+    {
         var tests = await backend.DiscoverAsync(target, cancellationToken);
         discoveredTests = tests;
         updatedSuites = await UpdatedSuitesAsync(target, cancellationToken);
-        var nodes = VisibleNodes(tests);
 
-        State = new ExplorerState(ExplorerStatus.Ready, nodes, 0, $"Ready — {tests.Count} tests discovered");
+        // The panels are open while discovery runs, so a search or filter
+        // entered in the meantime survives the tests arriving.
+        return State with
+        {
+            Status = ExplorerStatus.Ready,
+            VisibleNodes = VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter)),
+            SelectedIndex = 0,
+            Message = $"Ready — {tests.Count} tests discovered"
+        };
     }
 
     public Task DispatchAsync(ExplorerCommand command, CancellationToken cancellationToken = default) =>

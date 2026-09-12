@@ -7,13 +7,28 @@ public sealed class ChangesetSession(IChangesetBackend backend)
     private string target = "";
     private IReadOnlyList<ChangedFile> changedFiles = [];
 
-    public ChangesetState State { get; private set; } = new([]);
+    public ChangesetState State { get; private set; } = new([]) { Loading = true };
 
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
         this.target = target;
+        try
+        {
+            State = await DiscoveredStateAsync(target, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            State = new ChangesetState([], 0, State.SearchQuery);
+        }
+    }
+
+    private async Task<ChangesetState> DiscoveredStateAsync(
+        string target,
+        CancellationToken cancellationToken)
+    {
         changedFiles = await backend.DiscoverAsync(target, cancellationToken);
-        State = new ChangesetState(Matching(State.SearchQuery), 0, State.SearchQuery)
+
+        return new ChangesetState(Matching(State.SearchQuery), 0, State.SearchQuery)
         {
             Summary = SummaryFrom(changedFiles)
         };

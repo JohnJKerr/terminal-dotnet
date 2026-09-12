@@ -30,7 +30,16 @@ public sealed record TestPanelSnapshot(
         SelectedOutputTitleFrom(state),
         SelectedOutputFrom(state),
         PanelFilters.Chips(state.ActiveFilter),
-        PanelEmptyState.For("tests", state.VisibleNodes.Count, state.SearchQuery, state.ActiveFilter));
+        EmptyMessageFrom(state));
+
+    private static string EmptyMessageFrom(ExplorerState state) =>
+        state.Status == ExplorerStatus.Loading
+            ? ""
+            : PanelEmptyState.For(
+                "tests",
+                state.VisibleNodes.Count,
+                state.SearchQuery,
+                state.ActiveFilter);
 
     private static string StatusLineFrom(ExplorerState state)
     {

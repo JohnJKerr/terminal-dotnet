@@ -33,6 +33,8 @@ public sealed class TestRunnerApplication(
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
 
     private CancellationTokenSource? runCancellation;
+    private CancellationTokenSource? loadCancellation;
+    private bool panelsRequested;
     private readonly Stopwatch sincePanelsAppeared = new();
     private IReadOnlyList<VisibleTestNode> testNodes = [];
     private IReadOnlyList<FileRowTone> rowTones = [];
@@ -98,13 +100,63 @@ public sealed class TestRunnerApplication(
         sincePanelsAppeared.Restart();
         panels.SelectedItem = shell.State.ActiveIndex;
         tests.SetFocus();
+        FillPanels(application, search, tests);
 
         application.Run(window);
         runCancellation?.Cancel();
         runCancellation?.Dispose();
         runCancellation = null;
+        loadCancellation?.Cancel();
+        loadCancellation?.Dispose();
+        loadCancellation = null;
         return openSourceRequested;
     }
+
+    /// <summary>
+    /// The panels are painted before anything is loaded, so opening the app
+    /// does not wait on test discovery, which builds the solution. Each panel
+    /// fills in as its own load lands; the editor round trip refreshes the
+    /// explorers itself, so the loads only run the first time the panels open.
+    /// </summary>
+    private void FillPanels(IApplication application, TextField search, ListView tests)
+    {
+        if (panelsRequested)
+        {
+            return;
+        }
+
+        panelsRequested = true;
+        loadCancellation = new CancellationTokenSource();
+        _ = FillPanelsAsync(application, search, tests, loadCancellation.Token);
+    }
+
+    private async Task FillPanelsAsync(
+        IApplication application,
+        TextField search,
+        ListView tests,
+        CancellationToken cancellationToken)
+    {
+        foreach (var load in PanelLoads())
+        {
+            try
+            {
+                await load(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+
+            application.Invoke(() => Render(search, tests));
+        }
+    }
+
+    private IReadOnlyList<Func<CancellationToken, Task>> PanelLoads() =>
+    [
+        token => fileSession.LoadAsync(target, token),
+        token => changesetSession.LoadAsync(target, token),
+        token => session.LoadAsync(target, token)
+    ];
 
     private ListView Panels()
     {

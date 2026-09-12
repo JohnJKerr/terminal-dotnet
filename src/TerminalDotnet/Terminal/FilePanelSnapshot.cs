@@ -88,7 +88,15 @@ public sealed record FilePanelSnapshot(
         state.VisibleNodes.Count(node => node.Kind == FileNodeKind.File),
         StatusSegmentsFrom(state.Changes),
         PanelFilters.Chips(state.ActiveFilter),
-        PanelEmptyState.For("files", state.VisibleNodes.Count, state.SearchQuery, state.ActiveFilter));
+        EmptyMessageFrom(state));
+
+    private static string EmptyMessageFrom(FileExplorerState state) => state.Loading
+        ? ""
+        : PanelEmptyState.For(
+            "files",
+            state.VisibleNodes.Count,
+            state.SearchQuery,
+            state.ActiveFilter);
 
     private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(FileChangeSummary changes) =>
     [

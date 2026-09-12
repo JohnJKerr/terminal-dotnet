@@ -24,6 +24,10 @@ public sealed record ChangesetState(
     public ChangesetSummary Summary { get; init; } = ChangesetSummary.Empty;
 
     public DiffContext? Diff { get; init; }
+
+    /// <summary>Set while the first discovery is still running, so the panel
+    /// does not claim there are no changes before it has looked.</summary>
+    public bool Loading { get; init; }
 }
 
 public abstract record ChangesetCommand

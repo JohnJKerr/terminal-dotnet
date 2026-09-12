@@ -41,6 +41,10 @@ public sealed record FileExplorerState(
     ExplorerFilter? ActiveFilter = null)
 {
     public FileChangeSummary Changes { get; init; } = FileChangeSummary.Empty;
+
+    /// <summary>Set while the first discovery is still running, so the panel
+    /// does not claim there are no files before it has looked.</summary>
+    public bool Loading { get; init; }
 }
 
 public abstract record FileExplorerCommand

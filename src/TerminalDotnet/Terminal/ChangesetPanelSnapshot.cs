@@ -22,7 +22,11 @@ public sealed record ChangesetPanelSnapshot(
         StatusSegmentsFrom(state.Summary),
         state.Diff?.DisplayPath ?? "",
         DiffAppearance.LinesFrom(state.Diff?.Diff ?? ""),
-        PanelEmptyState.For("changes", state.Files.Count, state.SearchQuery));
+        EmptyMessageFrom(state));
+
+    private static string EmptyMessageFrom(ChangesetState state) => state.Loading
+        ? ""
+        : PanelEmptyState.For("changes", state.Files.Count, state.SearchQuery);
 
     private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(ChangesetSummary summary) =>
     [
