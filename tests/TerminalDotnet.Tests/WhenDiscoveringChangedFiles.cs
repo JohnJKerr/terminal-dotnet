@@ -10,7 +10,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_reports_the_added_modified_and_deleted_files_git_lists()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", "?? src/Added.cs\n M src/Changed.cs\n D src/Gone.cs\n");
+        var runner = new GitCommandRunner("/repo", "?? src/Added.cs\0 M src/Changed.cs\0 D src/Gone.cs\0");
 
         // Act
         var files = await new GitChangesetBackend(runner).DiscoverAsync("/repo/App.slnx");
@@ -29,14 +29,14 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_asks_git_only_for_the_changes_under_the_directory_it_started_in()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", " M samples/App/Changed.cs\n");
+        var runner = new GitCommandRunner("/repo", " M samples/App/Changed.cs\0");
 
         // Act
         await new GitChangesetBackend(runner).DiscoverAsync("/repo/samples/App/App.csproj");
 
         // Assert
         Assert.Equal(
-            ["status", "--porcelain=v1", "--untracked-files=all", "--", "/repo/samples/App"],
+            ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", "/repo/samples/App"],
             runner.Requests.Single(arguments => arguments[0] == "status"));
     }
 
@@ -44,7 +44,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_names_each_file_relative_to_the_directory_it_started_in()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", " M samples/App/Changed.cs\n");
+        var runner = new GitCommandRunner("/repo", " M samples/App/Changed.cs\0");
 
         // Act
         var files = await new GitChangesetBackend(runner).DiscoverAsync("/repo/samples/App/App.csproj");
@@ -57,7 +57,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_resolves_each_path_from_the_repository_root()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", " M samples/App/Changed.cs\n");
+        var runner = new GitCommandRunner("/repo", " M samples/App/Changed.cs\0");
 
         // Act
         var files = await new GitChangesetBackend(runner).DiscoverAsync("/repo/samples/App/App.csproj");
@@ -70,7 +70,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_reports_the_destination_of_a_renamed_file()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", "R  src/Old.cs -> src/New.cs\n");
+        var runner = new GitCommandRunner("/repo", "R  src/New.cs\0src/Old.cs\0");
 
         // Act
         var files = await new GitChangesetBackend(runner).DiscoverAsync("/repo/App.slnx");
@@ -96,7 +96,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_asks_git_for_the_diff_of_a_modified_file()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", " M src/Changed.cs\n") { Diff = "@@ -1 +1 @@" };
+        var runner = new GitCommandRunner("/repo", " M src/Changed.cs\0") { Diff = "@@ -1 +1 @@" };
         var backend = new GitChangesetBackend(runner);
         var files = await backend.DiscoverAsync("/repo/App.slnx");
 
@@ -111,7 +111,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_asks_git_to_restore_a_deleted_file_from_the_index()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", " D src/Gone.cs\n");
+        var runner = new GitCommandRunner("/repo", " D src/Gone.cs\0");
         var backend = new GitChangesetBackend(runner);
         var files = await backend.DiscoverAsync("/repo/App.slnx");
 
@@ -128,7 +128,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_keeps_a_staged_edit_when_restoring_the_file_deleted_over_it()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", "MD src/Gone.cs\n");
+        var runner = new GitCommandRunner("/repo", "MD src/Gone.cs\0");
         var backend = new GitChangesetBackend(runner);
         var files = await backend.DiscoverAsync("/repo/App.slnx");
 
@@ -143,7 +143,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_asks_git_to_restore_a_staged_deletion_from_the_last_commit()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", "D  src/Gone.cs\n");
+        var runner = new GitCommandRunner("/repo", "D  src/Gone.cs\0");
         var backend = new GitChangesetBackend(runner);
         var files = await backend.DiscoverAsync("/repo/App.slnx");
 
@@ -160,7 +160,7 @@ public sealed class WhenDiscoveringChangedFiles
     public async Task It_reports_a_restore_git_refused()
     {
         // Arrange
-        var runner = new GitCommandRunner("/repo", " D src/Gone.cs\n") { RestoreExitCode = 1 };
+        var runner = new GitCommandRunner("/repo", " D src/Gone.cs\0") { RestoreExitCode = 1 };
         var backend = new GitChangesetBackend(runner);
         var files = await backend.DiscoverAsync("/repo/App.slnx");
 

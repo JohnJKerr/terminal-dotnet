@@ -16,22 +16,38 @@ public sealed record GitStatusEntry(string RelativePath, GitChangeKind Kind)
 
 public static class GitStatusOutput
 {
-    private const string RenameArrow = " -> ";
     private const int PathStart = 3;
 
-    public static IReadOnlyList<GitStatusEntry> EntriesFrom(string standardOutput) => standardOutput
-        .ReplaceLineEndings("\n")
-        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-        .Where(line => line.Length > PathStart)
-        .Select(EntryFrom)
-        .ToArray();
+    public static IReadOnlyList<GitStatusEntry> EntriesFrom(string standardOutput) =>
+        ChangeRecords(standardOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries))
+            .Select(EntryFrom)
+            .ToArray();
 
-    private static GitStatusEntry EntryFrom(string line) => new(
-        RelativePathFrom(line[PathStart..]),
-        KindFrom(line[..2]))
+    private static IEnumerable<string> ChangeRecords(IReadOnlyList<string> records)
     {
-        Staged = StagedKindFrom(line[0]),
-        Unstaged = UnstagedKindFrom(line[1])
+        var index = 0;
+        while (index < records.Count)
+        {
+            var record = records[index++];
+            if (record.Length <= PathStart)
+            {
+                continue;
+            }
+
+            yield return record;
+            index += RenamesAPath(record) ? 1 : 0;
+        }
+    }
+
+    private static bool RenamesAPath(string record) =>
+        record[0] is 'R' or 'C' || record[1] is 'R' or 'C';
+
+    private static GitStatusEntry EntryFrom(string record) => new(
+        record[PathStart..],
+        KindFrom(record[..2]))
+    {
+        Staged = StagedKindFrom(record[0]),
+        Unstaged = UnstagedKindFrom(record[1])
     };
 
     private static GitChangeKind? StagedKindFrom(char code) =>
@@ -47,12 +63,6 @@ public static class GitStatusOutput
         'D' => GitChangeKind.Deleted,
         _ => GitChangeKind.Modified
     };
-
-    private static string RelativePathFrom(string path)
-    {
-        var rename = path.IndexOf(RenameArrow, StringComparison.Ordinal);
-        return rename < 0 ? path : path[(rename + RenameArrow.Length)..];
-    }
 
     private static GitChangeKind KindFrom(string code)
     {

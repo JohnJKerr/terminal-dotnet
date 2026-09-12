@@ -91,7 +91,7 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         var result = await commandRunner.RunAsync(
             new CommandRequest(
                 "git",
-                ["status", "--porcelain=v1", "--untracked-files=all"],
+                ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
                 repositoryRoot),
             cancellationToken);
         if (result.ExitCode != 0)

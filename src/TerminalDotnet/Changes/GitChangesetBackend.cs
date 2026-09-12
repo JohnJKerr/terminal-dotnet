@@ -20,7 +20,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         }
 
         var status = await GitAsync(
-            ["status", "--porcelain=v1", "--untracked-files=all", "--", scopeDirectory],
+            ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", scopeDirectory],
             cancellationToken);
         if (status.ExitCode != 0)
         {
