@@ -171,7 +171,7 @@ public sealed class TestRunnerApplication(
             ShowMarks = false,
             KeystrokeNavigator = null
         };
-        panels.SetSource(new ObservableCollection<string>(shell.State.Panels));
+        panels.SetSource(new ObservableCollection<string>(shell.State.NumberedPanels));
         panels.SelectedItem = shell.State.ActiveIndex;
         return panels;
     }
@@ -369,6 +369,10 @@ public sealed class TestRunnerApplication(
                 return;
             case ShellAction.NextPanel:
                 shell.SelectNext();
+                ShowActivePanel(panels, search, tests);
+                return;
+            case ShellAction.SelectNumberedPanel numbered:
+                shell.SelectNumbered(numbered.Number);
                 ShowActivePanel(panels, search, tests);
                 return;
             case ShellAction.ShowCommands:

@@ -15,6 +15,7 @@ public abstract record ShellAction
     public sealed record ShowCommands : ShellAction;
     public sealed record PreviousPanel : ShellAction;
     public sealed record NextPanel : ShellAction;
+    public sealed record SelectNumberedPanel(int Number) : ShellAction;
     public sealed record Quit : ShellAction;
 }
 
@@ -35,6 +36,11 @@ public static class ShellKeyBindings
         if (IsAlt(key, KeyCode.CursorDown))
         {
             return new ShellAction.NextPanel();
+        }
+
+        if (AltNumber(key) is { } number)
+        {
+            return new ShellAction.SelectNumberedPanel(number);
         }
 
         if (searchFocused)
@@ -89,4 +95,17 @@ public static class ShellKeyBindings
 
     private static bool IsAlt(Key key, KeyCode keyCode) =>
         key.IsAlt && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
+
+    private static int? AltNumber(Key key)
+    {
+        if (!key.IsAlt)
+        {
+            return null;
+        }
+
+        var code = (int)key.NoShift.NoCtrl.NoAlt.KeyCode;
+        return code >= (int)KeyCode.D1 && code <= (int)KeyCode.D9
+            ? code - (int)KeyCode.D1 + 1
+            : null;
+    }
 }
