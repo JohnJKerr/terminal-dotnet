@@ -9,8 +9,9 @@ namespace TerminalDotnet.Terminal;
 /// the keyboard locked into navigating.
 ///
 /// A terminal only reports a key being released under the kitty keyboard
-/// protocol. Where it is not negotiated no release ever arrives, g reads as
-/// held, and the wait stays open until a key names nowhere.
+/// protocol. Holding is only offered where that is negotiated, because a wait
+/// that no release can close would lock the keyboard into navigating; where it
+/// is not, every g is spent like a tap.
 /// </summary>
 public sealed class NavigationPrefix
 {
@@ -19,10 +20,10 @@ public sealed class NavigationPrefix
 
     public bool IsWaiting { get; private set; }
 
-    public void Arm()
+    public void Arm(bool keyReleasesReported)
     {
         IsWaiting = true;
-        isHeld = true;
+        isHeld = keyReleasesReported;
     }
 
     public void Reached()

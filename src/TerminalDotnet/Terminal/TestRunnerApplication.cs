@@ -342,7 +342,7 @@ public sealed class TestRunnerApplication(
             awaitingNavigation);
         if (shellAction is not null)
         {
-            RecordNavigation(shellAction);
+            RecordNavigation(application, shellAction);
             HandleShellAction(application, shellAction, key, panels, search, tests);
             return;
         }
@@ -364,6 +364,13 @@ public sealed class TestRunnerApplication(
         HandleTestKey(application, key, search, tests, awaitingNavigation);
     }
 
+    /// <summary>Whether this terminal tells us a key has been let go. Only the
+    /// kitty keyboard protocol does, and holding g is only on offer when it
+    /// does, so a wait always has something that can close it.</summary>
+    private static bool ReportsKeyReleases(IApplication application) =>
+        application.Driver?.KittyKeyboardCapabilities?.Flags
+            .HasFlag(KittyKeyboardFlags.ReportEventTypes) == true;
+
     /// <summary>Letting go of the navigation key ends the wait it opened, once
     /// it has actually taken the reader somewhere.</summary>
     private void HandleKeyUp(Key key)
@@ -374,11 +381,11 @@ public sealed class TestRunnerApplication(
         }
     }
 
-    private void RecordNavigation(ShellAction action)
+    private void RecordNavigation(IApplication application, ShellAction action)
     {
         if (action is ShellAction.AwaitPanelTarget)
         {
-            navigation.Arm();
+            navigation.Arm(ReportsKeyReleases(application));
             return;
         }
 
