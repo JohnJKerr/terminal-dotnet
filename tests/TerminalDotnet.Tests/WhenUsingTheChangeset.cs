@@ -158,6 +158,41 @@ public sealed class WhenUsingTheChangeset
         Assert.Empty(backend.Restored);
     }
 
+    [Fact]
+    public async Task It_says_so_when_a_file_could_not_be_brought_back()
+    {
+        // Arrange
+        var backend = new InMemoryChangesetBackend(
+            new ChangedFile("/repo/src/Gone.cs", "src/Gone.cs", ChangeKind.Deleted))
+        {
+            RestoreSucceeds = false
+        };
+        var session = new ChangesetSession(backend);
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Act
+        await session.DispatchAsync(new ChangesetCommand.RestoreSelected());
+
+        // Assert
+        Assert.Equal("Could not restore src/Gone.cs", session.State.Notice);
+    }
+
+    [Fact]
+    public async Task It_stops_saying_so_once_a_later_restore_works()
+    {
+        // Arrange
+        var backend = new InMemoryChangesetBackend(
+            new ChangedFile("/repo/src/Gone.cs", "src/Gone.cs", ChangeKind.Deleted));
+        var session = new ChangesetSession(backend);
+        await session.LoadAsync("TerminalDotnet.slnx");
+
+        // Act
+        await session.DispatchAsync(new ChangesetCommand.RestoreSelected());
+
+        // Assert
+        Assert.Equal("", session.State.Notice);
+    }
+
     private static ChangesetSession SessionWith(params ChangedFile[] files) =>
         new(new InMemoryChangesetBackend(files));
 
@@ -175,11 +210,18 @@ public sealed class WhenUsingTheChangeset
         public Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
             Task.FromResult($"diff for {file.DisplayPath}");
 
-        public Task RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default)
+        public bool RestoreSucceeds { get; init; } = true;
+
+        public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default)
         {
+            if (!RestoreSucceeds)
+            {
+                return Task.FromResult(false);
+            }
+
             Restored.Add(file);
             changedFiles.Remove(file);
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
     }
 }

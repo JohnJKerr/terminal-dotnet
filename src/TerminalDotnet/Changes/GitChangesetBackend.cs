@@ -54,14 +54,17 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         return untracked.StandardOutput;
     }
 
-    public async Task RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default)
+    public async Task<bool> RestoreAsync(
+        ChangedFile file,
+        CancellationToken cancellationToken = default)
     {
         if (repositoryRoot is null)
         {
-            return;
+            return false;
         }
 
-        await GitAsync(RestoreArgumentsFor(file), cancellationToken);
+        var restore = await GitAsync(RestoreArgumentsFor(file), cancellationToken);
+        return restore.ExitCode == 0;
     }
 
     /// <summary>A file deleted from the working tree comes back from the index, so a

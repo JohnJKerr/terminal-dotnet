@@ -35,6 +35,9 @@ public sealed record ChangesetState(
     /// <summary>Set while the first discovery is still running, so the panel
     /// does not claim there are no changes before it has looked.</summary>
     public bool Loading { get; init; }
+
+    /// <summary>What went wrong with the last action, for the panel to show.</summary>
+    public string Notice { get; init; } = "";
 }
 
 public abstract record ChangesetCommand
@@ -55,5 +58,6 @@ public interface IChangesetBackend
 
     Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default);
 
-    Task RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default);
+    /// <summary>Returns false when the file could not be brought back.</summary>
+    Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default);
 }

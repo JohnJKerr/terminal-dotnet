@@ -19,7 +19,7 @@ public sealed record ChangesetPanelSnapshot(
         state.SelectedIndex,
         state.SearchQuery,
         state.Files.Count,
-        StatusSegmentsFrom(state.Summary),
+        StatusSegmentsFrom(state.Summary, state.Notice),
         state.Diff?.DisplayPath ?? "",
         DiffAppearance.LinesFrom(state.Diff?.Diff ?? ""),
         EmptyMessageFrom(state));
@@ -28,11 +28,14 @@ public sealed record ChangesetPanelSnapshot(
         ? ""
         : PanelEmptyState.For("changes", state.Files.Count, state.SearchQuery);
 
-    private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(ChangesetSummary summary) =>
+    private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(
+        ChangesetSummary summary,
+        string notice) =>
     [
         new($"{summary.Changed} Changed", FileRowTone.Modified),
         new($"{summary.Added} Added", FileRowTone.New),
-        new($"{summary.Deleted} Deleted", FileRowTone.Deleted)
+        new($"{summary.Deleted} Deleted", FileRowTone.Deleted),
+        .. notice.Length > 0 ? new FileStatusSegment[] { new(notice, FileRowTone.Deleted) } : []
     ];
 
     private static ChangesetPanelRow RowFrom(ChangedFile file) => new(

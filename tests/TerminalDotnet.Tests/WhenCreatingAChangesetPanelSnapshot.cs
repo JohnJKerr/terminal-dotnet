@@ -52,6 +52,21 @@ public sealed class WhenCreatingAChangesetPanelSnapshot
     }
 
     [Fact]
+    public void It_shows_a_notice_on_the_status_line()
+    {
+        // Arrange
+        var state = new ChangesetState([]) { Notice = "Could not restore src/Gone.cs" };
+
+        // Act
+        var snapshot = ChangesetPanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(
+            "Could not restore src/Gone.cs",
+            snapshot.StatusSegments.Last().Text);
+    }
+
+    [Fact]
     public void It_tones_the_status_line_counts_by_the_change_they_report()
     {
         // Arrange

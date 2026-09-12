@@ -156,9 +156,26 @@ public sealed class WhenDiscoveringChangedFiles
             runner.Requests.Last());
     }
 
+    [Fact]
+    public async Task It_reports_a_restore_git_refused()
+    {
+        // Arrange
+        var runner = new GitCommandRunner("/repo", " D src/Gone.cs\n") { RestoreExitCode = 1 };
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync("/repo/App.slnx");
+
+        // Act
+        var restored = await backend.RestoreAsync(files[0]);
+
+        // Assert
+        Assert.False(restored);
+    }
+
     private sealed class GitCommandRunner(string root, string status) : ICommandRunner
     {
         public int RootExitCode { get; init; }
+
+        public int RestoreExitCode { get; init; }
 
         public string Diff { get; init; } = "";
 
@@ -173,6 +190,7 @@ public sealed class WhenDiscoveringChangedFiles
             {
                 "rev-parse" => new CommandResult(RootExitCode, root, ""),
                 "status" => new CommandResult(0, status, ""),
+                "restore" => new CommandResult(RestoreExitCode, "", ""),
                 _ => new CommandResult(0, Diff, "")
             });
         }

@@ -61,8 +61,8 @@ public sealed class WhenReturningFromTheEditor
         public Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
             Task.FromResult("");
 
-        public Task RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
     }
 
     private sealed class EmptyChangesetBackend : IChangesetBackend
@@ -75,8 +75,8 @@ public sealed class WhenReturningFromTheEditor
         public Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
             Task.FromResult("");
 
-        public Task RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.CompletedTask;
+        public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
+            Task.FromResult(true);
     }
 
     private sealed class ChangingFileBackend(FileEntry file) : IFileExplorerBackend

@@ -65,8 +65,12 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         if (command is ChangesetCommand.RestoreSelected &&
             Selected() is { Kind: ChangeKind.Deleted } deleted)
         {
-            await backend.RestoreAsync(deleted, cancellationToken);
+            var restored = await backend.RestoreAsync(deleted, cancellationToken);
             await LoadAsync(target, cancellationToken);
+            State = State with
+            {
+                Notice = restored ? "" : $"Could not restore {deleted.DisplayPath}"
+            };
             return;
         }
 
