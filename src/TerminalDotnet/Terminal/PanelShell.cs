@@ -24,4 +24,10 @@ public sealed class PanelShell
             ActivePanel = (PanelKind)Math.Clamp(index, 0, State.Panels.Count - 1)
         };
     }
+
+    public void SelectPrevious() => Select(Wrapped(State.ActiveIndex - 1));
+
+    public void SelectNext() => Select(Wrapped(State.ActiveIndex + 1));
+
+    private int Wrapped(int index) => (index + State.Panels.Count) % State.Panels.Count;
 }

@@ -13,6 +13,8 @@ public abstract record ShellAction
     public sealed record FocusRows : ShellAction;
     public sealed record SelectPanel : ShellAction;
     public sealed record ShowCommands : ShellAction;
+    public sealed record PreviousPanel : ShellAction;
+    public sealed record NextPanel : ShellAction;
     public sealed record Quit : ShellAction;
 }
 
@@ -23,6 +25,16 @@ public static class ShellKeyBindings
         if (IsCtrl(key, KeyCode.K))
         {
             return new ShellAction.ShowCommands();
+        }
+
+        if (IsAlt(key, KeyCode.CursorUp))
+        {
+            return new ShellAction.PreviousPanel();
+        }
+
+        if (IsAlt(key, KeyCode.CursorDown))
+        {
+            return new ShellAction.NextPanel();
         }
 
         if (searchFocused)
@@ -74,4 +86,7 @@ public static class ShellKeyBindings
 
     private static bool IsCtrl(Key key, KeyCode keyCode) =>
         key.IsCtrl && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
+
+    private static bool IsAlt(Key key, KeyCode keyCode) =>
+        key.IsAlt && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
 }

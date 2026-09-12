@@ -50,6 +50,7 @@ public static class CommandMenu
     private static readonly IReadOnlyList<CommandMenuEntry> Anywhere =
     [
         new("Tab", "move between search, panels and rows"),
+        new("Alt+↑/↓", "move between panels"),
         new("←", "focus the panel list"),
         new("→", "focus the rows"),
         new("s", "search the active panel"),

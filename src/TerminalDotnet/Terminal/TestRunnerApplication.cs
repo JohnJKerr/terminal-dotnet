@@ -361,8 +361,15 @@ public sealed class TestRunnerApplication(
                 return;
             case ShellAction.SelectPanel:
                 shell.Select(panels.SelectedItem ?? 0);
-                Render(search, tests);
-                tests.SetFocus();
+                ShowActivePanel(panels, search, tests);
+                return;
+            case ShellAction.PreviousPanel:
+                shell.SelectPrevious();
+                ShowActivePanel(panels, search, tests);
+                return;
+            case ShellAction.NextPanel:
+                shell.SelectNext();
+                ShowActivePanel(panels, search, tests);
                 return;
             case ShellAction.ShowCommands:
                 ShowCommands(application);
@@ -371,6 +378,13 @@ public sealed class TestRunnerApplication(
                 application.RequestStop();
                 return;
         }
+    }
+
+    private void ShowActivePanel(ListView panels, TextField search, ListView tests)
+    {
+        panels.SelectedItem = shell.State.ActiveIndex;
+        Render(search, tests);
+        tests.SetFocus();
     }
 
     private void HandleTestKey(
