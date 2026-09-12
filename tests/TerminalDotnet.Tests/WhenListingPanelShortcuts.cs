@@ -106,6 +106,37 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
+    public void It_leaves_moving_up_and_down_off_the_tests()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Tests,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            TestState());
+
+        // Assert
+        Assert.DoesNotContain("up", shortcuts);
+    }
+
+    [Fact]
+    public void It_still_offers_stepping_through_matches_on_the_tests()
+    {
+        // Arrange
+        var state = TestState() with { SearchQuery = "cart" };
+
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Tests,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            state);
+
+        // Assert
+        Assert.Contains("n/b match", shortcuts);
+    }
+
+    [Fact]
     public void It_only_offers_cancel_while_tests_are_running()
     {
         // Arrange

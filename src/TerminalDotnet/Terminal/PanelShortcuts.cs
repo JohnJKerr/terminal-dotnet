@@ -69,7 +69,7 @@ public static class PanelShortcuts
             return [];
         }
 
-        var shortcuts = new List<string>(Navigation(state.SearchQuery));
+        var shortcuts = new List<string>(MatchShortcut(state.SearchQuery));
         if (state.VisibleNodes[state.SelectedIndex].Kind != TestNodeKind.Test)
         {
             shortcuts.Add("Space fold");
@@ -122,9 +122,13 @@ public static class PanelShortcuts
         return expansion.Any(isExpanded => isExpanded) ? ["z fold all"] : ["z unfold all"];
     }
 
-    private static IReadOnlyList<string> Navigation(string searchQuery) => searchQuery.Length == 0
-        ? ["↑/k up", "↓/j down"]
-        : ["↑/k up", "↓/j down", "n/b match"];
+    private static IReadOnlyList<string> Navigation(string searchQuery) =>
+        ["↑/k up", "↓/j down", .. MatchShortcut(searchQuery)];
+
+    /// <summary>Moving up and down is left off the tests, where the status line
+    /// is busiest and the Explorer has already shown how it is done.</summary>
+    private static IReadOnlyList<string> MatchShortcut(string searchQuery) =>
+        searchQuery.Length == 0 ? [] : ["n/b match"];
 
     private static bool IsRunning(ExplorerState state) => state.Status == ExplorerStatus.Running;
 
