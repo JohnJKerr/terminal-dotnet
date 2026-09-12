@@ -38,7 +38,7 @@ public sealed class TestExplorerSession(
         string target,
         CancellationToken cancellationToken)
     {
-        var tests = await backend.DiscoverAsync(target, cancellationToken);
+        var tests = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
         discoveredTests = tests;
         updatedSuites = await UpdatedSuitesAsync(target, cancellationToken);
 
@@ -291,12 +291,11 @@ public sealed class TestExplorerSession(
         .Select(result => result.Test)
         .ToArray() ?? [];
 
-    private IReadOnlyList<VisibleTestNode> VisibleNodes(IReadOnlyList<TestCase> tests) => tests
+    private IReadOnlyList<VisibleTestNode> VisibleNodes(IReadOnlyList<TestCase> tests) => Snapshot.Of(tests
         .GroupBy(test => test.ProjectPath)
         .OrderBy(project => project.Key)
         .SelectMany(ProjectNodes)
-        .Select(NodeWithOutcome)
-        .ToArray();
+        .Select(NodeWithOutcome));
 
     private VisibleTestNode NodeWithOutcome(VisibleTestNode node)
     {
@@ -317,10 +316,9 @@ public sealed class TestExplorerSession(
         VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter));
 
     private IReadOnlyList<TestCase> TestsMatching(string query, ExplorerFilter? filter) =>
-        discoveredTests
+        Snapshot.Of(discoveredTests
             .Where(test => MatchesSearch(test, query))
-            .Where(test => PassesFilter(test, filter))
-            .ToArray();
+            .Where(test => PassesFilter(test, filter)));
 
     private bool PassesFilter(TestCase test, ExplorerFilter? filter) =>
         filter != ExplorerFilter.Updated || updatedSuites.ContainsKey(SuiteKeyOf(test));
@@ -361,7 +359,7 @@ public sealed class TestExplorerSession(
         IReadOnlyList<TestCase> tests,
         CancellationToken cancellationToken)
     {
-        lastRunTests = tests;
+        lastRunTests = Snapshot.Of(tests);
         activeTests.Clear();
         activeTests.UnionWith(tests);
         State = State with
@@ -409,7 +407,7 @@ public sealed class TestExplorerSession(
             Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
             VisibleNodes = CurrentNodes(),
             Message = run.Output,
-            LastRun = run,
+            LastRun = run with { Results = Snapshot.Of(run.Results) },
             SourceLocation = FailureSourceFrom(run)
         };
     }
@@ -464,7 +462,7 @@ public sealed class TestExplorerSession(
 
     private IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project)
     {
-        var projectTests = project.ToArray();
+        var projectTests = Snapshot.Of(project);
         var projectNode = new VisibleTestNode(
             0,
             TestNodeKind.Project,
@@ -483,7 +481,7 @@ public sealed class TestExplorerSession(
 
     private IEnumerable<VisibleTestNode> ClassNodes(IGrouping<string, TestCase> testClass)
     {
-        var classTests = testClass.ToArray();
+        var classTests = Snapshot.Of(testClass);
         var classNode = new VisibleTestNode(
             1,
             TestNodeKind.Class,

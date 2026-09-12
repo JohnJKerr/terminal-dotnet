@@ -27,7 +27,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         string target,
         CancellationToken cancellationToken)
     {
-        var files = await backend.DiscoverAsync(target, cancellationToken);
+        var files = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
         discoveredFiles = files;
         tree = TreeFrom(files);
 
@@ -154,8 +154,8 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         State = State with { SelectedIndex = index };
     }
 
-    private IReadOnlyList<VisibleFileNode> VisibleNodes() =>
-        Unfolded().Select(node => node.Node with { IsExpanded = IsExpanded(node.Key) }).ToArray();
+    private IReadOnlyList<VisibleFileNode> VisibleNodes() => Snapshot.Of(
+        Unfolded().Select(node => node.Node with { IsExpanded = IsExpanded(node.Key) }));
 
     private IReadOnlyList<string> VisibleKeys() =>
         Unfolded().Select(node => node.Key).ToArray();
@@ -181,10 +181,9 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
     private bool IsExpanded(string key) => !collapsedNodes.Contains(key);
 
     private IReadOnlyList<FileEntry> FilesMatching(string query, ExplorerFilter? filter) =>
-        discoveredFiles
+        Snapshot.Of(discoveredFiles
             .Where(file => SearchMatch.Matches(file.Path, query))
-            .Where(file => PassesFilter(file, filter))
-            .ToArray();
+            .Where(file => PassesFilter(file, filter)));
 
     private static bool PassesFilter(FileEntry file, ExplorerFilter? filter) =>
         filter != ExplorerFilter.Updated || file.GitStatus != FileGitStatus.Unchanged;
@@ -217,7 +216,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
                 0,
                 FileNodeKind.Project,
                 Path.GetFileNameWithoutExtension(project.Key),
-                placements.Select(placement => placement.File).ToArray()));
+                Snapshot.Of(placements.Select(placement => placement.File))));
 
         return [projectNode, .. ChildNodes(placements, project.Key, 1)];
     }
@@ -263,7 +262,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
                 depth,
                 FileNodeKind.Folder,
                 folder.Key,
-                contents.Select(placement => placement.File).ToArray()));
+                Snapshot.Of(contents.Select(placement => placement.File))));
 
         return [folderNode, .. ChildNodes(contents, key, depth + 1)];
     }

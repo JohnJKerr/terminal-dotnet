@@ -26,7 +26,7 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         string target,
         CancellationToken cancellationToken)
     {
-        changedFiles = await backend.DiscoverAsync(target, cancellationToken);
+        changedFiles = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
 
         return new ChangesetState(Matching(State.SearchQuery), 0, State.SearchQuery)
         {
@@ -92,7 +92,7 @@ public sealed class ChangesetSession(IChangesetBackend backend)
 
     private IReadOnlyList<ChangedFile> Matching(string query) => query.Length == 0
         ? changedFiles
-        : changedFiles.Where(file => SearchMatch.Matches(file.DisplayPath, query)).ToArray();
+        : Snapshot.Of(changedFiles.Where(file => SearchMatch.Matches(file.DisplayPath, query)));
 
     private static ChangesetSummary SummaryFrom(IReadOnlyList<ChangedFile> files) => new(
         files.Count(file => file.Kind == ChangeKind.Modified),
