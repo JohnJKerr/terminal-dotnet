@@ -9,10 +9,8 @@ public enum ChangeKind
 
 public sealed record ChangedFile(string Path, string DisplayPath, ChangeKind Kind)
 {
-    /// <summary>The change staged in the index against the last commit, if any.</summary>
     public ChangeKind? Staged { get; init; }
 
-    /// <summary>The change left in the working tree against the index, if any.</summary>
     public ChangeKind? Unstaged { get; init; }
 }
 
@@ -36,7 +34,6 @@ public sealed record ChangesetState(
     /// does not claim there are no changes before it has looked.</summary>
     public bool Loading { get; init; }
 
-    /// <summary>What went wrong with the last action, for the panel to show.</summary>
     public string Notice { get; init; } = "";
 }
 
@@ -58,6 +55,5 @@ public interface IChangesetBackend
 
     Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default);
 
-    /// <summary>Returns false when the file could not be brought back.</summary>
     Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default);
 }

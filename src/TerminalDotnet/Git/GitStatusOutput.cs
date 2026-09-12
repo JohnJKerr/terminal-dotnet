@@ -9,10 +9,8 @@ public enum GitChangeKind
 
 public sealed record GitStatusEntry(string RelativePath, GitChangeKind Kind)
 {
-    /// <summary>The change git has staged in the index against HEAD, if any.</summary>
     public GitChangeKind? Staged { get; init; }
 
-    /// <summary>The change left in the working tree against the index, if any.</summary>
     public GitChangeKind? Unstaged { get; init; }
 }
 

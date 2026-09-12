@@ -112,8 +112,6 @@ public sealed class TestExplorerSession(
                 StringComparer.Ordinal);
     }
 
-    /// <summary>A changed file names a suite only in the project that holds it, so the same
-    /// filename under two projects marks each of them on its own.</summary>
     private static IEnumerable<(string Key, TestNodeUpdate Update)> SuiteUpdates(
         UpdatedSource source,
         IReadOnlyList<string> projectDirectories)
@@ -300,9 +298,6 @@ public sealed class TestExplorerSession(
         .Select(NodeWithOutcome)
         .ToArray();
 
-    /// <summary>Completed outcomes and the active run are the session's own record of
-    /// what has happened, so every node reads its outcome from them rather than carrying
-    /// one forward from the transition that last touched it.</summary>
     private VisibleTestNode NodeWithOutcome(VisibleTestNode node)
     {
         if (node.Tests.All(activeTests.Contains))
@@ -346,8 +341,6 @@ public sealed class TestExplorerSession(
         IReadOnlyList<TestCase> tests,
         CancellationToken cancellationToken)
     {
-        // One run owns the session at a time; a command arriving while it is
-        // still going would otherwise overwrite its outcomes out of order.
         if (running)
         {
             return;
@@ -395,8 +388,6 @@ public sealed class TestExplorerSession(
         }
         catch (Exception exception)
         {
-            // The run never produced results, so the tests keep the outcome they
-            // had, and the panel reports why instead of spinning.
             activeTests.Clear();
             State = State with
             {

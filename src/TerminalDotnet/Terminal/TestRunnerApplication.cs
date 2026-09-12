@@ -746,8 +746,6 @@ public sealed class TestRunnerApplication(
 
         if (runCancellation is not null)
         {
-            // The run already going owns its cancellation source until it ends,
-            // so Esc still reaches the run the panel is showing.
             return;
         }
 

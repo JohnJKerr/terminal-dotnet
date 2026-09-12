@@ -146,8 +146,6 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             await RecordedResultsAsync(resultPath, tests, cancellationToken));
     }
 
-    /// <summary>A build or restore failure leaves no result file behind, so the run keeps
-    /// the output it already collected rather than losing it to a read or parse failure.</summary>
     private async Task<IReadOnlyList<TestResult>> RecordedResultsAsync(
         string resultPath,
         IReadOnlyCollection<TestCase> tests,

@@ -3,8 +3,6 @@ using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Explorer;
 
-/// <summary>Where a test or its failure lives. Contents are read when a view asks
-/// to show them, so a source file that has moved cannot hold up a run.</summary>
 public sealed record SourceLocation(string Path, int HighlightLine);
 
 public interface ITestSourceLocator

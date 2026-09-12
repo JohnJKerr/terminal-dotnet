@@ -2,8 +2,6 @@ namespace TerminalDotnet.Testing;
 
 public sealed record TestCase(string FullyQualifiedName, string DisplayName, string ProjectPath)
 {
-    /// <summary>The namespace-qualified class the test belongs to, which identifies the
-    /// suite it runs with. Two namespaces can hold a class of the same short name.</summary>
     public string TestClass
     {
         get
@@ -13,7 +11,6 @@ public sealed record TestCase(string FullyQualifiedName, string DisplayName, str
         }
     }
 
-    /// <summary>The class name on its own, for display.</summary>
     public string ClassName
     {
         get

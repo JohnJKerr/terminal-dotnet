@@ -67,12 +67,16 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         return restore.ExitCode == 0;
     }
 
-    /// <summary>A file deleted from the working tree comes back from the index, so a
-    /// staged edit survives. Only a deletion that is itself staged comes back from HEAD.</summary>
     private static IReadOnlyList<string> RestoreArgumentsFor(ChangedFile file) =>
         file.Unstaged == ChangeKind.Deleted
-            ? ["restore", "--worktree", "--", file.Path]
-            : ["restore", "--staged", "--worktree", "--", file.Path];
+            ? RestoreFromIndex(file)
+            : RestoreFromLastCommit(file);
+
+    private static IReadOnlyList<string> RestoreFromIndex(ChangedFile file) =>
+        ["restore", "--worktree", "--", file.Path];
+
+    private static IReadOnlyList<string> RestoreFromLastCommit(ChangedFile file) =>
+        ["restore", "--staged", "--worktree", "--", file.Path];
 
     private async Task<string?> RepositoryRootAsync(CancellationToken cancellationToken)
     {
