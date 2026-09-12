@@ -35,7 +35,6 @@ internal sealed class TestRunnerApplication(
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? loadCancellation;
     private readonly Stopwatch sinceLoadStarted = new();
-    private bool panelsRequested;
     private readonly Stopwatch sincePanelsAppeared = new();
     private IReadOnlyList<VisibleTestNode> testNodes = [];
     private IReadOnlyList<FileRowTone> rowTones = [];
@@ -117,17 +116,10 @@ internal sealed class TestRunnerApplication(
     /// <summary>
     /// The panels are painted before anything is loaded, so opening the app
     /// does not wait on test discovery, which builds the solution. Each panel
-    /// fills in as its own load lands; the editor round trip refreshes the
-    /// explorers itself, so the loads only run the first time the panels open.
+    /// fills in as its own load lands.
     /// </summary>
     private void FillPanels(IApplication application, TextField search, ListView tests)
     {
-        if (panelsRequested)
-        {
-            return;
-        }
-
-        panelsRequested = true;
         loadCancellation = new CancellationTokenSource();
         sinceLoadStarted.Restart();
         TurnActivityMarker(application);
@@ -159,33 +151,18 @@ internal sealed class TestRunnerApplication(
             return true;
         });
 
-    private async Task FillPanelsAsync(
+    private Task FillPanelsAsync(
         IApplication application,
         TextField search,
         ListView tests,
-        CancellationToken cancellationToken)
-    {
-        foreach (var load in PanelLoads())
-        {
-            try
+        CancellationToken cancellationToken) =>
+        new PanelStartup(fileSession, changesetSession, session, target).LoadPendingAsync(
+            () =>
             {
-                await load(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                return;
-            }
-
-            application.Invoke(() => Render(search, tests));
-        }
-    }
-
-    private IReadOnlyList<Func<CancellationToken, Task>> PanelLoads() =>
-    [
-        token => fileSession.LoadAsync(target, token),
-        token => changesetSession.LoadAsync(target, token),
-        token => session.LoadAsync(target, token)
-    ];
+                application.Invoke(() => Render(search, tests));
+                return Task.CompletedTask;
+            },
+            cancellationToken);
 
     private ListView Panels()
     {
@@ -953,7 +930,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        new ExplorerEditorWorkflow(fileSession, changesetSession, session, editorLauncher, target)
+        new ExplorerEditorWorkflow(fileSession, changesetSession, editorLauncher, target)
             .OpenAsync(openPath, openLine)
             .GetAwaiter()
             .GetResult();
