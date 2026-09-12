@@ -21,7 +21,7 @@ public sealed record TestPanelSnapshot(
     public static TestPanelSnapshot From(
         ExplorerState state,
         string target,
-        TimeSpan runElapsed = default) => new(
+        TimeSpan elapsed = default) => new(
         Path.GetFileName(target),
         BreadcrumbFrom(state, target),
         state.VisibleNodes,
@@ -29,29 +29,27 @@ public sealed record TestPanelSnapshot(
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
-        StatusLineFrom(state, runElapsed),
+        StatusLineFrom(state),
         SelectedOutputTitleFrom(state),
         SelectedOutputFrom(state),
         PanelFilters.Chips(state.ActiveFilter),
-        EmptyMessageFrom(state));
+        EmptyMessageFrom(state, elapsed));
 
-    private static string EmptyMessageFrom(ExplorerState state) =>
+    // Discovery builds the solution before it can list anything, so the panel
+    // says what it is waiting for, with a marker that turns, rather than
+    // sitting blank or claiming there are no tests.
+    private static string EmptyMessageFrom(ExplorerState state, TimeSpan elapsed) =>
         state.Status == ExplorerStatus.Loading
-            ? ""
+            ? ActivityMarker.Marking(state.Message, elapsed)
             : PanelEmptyState.For(
                 "tests",
                 state.VisibleNodes.Count,
                 state.SearchQuery,
                 state.ActiveFilter);
 
-    private static string StatusLineFrom(ExplorerState state, TimeSpan runElapsed) =>
-        state.Status == ExplorerStatus.Running
-            ? RunActivity.Marking(state.Message, runElapsed)
-            : SettledStatusLineFrom(state);
-
-    private static string SettledStatusLineFrom(ExplorerState state)
+    private static string StatusLineFrom(ExplorerState state)
     {
-        if (state.LastRun is null)
+        if (state.LastRun is null || state.Status == ExplorerStatus.Running)
         {
             return state.Message;
         }

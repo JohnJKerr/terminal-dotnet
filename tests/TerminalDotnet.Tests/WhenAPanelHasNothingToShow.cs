@@ -63,19 +63,6 @@ public sealed class WhenAPanelHasNothingToShow
     }
 
     [Fact]
-    public void The_test_panel_says_nothing_until_discovery_has_finished()
-    {
-        // Arrange
-        var state = new ExplorerState(ExplorerStatus.Loading, [], 0, "Discovering tests...");
-
-        // Act
-        var snapshot = TestPanelSnapshot.From(state, "App.slnx");
-
-        // Assert
-        Assert.Equal("", snapshot.EmptyMessage);
-    }
-
-    [Fact]
     public void The_changeset_has_no_changes_to_show()
     {
         // Arrange

@@ -34,7 +34,7 @@ public sealed class TestRunnerApplication(
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? loadCancellation;
-    private readonly Stopwatch sinceRunStarted = new();
+    private readonly Stopwatch sinceLoadStarted = new();
     private bool panelsRequested;
     private readonly Stopwatch sincePanelsAppeared = new();
     private IReadOnlyList<VisibleTestNode> testNodes = [];
@@ -128,8 +128,35 @@ public sealed class TestRunnerApplication(
 
         panelsRequested = true;
         loadCancellation = new CancellationTokenSource();
+        sinceLoadStarted.Restart();
+        TurnActivityMarker(application);
         _ = FillPanelsAsync(application, search, tests, loadCancellation.Token);
     }
+
+    /// <summary>
+    /// Repaints while discovery is out at `dotnet test`, so the marker beside
+    /// "Discovering tests..." turns instead of the panel sitting blank. The
+    /// draw is asked for explicitly because nothing else wakes the loop while
+    /// the reader is waiting.
+    /// </summary>
+    private void TurnActivityMarker(IApplication application) =>
+        application.AddTimeout(ActivityMarker.FrameDuration, () =>
+        {
+            if (session.State.Status != ExplorerStatus.Loading)
+            {
+                sinceLoadStarted.Stop();
+                return false;
+            }
+
+            if (shell.State.ActivePanel != PanelKind.Tests)
+            {
+                return true;
+            }
+
+            ShowEmptyState(ActivityMarker.Marking(session.State.Message, sinceLoadStarted.Elapsed));
+            application.LayoutAndDraw(true);
+            return true;
+        });
 
     private async Task FillPanelsAsync(
         IApplication application,
@@ -678,40 +705,10 @@ public sealed class TestRunnerApplication(
         runCancellation?.Dispose();
         runCancellation = new CancellationTokenSource();
         var run = session.DispatchAsync(command, runCancellation.Token);
-        sinceRunStarted.Restart();
         Render(search, tests);
-        var marker = TurnActivityMarker(application);
         await run;
-        application.Invoke(() =>
-        {
-            if (marker is not null)
-            {
-                application.RemoveTimeout(marker);
-            }
-
-            sinceRunStarted.Stop();
-            Render(search, tests);
-        });
+        application.Invoke(() => Render(search, tests));
     }
-
-    /// <summary>
-    /// Turns the status line's marker while a run is in flight, so a run that
-    /// spends seconds building reads as working rather than wedged. Only the
-    /// status line is repainted, and the draw is asked for explicitly because
-    /// nothing else wakes the loop while the run is out at `dotnet test`.
-    /// </summary>
-    private object? TurnActivityMarker(IApplication application) =>
-        application.AddTimeout(RunActivity.FrameDuration, () =>
-        {
-            if (session.State.Status != ExplorerStatus.Running)
-            {
-                return false;
-            }
-
-            testStatus!.Text = RunActivity.Marking(session.State.Message, sinceRunStarted.Elapsed);
-            application.LayoutAndDraw(true);
-            return true;
-        });
 
     private void RequestTestSource(IApplication application, bool preview)
     {
@@ -793,7 +790,7 @@ public sealed class TestRunnerApplication(
 
     private void ShowTestOutput(IApplication application)
     {
-        var snapshot = TestPanelSnapshot.From(session.State, target, sinceRunStarted.Elapsed);
+        var snapshot = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
         ShowCellDialog(
             application,
             $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close",
