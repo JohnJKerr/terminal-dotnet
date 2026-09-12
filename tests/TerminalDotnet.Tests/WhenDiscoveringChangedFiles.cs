@@ -120,7 +120,7 @@ public sealed class WhenDiscoveringChangedFiles
 
         // Assert
         Assert.Equal(
-            ["restore", "--worktree", "--", "/repo/src/Gone.cs"],
+            ["restore", "--worktree", "--", ":(literal)/repo/src/Gone.cs"],
             runner.Requests.Last());
     }
 
@@ -152,7 +152,24 @@ public sealed class WhenDiscoveringChangedFiles
 
         // Assert
         Assert.Equal(
-            ["restore", "--staged", "--worktree", "--", "/repo/src/Gone.cs"],
+            ["restore", "--staged", "--worktree", "--", ":(literal)/repo/src/Gone.cs"],
+            runner.Requests.Last());
+    }
+
+    [Fact]
+    public async Task It_restores_only_the_file_whose_name_reads_as_a_pattern()
+    {
+        // Arrange
+        var runner = new GitCommandRunner("/repo", " D src/*.cs\0 M src/Other.cs\0");
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync("/repo/App.slnx");
+
+        // Act
+        await backend.RestoreAsync(files[0]);
+
+        // Assert
+        Assert.Equal(
+            ["restore", "--worktree", "--", ":(literal)/repo/src/*.cs"],
             runner.Requests.Last());
     }
 

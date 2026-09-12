@@ -42,7 +42,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             return "";
         }
 
-        var tracked = await GitAsync(["diff", "HEAD", "--", file.Path], cancellationToken);
+        var tracked = await GitAsync(["diff", "HEAD", "--", Pathspec(file)], cancellationToken);
         if (tracked.StandardOutput.Length > 0)
         {
             return tracked.StandardOutput;
@@ -73,10 +73,15 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             : RestoreFromLastCommit(file);
 
     private static IReadOnlyList<string> RestoreFromIndex(ChangedFile file) =>
-        ["restore", "--worktree", "--", file.Path];
+        ["restore", "--worktree", "--", Pathspec(file)];
 
     private static IReadOnlyList<string> RestoreFromLastCommit(ChangedFile file) =>
-        ["restore", "--staged", "--worktree", "--", file.Path];
+        ["restore", "--staged", "--worktree", "--", Pathspec(file)];
+
+    /// <summary>Git reads a path after `--` as a pattern, so a file genuinely
+    /// named `*.cs` would otherwise sweep up every sibling it matches. The
+    /// literal prefix keeps an operation to the file the panel selected.</summary>
+    private static string Pathspec(ChangedFile file) => $":(literal){file.Path}";
 
     private async Task<string?> RepositoryRootAsync(CancellationToken cancellationToken)
     {
