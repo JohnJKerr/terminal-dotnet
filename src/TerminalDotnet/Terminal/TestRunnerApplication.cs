@@ -29,6 +29,8 @@ internal sealed class TestRunnerApplication(
     private const int FilterGap = 1;
     private const int MaxStatusSegments = 4;
     private const int MaxFilterChips = 4;
+    private const int StatusRow = ShortcutLines.Rows + 1;
+    private const int RowsBelowTheList = StatusRow + 1;
     private const string ConsoleDriver = "dotnet";
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
 
@@ -51,6 +53,7 @@ internal sealed class TestRunnerApplication(
     private IReadOnlyList<FilterChip> filterChips = [];
     private Label? emptyState;
     private Label? shortcuts;
+    private IReadOnlyList<string> shortcutSegments = [];
 
     public void Run()
     {
@@ -86,6 +89,7 @@ internal sealed class TestRunnerApplication(
         filterLabels = FilterLabels(search);
         emptyState = EmptyState(tests);
         shortcuts = Shortcuts();
+        shortcuts.ViewportChanged += (_, _) => ShowShortcuts();
 
         window.Add(panels, search, tests, emptyState, testStatus, shortcuts);
         window.Add([.. segmentLabels]);
@@ -187,7 +191,7 @@ internal sealed class TestRunnerApplication(
     private static Label TestStatus() => new()
     {
         X = WorkspaceX,
-        Y = Pos.AnchorEnd(2),
+        Y = Pos.AnchorEnd(StatusRow),
         Width = Dim.Fill(ContentInset),
         Height = 1
     };
@@ -202,7 +206,7 @@ internal sealed class TestRunnerApplication(
         var label = new Label
         {
             X = WorkspaceX,
-            Y = Pos.AnchorEnd(2),
+            Y = Pos.AnchorEnd(StatusRow),
             Height = 1,
             Visible = false
         };
@@ -266,7 +270,7 @@ internal sealed class TestRunnerApplication(
             X = WorkspaceX,
             Y = Pos.Bottom(search) + FilterRowHeight + FilterGap,
             Width = Dim.Fill(ContentInset),
-            Height = Dim.Fill(3),
+            Height = Dim.Fill(RowsBelowTheList),
             ShowMarks = false,
             KeystrokeNavigator = null
         };
@@ -283,13 +287,22 @@ internal sealed class TestRunnerApplication(
         Visible = false
     };
 
-    private static Label Shortcuts() => new()
+    /// <summary>The shortcuts keep their rows whether or not they fill them, so
+    /// a longer line wraps instead of running off the edge and the rows above do
+    /// not shift as the selection changes.</summary>
+    private static Label Shortcuts()
     {
-        X = 1,
-        Y = Pos.AnchorEnd(1),
-        Width = Dim.Fill(1),
-        Height = 1
-    };
+        var shortcuts = new Label
+        {
+            X = 1,
+            Y = Pos.AnchorEnd(ShortcutLines.Rows),
+            Width = Dim.Fill(1),
+            Height = ShortcutLines.Rows
+        };
+        shortcuts.TextFormatter.MultiLine = true;
+        shortcuts.TextFormatter.WordWrap = false;
+        return shortcuts;
+    }
 
     private void HandleKey(
         IApplication application,
@@ -879,12 +892,13 @@ internal sealed class TestRunnerApplication(
 
     private void Render(TextField search, ListView tests)
     {
-        shortcuts!.Text = PanelShortcuts.For(
+        shortcutSegments = PanelShortcuts.For(
             shell.State.ActivePanel,
             fileSession.State,
             changesetSession.State,
             session.State,
             search.HasFocus);
+        ShowShortcuts();
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
             RenderFiles(search, tests);
@@ -899,7 +913,7 @@ internal sealed class TestRunnerApplication(
 
         var snapshot = TestPanelSnapshot.From(session.State, target);
         tests.Title = $"Tests — {snapshot.Breadcrumb}";
-        tests.Height = Dim.Fill(3);
+        tests.Height = Dim.Fill(RowsBelowTheList);
         HideSegments();
         ShowFilters(snapshot.Filters);
         ShowEmptyState(snapshot.EmptyMessage);
@@ -916,6 +930,13 @@ internal sealed class TestRunnerApplication(
             tests.SelectedItem = snapshot.SelectedIndex;
         }
     }
+
+    /// <summary>Wraps to the width the label has now, which is why it is also
+    /// called as the width changes rather than only as the shortcuts change.</summary>
+    private void ShowShortcuts() =>
+        shortcuts!.Text = string.Join(
+            '\n',
+            ShortcutLines.For(shortcutSegments, shortcuts.Viewport.Width));
 
     private void ListRows(ListView list, object content, Func<IReadOnlyList<string>> rows)
     {
@@ -993,7 +1014,7 @@ internal sealed class TestRunnerApplication(
         search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
         search.Text = searchQuery;
         ListTonedRows(files, content, rows);
-        files.Height = Dim.Fill(3);
+        files.Height = Dim.Fill(RowsBelowTheList);
         testStatus!.Visible = false;
         ShowSegments(segments);
         ShowFilters(filters);

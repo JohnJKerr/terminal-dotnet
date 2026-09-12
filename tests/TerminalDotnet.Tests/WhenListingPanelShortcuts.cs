@@ -22,7 +22,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Enter/e edit  p preview  ^K commands  q quit",
+            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/e edit", "p preview", "^K commands", "q quit"],
             shortcuts);
     }
 
@@ -39,7 +39,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Space/Enter fold  z fold all  ^K commands  q quit",
+            ["Tab pane", "s search", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "^K commands", "q quit"],
             shortcuts);
     }
 
@@ -89,7 +89,7 @@ public sealed class WhenListingPanelShortcuts
         var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
 
         // Assert
-        Assert.DoesNotContain("output", shortcuts);
+        Assert.DoesNotContain(shortcuts, shortcut => shortcut.Contains("output"));
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public sealed class WhenListingPanelShortcuts
             TestState());
 
         // Assert
-        Assert.DoesNotContain("up", shortcuts);
+        Assert.DoesNotContain(shortcuts, shortcut => shortcut.Contains("up"));
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public sealed class WhenListingPanelShortcuts
             state);
 
         // Assert
-        Assert.DoesNotContain("match", shortcuts);
+        Assert.DoesNotContain(shortcuts, shortcut => shortcut.Contains("match"));
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public sealed class WhenListingPanelShortcuts
         Assert.DoesNotContain("q quit", shortcuts);
     }
 
-    private static string Searching() => PanelShortcuts.For(
+    private static IReadOnlyList<string> Searching() => PanelShortcuts.For(
         PanelKind.Tests,
         new FileExplorerState([]),
         EmptyChangeset(),
@@ -183,7 +183,7 @@ public sealed class WhenListingPanelShortcuts
         var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
 
         // Assert
-        Assert.Equal(1, shortcuts.Split("c cancel").Length - 1);
+        Assert.Single(shortcuts, shortcut => shortcut == "c cancel");
     }
 
     [Fact]
@@ -216,7 +216,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Enter/d diff  e edit  p preview  ^K commands  q quit",
+            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/d diff", "e edit", "p preview", "^K commands", "q quit"],
             shortcuts);
     }
 
@@ -235,7 +235,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Enter/d diff  r restore  ^K commands  q quit",
+            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/d diff", "r restore", "^K commands", "q quit"],
             shortcuts);
     }
 
