@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using TerminalDotnet.Files;
 using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Explorer;
@@ -55,16 +56,8 @@ public sealed class FileTestSourceLocator : ITestSourceLocator
     }
 
     private static IEnumerable<string> SourceFiles(string projectDirectory) =>
-        Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !IsBuildOutput(path, projectDirectory))
+        ProjectTree.FilesUnder(projectDirectory, "*.cs")
             .OrderBy(path => path, StringComparer.Ordinal);
-
-    private static bool IsBuildOutput(string path, string projectDirectory)
-    {
-        var relative = Path.GetRelativePath(projectDirectory, path);
-        var firstDirectory = relative.Split(Path.DirectorySeparatorChar)[0];
-        return firstDirectory is "bin" or "obj";
-    }
 
     private static int LineMatching(
         IReadOnlyList<string> lines,

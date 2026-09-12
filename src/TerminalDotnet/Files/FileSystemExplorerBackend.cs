@@ -60,9 +60,8 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         .OrderBy(path => path, StringComparer.Ordinal)
         .ToArray();
 
-    private static IReadOnlyList<string> FilesOnDisk(string projectDirectory) => Directory
-        .EnumerateFiles(projectDirectory, "*", SearchOption.AllDirectories)
-        .Where(IsProjectFile)
+    private static IReadOnlyList<string> FilesOnDisk(string projectDirectory) => ProjectTree
+        .FilesUnder(projectDirectory, "*")
         .OrderBy(path => path, StringComparer.Ordinal)
         .ToArray();
 
