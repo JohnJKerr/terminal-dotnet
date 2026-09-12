@@ -18,16 +18,6 @@ public sealed class WhenPressingAKeyInTheShell
     }
 
     [Fact]
-    public void Pressing_escape_quits()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.Esc));
-
-        // Assert
-        Assert.Equal(new ShellAction.Quit(), action);
-    }
-
-    [Fact]
     public void Pressing_s_moves_to_the_search()
     {
         // Act
@@ -148,13 +138,13 @@ public sealed class WhenPressingAKeyInTheShell
     }
 
     [Fact]
-    public void Pressing_escape_in_the_rows_quits_when_nothing_is_searched()
+    public void Pressing_escape_in_the_rows_is_swallowed_when_nothing_is_searched()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.Esc));
 
         // Assert
-        Assert.Equal(new ShellAction.Quit(), action);
+        Assert.Equal(new ShellAction.Dismiss(), action);
     }
 
     [Fact]

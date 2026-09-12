@@ -15,6 +15,10 @@ public abstract record ShellAction
     public sealed record SelectFocusedPanel : ShellAction;
     public sealed record ShowCommands : ShellAction;
     public sealed record Quit : ShellAction;
+
+    /// <summary>Escape with nothing left to close. It is taken so that it
+    /// cannot reach the terminal framework, which would quit on it.</summary>
+    public sealed record Dismiss : ShellAction;
 }
 
 public static class ShellKeyBindings
@@ -40,12 +44,12 @@ public static class ShellKeyBindings
             return new ShellAction.SelectPanel(panel);
         }
 
-        if (searchActive && Is(key, KeyCode.Esc))
+        if (Is(key, KeyCode.Esc))
         {
-            return new ShellAction.ClearSearch();
+            return searchActive ? new ShellAction.ClearSearch() : new ShellAction.Dismiss();
         }
 
-        if (Is(key, KeyCode.Q) || Is(key, KeyCode.Esc))
+        if (Is(key, KeyCode.Q))
         {
             return new ShellAction.Quit();
         }

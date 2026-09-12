@@ -66,8 +66,6 @@ public sealed class TestExplorerSession(
             ExplorerCommand.RerunLast => RerunLastAsync(cancellationToken),
             ExplorerCommand.RerunFailed => RerunFailedAsync(cancellationToken),
             ExplorerCommand.NextFailure => Applied(() => SelectNext(FailedTestIndices())),
-            ExplorerCommand.NextSearchMatch => Applied(() => SelectNext(TestIndices())),
-            ExplorerCommand.PreviousSearchMatch => Applied(() => SelectPrevious(TestIndices())),
             _ => Applied(() => MoveSelection(command))
         };
 
@@ -257,9 +255,6 @@ public sealed class TestExplorerSession(
     private void SelectNext(IReadOnlyList<int> indices) =>
         Select(SelectionRing.Next(indices, State.SelectedIndex));
 
-    private void SelectPrevious(IReadOnlyList<int> indices) =>
-        Select(SelectionRing.Previous(indices, State.SelectedIndex));
-
     private void Select(int index)
     {
         if (index == SelectionRing.None)
@@ -269,8 +264,6 @@ public sealed class TestExplorerSession(
 
         State = State with { SelectedIndex = index };
     }
-
-    private IReadOnlyList<int> TestIndices() => IndicesOf(node => node.Kind == TestNodeKind.Test);
 
     private IReadOnlyList<int> FailedTestIndices()
     {

@@ -53,12 +53,6 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
             case FileExplorerCommand.ToggleFilter filter:
                 ApplyFilter(filter.Filter);
                 return;
-            case FileExplorerCommand.NextSearchMatch:
-                Select(SelectionRing.Next(FileIndices(), State.SelectedIndex));
-                return;
-            case FileExplorerCommand.PreviousSearchMatch:
-                Select(SelectionRing.Previous(FileIndices(), State.SelectedIndex));
-                return;
             case FileExplorerCommand.ToggleExpanded:
                 ToggleSelectedExpansion();
                 return;
@@ -144,16 +138,6 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         };
     }
 
-    private void Select(int index)
-    {
-        if (index == SelectionRing.None)
-        {
-            return;
-        }
-
-        State = State with { SelectedIndex = index };
-    }
-
     private IReadOnlyList<VisibleFileNode> VisibleNodes() => Snapshot.Of(
         Unfolded().Select(node => node.Node with { IsExpanded = IsExpanded(node.Key) }));
 
@@ -187,12 +171,6 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
 
     private static bool PassesFilter(FileEntry file, ExplorerFilter? filter) =>
         filter != ExplorerFilter.Updated || file.GitStatus != FileGitStatus.Unchanged;
-
-    private IReadOnlyList<int> FileIndices() => State.VisibleNodes
-        .Select((node, index) => (node, index))
-        .Where(item => item.node.Kind == FileNodeKind.File)
-        .Select(item => item.index)
-        .ToArray();
 
     private static FileChangeSummary SummaryFrom(IReadOnlyList<FileEntry> files) => new(
         files.Count(file => file.GitStatus != FileGitStatus.Deleted),

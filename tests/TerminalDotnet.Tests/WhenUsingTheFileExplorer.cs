@@ -278,42 +278,6 @@ public sealed class WhenUsingTheFileExplorer
     }
 
     [Fact]
-    public async Task It_selects_matching_files_and_wraps_when_moving_forward()
-    {
-        // Arrange
-        var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "src/App/OrderHandler.cs", FileGitStatus.Unchanged));
-        await session.LoadAsync("TerminalDotnet.slnx");
-        await session.DispatchAsync(new FileExplorerCommand.Search("order"));
-
-        // Act
-        await session.DispatchAsync(new FileExplorerCommand.NextSearchMatch());
-        await session.DispatchAsync(new FileExplorerCommand.NextSearchMatch());
-        await session.DispatchAsync(new FileExplorerCommand.NextSearchMatch());
-
-        // Assert
-        Assert.Equal("Order.cs", session.State.VisibleNodes[session.State.SelectedIndex].Name);
-    }
-
-    [Fact]
-    public async Task It_wraps_to_the_last_matching_file_when_moving_backward()
-    {
-        // Arrange
-        var session = SessionWithFiles(
-            new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
-            new FileEntry("src/App/App.csproj", "src/App/OrderHandler.cs", FileGitStatus.Unchanged));
-        await session.LoadAsync("TerminalDotnet.slnx");
-        await session.DispatchAsync(new FileExplorerCommand.Search("order"));
-
-        // Act
-        await session.DispatchAsync(new FileExplorerCommand.PreviousSearchMatch());
-
-        // Assert
-        Assert.Equal("OrderHandler.cs", session.State.VisibleNodes[session.State.SelectedIndex].Name);
-    }
-
-    [Fact]
     public async Task It_counts_the_files_it_discovered_and_the_changes_among_them()
     {
         // Arrange

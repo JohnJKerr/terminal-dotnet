@@ -377,6 +377,8 @@ internal sealed class TestRunnerApplication(
             case ShellAction.ShowCommands:
                 ShowCommands(application);
                 return;
+            case ShellAction.Dismiss:
+                return;
             case ShellAction.Quit:
                 application.RequestStop();
                 return;
