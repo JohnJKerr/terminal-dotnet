@@ -176,9 +176,9 @@ public sealed class TestExplorerSession(
     [
         NodeId(project.Key, TestNodeKind.Project, Path.GetFileNameWithoutExtension(project.Key)),
         .. project
-            .Select(test => test.ClassName)
+            .Select(test => test.TestClass)
             .Distinct()
-            .Select(className => NodeId(project.Key, TestNodeKind.Class, className))
+            .Select(testClass => NodeId(project.Key, TestNodeKind.Class, testClass))
     ];
 
     private void Collapse(VisibleTestNode node, bool isExpanded)
@@ -296,8 +296,10 @@ public sealed class TestExplorerSession(
     private bool PassesFilter(TestCase test, ExplorerFilter? filter) =>
         filter != ExplorerFilter.Updated || updatedSuites.ContainsKey(test.ClassName);
 
-    private static string NodeId(VisibleTestNode node) =>
-        NodeId(node.Tests[0].ProjectPath, node.Kind, node.Name);
+    private static string NodeId(VisibleTestNode node) => NodeId(
+        node.Tests[0].ProjectPath,
+        node.Kind,
+        node.Kind == TestNodeKind.Class ? node.Tests[0].TestClass : node.Name);
 
     private static string NodeId(string projectPath, TestNodeKind kind, string name) =>
         $"{projectPath}:{kind}:{name}";
@@ -445,8 +447,8 @@ public sealed class TestExplorerSession(
             projectTests);
         var projectCollapsed = collapsedNodes.Contains(NodeId(projectNode));
         var classNodes = projectTests
-            .GroupBy(test => test.ClassName)
-            .OrderBy(testClass => testClass.Key)
+            .GroupBy(test => test.TestClass)
+            .OrderBy(testClass => testClass.Key, StringComparer.Ordinal)
             .SelectMany(ClassNodes);
 
         return projectCollapsed
@@ -460,9 +462,9 @@ public sealed class TestExplorerSession(
         var classNode = new VisibleTestNode(
             1,
             TestNodeKind.Class,
-            testClass.Key,
+            classTests[0].ClassName,
             classTests,
-            Update: UpdateOf(testClass.Key));
+            Update: UpdateOf(classTests[0].ClassName));
         var classCollapsed = collapsedNodes.Contains(NodeId(classNode));
         var testNodes = classTests
             .OrderBy(test => test.DisplayName)
