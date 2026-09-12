@@ -13,6 +13,7 @@ public sealed class TestExplorerSession(
 {
     private readonly HashSet<string> collapsedNodes = [];
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
+    private readonly HashSet<TestCase> activeTests = [];
     private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
     private bool running;
@@ -146,10 +147,7 @@ public sealed class TestExplorerSession(
         }
 
         Collapse(selected, !selected.IsExpanded);
-        State = State with
-        {
-            VisibleNodes = VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter))
-        };
+        State = State with { VisibleNodes = CurrentNodes() };
     }
 
     private void ToggleWholeTreeExpansion()
@@ -162,7 +160,7 @@ public sealed class TestExplorerSession(
             collapsedNodes.UnionWith(groupIds);
         }
 
-        var nodes = VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter));
+        var nodes = CurrentNodes();
         State = State with
         {
             VisibleNodes = nodes,
@@ -266,11 +264,19 @@ public sealed class TestExplorerSession(
         .GroupBy(test => test.ProjectPath)
         .OrderBy(project => project.Key)
         .SelectMany(ProjectNodes)
-        .Select(NodeWithStoredOutcome)
+        .Select(NodeWithOutcome)
         .ToArray();
 
-    private VisibleTestNode NodeWithStoredOutcome(VisibleTestNode node)
+    /// <summary>Completed outcomes and the active run are the session's own record of
+    /// what has happened, so every node reads its outcome from them rather than carrying
+    /// one forward from the transition that last touched it.</summary>
+    private VisibleTestNode NodeWithOutcome(VisibleTestNode node)
     {
+        if (node.Tests.All(activeTests.Contains))
+        {
+            return node with { Outcome = TestNodeOutcome.Running };
+        }
+
         if (!node.Tests.All(completedOutcomes.ContainsKey))
         {
             return node;
@@ -278,6 +284,9 @@ public sealed class TestExplorerSession(
 
         return node with { Outcome = NodeOutcomeFrom(node.Tests.Select(test => completedOutcomes[test])) };
     }
+
+    private IReadOnlyList<VisibleTestNode> CurrentNodes() =>
+        VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter));
 
     private IReadOnlyList<TestCase> TestsMatching(string query, ExplorerFilter? filter) =>
         discoveredTests
@@ -325,10 +334,12 @@ public sealed class TestExplorerSession(
         CancellationToken cancellationToken)
     {
         lastRunTests = tests;
+        activeTests.Clear();
+        activeTests.UnionWith(tests);
         State = State with
         {
             Status = ExplorerStatus.Running,
-            VisibleNodes = WithOutcome(tests, TestNodeOutcome.Running),
+            VisibleNodes = CurrentNodes(),
             Message = $"Running {tests.Count} tests..."
         };
         TestRun run;
@@ -338,22 +349,24 @@ public sealed class TestExplorerSession(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            activeTests.Clear();
             State = State with
             {
                 Status = ExplorerStatus.Ready,
-                VisibleNodes = WithOutcome(tests, TestNodeOutcome.NotRun),
+                VisibleNodes = CurrentNodes(),
                 Message = "Run cancelled"
             };
             return;
         }
         catch (Exception exception)
         {
-            // The run never produced results, so the tests stay unrun rather
-            // than failed, and the panel reports why instead of spinning.
+            // The run never produced results, so the tests keep the outcome they
+            // had, and the panel reports why instead of spinning.
+            activeTests.Clear();
             State = State with
             {
                 Status = ExplorerStatus.Failed,
-                VisibleNodes = WithOutcome(tests, TestNodeOutcome.NotRun),
+                VisibleNodes = CurrentNodes(),
                 Message = exception.Message
             };
             return;
@@ -365,10 +378,11 @@ public sealed class TestExplorerSession(
             completedOutcomes[test] = outcome;
         }
 
+        activeTests.Clear();
         State = State with
         {
             Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
-            VisibleNodes = WithRunOutcome(tests, run),
+            VisibleNodes = CurrentNodes(),
             Message = run.Output,
             LastRun = run,
             SourceContext = sourceContext
@@ -408,54 +422,6 @@ public sealed class TestExplorerSession(
             failure.SourceFile!,
             failure.SourceLine!.Value,
             cancellationToken);
-    }
-
-    private IReadOnlyList<VisibleTestNode> WithOutcome(
-        IReadOnlyList<TestCase> selectedTests,
-        TestNodeOutcome outcome)
-    {
-        var selected = selectedTests.ToHashSet();
-        return State.VisibleNodes
-            .Select(node => node.Tests.All(selected.Contains) ? node with { Outcome = outcome } : node)
-            .ToArray();
-    }
-
-    private IReadOnlyList<VisibleTestNode> WithRunOutcome(
-        IReadOnlyList<TestCase> selectedTests,
-        TestRun run)
-    {
-        if (run.Results.Count == 0)
-        {
-            return WithOutcome(selectedTests, OutcomeFor(run));
-        }
-
-        var results = run.Results
-            .GroupBy(result => result.Test)
-            .ToDictionary(
-                group => group.Key,
-                group => group.FirstOrDefault(result => result.Outcome == TestOutcome.Failed) ?? group.First());
-        return State.VisibleNodes
-            .Select(node => NodeWithResult(node, results))
-            .ToArray();
-    }
-
-    private static VisibleTestNode NodeWithResult(
-        VisibleTestNode node,
-        IReadOnlyDictionary<TestCase, TestResult> results)
-    {
-        var nodeResults = node.Tests
-            .Where(results.ContainsKey)
-            .Select(test => results[test])
-            .ToArray();
-        if (nodeResults.Length != node.Tests.Count)
-        {
-            return node;
-        }
-
-        return node with
-        {
-            Outcome = NodeOutcomeFrom(nodeResults.Select(result => NodeOutcomeFor(result.Outcome)))
-        };
     }
 
     private static TestNodeOutcome OutcomeFor(TestRun run) =>
