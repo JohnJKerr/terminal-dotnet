@@ -137,6 +137,43 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
+    public void It_offers_keeping_the_search_while_the_search_box_has_focus()
+    {
+        // Act
+        var shortcuts = Searching();
+
+        // Assert
+        Assert.Contains("Enter keep search", shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_clearing_the_search_while_the_search_box_has_focus()
+    {
+        // Act
+        var shortcuts = Searching();
+
+        // Assert
+        Assert.Contains("Esc clear search", shortcuts);
+    }
+
+    [Fact]
+    public void It_leaves_quitting_off_while_the_search_box_has_focus()
+    {
+        // Act
+        var shortcuts = Searching();
+
+        // Assert
+        Assert.DoesNotContain("q quit", shortcuts);
+    }
+
+    private static string Searching() => PanelShortcuts.For(
+        PanelKind.Tests,
+        new FileExplorerState([]),
+        EmptyChangeset(),
+        TestState(),
+        searchFocused: true);
+
+    [Fact]
     public void It_only_offers_cancel_while_tests_are_running()
     {
         // Arrange

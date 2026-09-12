@@ -359,12 +359,15 @@ internal sealed class TestRunnerApplication(
             case ShellAction.LeaveSearch:
             case ShellAction.FocusRows:
                 tests.SetFocus();
+                Render(search, tests);
                 return;
             case ShellAction.FocusSearch:
                 search.SetFocus();
+                Render(search, tests);
                 return;
             case ShellAction.FocusPanels:
                 panels.SetFocus();
+                Render(search, tests);
                 return;
             case ShellAction.SelectFocusedPanel:
                 shell.Select(panels.SelectedItem ?? 0);
@@ -880,7 +883,8 @@ internal sealed class TestRunnerApplication(
             shell.State.ActivePanel,
             fileSession.State,
             changesetSession.State,
-            session.State);
+            session.State,
+            search.HasFocus);
         if (shell.State.ActivePanel == PanelKind.Explorer)
         {
             RenderFiles(search, tests);

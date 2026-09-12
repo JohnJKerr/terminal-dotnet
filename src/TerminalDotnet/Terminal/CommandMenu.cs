@@ -56,6 +56,7 @@ public static class CommandMenu
         new("←", "focus the panel list"),
         new("→", "focus the rows"),
         new("s", "search the active panel"),
+        new("Enter", "leave the search, keeping it"),
         new("Esc", "close what is open, or clear the search"),
         new("Ctrl+K", "show this list"),
         new("q", "quit")

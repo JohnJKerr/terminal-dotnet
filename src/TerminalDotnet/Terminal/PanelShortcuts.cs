@@ -11,15 +11,23 @@ public static class PanelShortcuts
         PanelKind panel,
         FileExplorerState fileState,
         ChangesetState changesetState,
-        ExplorerState testState) => string.Join(
-        "  ",
-        [
-            "Tab pane",
-            "s search",
-            .. PanelShortcutsFor(panel, fileState, changesetState, testState),
-            "^K commands",
-            "q quit"
-        ]);
+        ExplorerState testState,
+        bool searchFocused = false) => searchFocused
+        ? SearchingShortcuts
+        : string.Join(
+            "  ",
+            [
+                "Tab pane",
+                "s search",
+                .. PanelShortcutsFor(panel, fileState, changesetState, testState),
+                "^K commands",
+                "q quit"
+            ]);
+
+    /// <summary>Every letter types into the search box, so the line offers only
+    /// the two ways out of it and the one command that still answers.</summary>
+    private const string SearchingShortcuts =
+        "Enter keep search  Esc clear search  ^K commands";
 
     private static IReadOnlyList<string> PanelShortcutsFor(
         PanelKind panel,
