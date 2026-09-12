@@ -46,6 +46,19 @@ public sealed class WhenARunFailsAfterAnEarlierRun
         Assert.Equal("0 Failed, 1 Passed, 0 Skipped", snapshot.StatusLine);
     }
 
+    [Fact]
+    public async Task It_shows_the_output_of_a_run_that_reported_no_results()
+    {
+        // Arrange
+        var session = await SessionAfterRunsAsync(Passing, Unreadable);
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(session.State, "/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal("error CS1002: ; expected", snapshot.SelectedOutput);
+    }
+
     private static readonly TestCase CartTest =
         new("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
 
@@ -53,6 +66,11 @@ public sealed class WhenARunFailsAfterAnEarlierRun
         true,
         "1 test passed",
         [new TestResult(CartTest, TestOutcome.Passed, TimeSpan.Zero, null, null, null, null)]);
+
+    private static TestRun Unreadable() => new(false, "error CS1002: ; expected")
+    {
+        Diagnostic = "Could not read the test results: No results were written."
+    };
 
     private static TestRun Broken() =>
         throw new InvalidOperationException("dotnet test could not start");

@@ -126,11 +126,14 @@ public sealed record TestPanelSnapshot(
         return $"Test Output — {state.VisibleNodes[state.SelectedIndex].Name}";
     }
 
+    // The status line carries the diagnostic; the pane carries what the
+    // attempt itself said, which for a build failure is the compiler error
+    // that explains it. Only a completed run may fall back to its own output.
     private static string SelectedOutputFrom(ExplorerState state)
     {
-        if (state.Diagnostic is { } diagnostic)
+        if (state.Diagnostic is not null)
         {
-            return diagnostic;
+            return state.Message;
         }
 
         if (state.LastRun is null || state.VisibleNodes.Count == 0)
