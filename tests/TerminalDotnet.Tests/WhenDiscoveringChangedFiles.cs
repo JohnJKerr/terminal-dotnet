@@ -157,6 +157,23 @@ public sealed class WhenDiscoveringChangedFiles
     }
 
     [Fact]
+    public async Task It_leaves_a_recreated_file_alone_when_restoring_the_deletion_staged_over_it()
+    {
+        // Arrange
+        var runner = new GitCommandRunner("/repo", "D  src/Gone.cs\0?? src/Gone.cs\0");
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync("/repo/App.slnx");
+
+        // Act
+        await backend.RestoreAsync(files[0]);
+
+        // Assert
+        Assert.Equal(
+            ["restore", "--staged", "--", ":(literal)/repo/src/Gone.cs"],
+            runner.Requests.Last());
+    }
+
+    [Fact]
     public async Task It_restores_only_the_file_whose_name_reads_as_a_pattern()
     {
         // Arrange

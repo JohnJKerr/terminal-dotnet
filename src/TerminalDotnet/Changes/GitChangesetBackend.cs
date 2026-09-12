@@ -27,10 +27,10 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             return [];
         }
 
-        return GitStatusOutput.EntriesFrom(status.StandardOutput)
+        return MarkingRecreatedFiles(GitStatusOutput.EntriesFrom(status.StandardOutput)
             .Select(entry => ChangedFileFrom(entry, repositoryRoot, scopeDirectory))
             .OrderBy(file => file.DisplayPath, StringComparer.Ordinal)
-            .ToArray();
+            .ToArray());
     }
 
     public async Task<string> DiffAsync(
@@ -67,10 +67,39 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         return restore.ExitCode == 0;
     }
 
-    private static IReadOnlyList<string> RestoreArgumentsFor(ChangedFile file) =>
-        file.Unstaged == ChangeKind.Deleted
-            ? RestoreFromIndex(file)
-            : RestoreFromLastCommit(file);
+    /// <summary>Git lists a file deleted in the index and written again in the
+    /// working tree as two rows, a staged deletion and an untracked file. The
+    /// deletion is marked so restoring it does not overwrite the new contents.
+    /// </summary>
+    private static IReadOnlyList<ChangedFile> MarkingRecreatedFiles(IReadOnlyList<ChangedFile> files)
+    {
+        var writtenAgain = files
+            .Where(Untracked)
+            .Select(file => file.Path)
+            .ToHashSet(StringComparer.Ordinal);
+        return files
+            .Select(file => file with
+            {
+                Recreated = StagedDeletion(file) && writtenAgain.Contains(file.Path)
+            })
+            .ToArray();
+    }
+
+    private static bool Untracked(ChangedFile file) =>
+        file.Staged is null && file.Unstaged == ChangeKind.Added;
+
+    private static bool StagedDeletion(ChangedFile file) =>
+        file.Staged == ChangeKind.Deleted && file.Unstaged is null;
+
+    private static IReadOnlyList<string> RestoreArgumentsFor(ChangedFile file) => file switch
+    {
+        { Recreated: true } => RestoreIndexOnly(file),
+        { Unstaged: ChangeKind.Deleted } => RestoreFromIndex(file),
+        _ => RestoreFromLastCommit(file)
+    };
+
+    private static IReadOnlyList<string> RestoreIndexOnly(ChangedFile file) =>
+        ["restore", "--staged", "--", Pathspec(file)];
 
     private static IReadOnlyList<string> RestoreFromIndex(ChangedFile file) =>
         ["restore", "--worktree", "--", Pathspec(file)];

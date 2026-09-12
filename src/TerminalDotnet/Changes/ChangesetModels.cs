@@ -12,6 +12,11 @@ public sealed record ChangedFile(string Path, string DisplayPath, ChangeKind Kin
     public ChangeKind? Staged { get; init; }
 
     public ChangeKind? Unstaged { get; init; }
+
+    /// <summary>Set when the file is deleted in the index but has been written
+    /// again in the working tree, so restoring the deletion must leave the new
+    /// file where it is.</summary>
+    public bool Recreated { get; init; }
 }
 
 public sealed record ChangesetSummary(int Changed, int Added, int Deleted)
