@@ -364,6 +364,9 @@ public sealed class TestRunnerApplication(
                 Render(search, tests);
                 tests.SetFocus();
                 return;
+            case ShellAction.ShowCommands:
+                ShowCommands(application);
+                return;
             case ShellAction.Quit:
                 application.RequestStop();
                 return;
@@ -779,6 +782,18 @@ public sealed class TestRunnerApplication(
             AnsiTestOutput.ToCells(snapshot.SelectedOutput),
             wordWrap: true);
     }
+
+    private void ShowCommands(IApplication application) => ShowCellDialog(
+        application,
+        "Commands — ↑/↓ scroll  Esc close",
+        CommandMenu.Rows().Select(CommandMenuCells).ToList(),
+        wordWrap: false);
+
+    private static List<Cell> CommandMenuCells(CommandMenuRow row) => Cell.ToCellList(
+        row.Text,
+        new global::Terminal.Gui.Drawing.Attribute(
+            row.IsHeading ? Color.BrightCyan : Color.White,
+            Color.Black)).ToList();
 
     private void ShowCellDialog(
         IApplication application,

@@ -1,0 +1,102 @@
+namespace TerminalDotnet.Terminal;
+
+public sealed record CommandMenuEntry(string Keys, string Description);
+
+public sealed record CommandMenuSection(string Title, IReadOnlyList<CommandMenuEntry> Entries);
+
+public sealed record CommandMenuRow(string Text, bool IsHeading);
+
+/// <summary>
+/// Every command the shell and its panels answer to. The status line only has
+/// room for the commands that apply to the selection in front of the reader,
+/// so this is the whole catalogue, shown on its own.
+/// </summary>
+public static class CommandMenu
+{
+    private const string Indent = "  ";
+    private const string Gap = "  ";
+
+    public static IReadOnlyList<CommandMenuSection> Sections() =>
+    [
+        new("Anywhere", Anywhere),
+        new("Explorer", Explorer),
+        new("Tests", Tests),
+        new("Changes", Changes)
+    ];
+
+    public static IReadOnlyList<CommandMenuRow> Rows()
+    {
+        var sections = Sections();
+        var keyColumn = sections
+            .SelectMany(section => section.Entries)
+            .Max(entry => entry.Keys.Length);
+        return [.. sections.SelectMany((section, index) => RowsFor(section, keyColumn, index))];
+    }
+
+    private static IEnumerable<CommandMenuRow> RowsFor(
+        CommandMenuSection section,
+        int keyColumn,
+        int index) =>
+    [
+        .. index == 0 ? Array.Empty<CommandMenuRow>() : [new CommandMenuRow("", false)],
+        new CommandMenuRow(section.Title, true),
+        .. section.Entries.Select(entry => RowFor(entry, keyColumn))
+    ];
+
+    private static CommandMenuRow RowFor(CommandMenuEntry entry, int keyColumn) => new(
+        $"{Indent}{entry.Keys.PadRight(keyColumn)}{Gap}{entry.Description}",
+        false);
+
+    private static readonly IReadOnlyList<CommandMenuEntry> Anywhere =
+    [
+        new("Tab", "move between search, panels and rows"),
+        new("←", "focus the panel list"),
+        new("→", "focus the rows"),
+        new("s", "search the active panel"),
+        new("Esc", "clear the search"),
+        new("Ctrl+K", "show this list"),
+        new("q", "quit")
+    ];
+
+    private static readonly IReadOnlyList<CommandMenuEntry> Explorer =
+    [
+        .. Navigation,
+        new("Space/Enter", "fold or unfold a folder"),
+        new("z", "fold or unfold every folder"),
+        new("Enter/e", "edit the file"),
+        new("p", "preview the file"),
+        new("1", "show only updated files")
+    ];
+
+    private static readonly IReadOnlyList<CommandMenuEntry> Tests =
+    [
+        .. Navigation,
+        new("Space", "fold or unfold a suite"),
+        new("z", "fold or unfold every suite"),
+        new("Enter/r", "run the selection"),
+        new("R", "rerun the last run"),
+        new("F", "rerun the failures"),
+        new("] f", "jump to the next failure"),
+        new("c", "cancel the run"),
+        new("o", "show the captured output"),
+        new("e", "edit the test"),
+        new("p", "preview the test"),
+        new("1", "show only updated tests")
+    ];
+
+    private static readonly IReadOnlyList<CommandMenuEntry> Changes =
+    [
+        .. Navigation,
+        new("Enter/d", "show the diff"),
+        new("e", "edit the file"),
+        new("p", "preview the file"),
+        new("r", "restore a deleted file")
+    ];
+
+    private static IReadOnlyList<CommandMenuEntry> Navigation =>
+    [
+        new("↑/k", "move up"),
+        new("↓/j", "move down"),
+        new("n/N", "next or previous search match")
+    ];
+}

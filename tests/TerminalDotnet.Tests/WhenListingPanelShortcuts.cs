@@ -22,7 +22,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Enter/e edit  p preview  q quit",
+            "Tab pane  s search  ↑/k up  ↓/j down  Enter/e edit  p preview  ^K commands  q quit",
             shortcuts);
     }
 
@@ -39,7 +39,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Space/Enter fold  z fold all  q quit",
+            "Tab pane  s search  ↑/k up  ↓/j down  Space/Enter fold  z fold all  ^K commands  q quit",
             shortcuts);
     }
 
@@ -148,7 +148,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Enter/d diff  e edit  p preview  q quit",
+            "Tab pane  s search  ↑/k up  ↓/j down  Enter/d diff  e edit  p preview  ^K commands  q quit",
             shortcuts);
     }
 
@@ -167,7 +167,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            "Tab pane  s search  ↑/k up  ↓/j down  Enter/d diff  r restore  q quit",
+            "Tab pane  s search  ↑/k up  ↓/j down  Enter/d diff  r restore  ^K commands  q quit",
             shortcuts);
     }
 

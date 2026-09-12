@@ -13,7 +13,13 @@ public static class PanelShortcuts
         ChangesetState changesetState,
         ExplorerState testState) => string.Join(
         "  ",
-        ["Tab pane", "s search", .. PanelShortcutsFor(panel, fileState, changesetState, testState), "q quit"]);
+        [
+            "Tab pane",
+            "s search",
+            .. PanelShortcutsFor(panel, fileState, changesetState, testState),
+            "^K commands",
+            "q quit"
+        ]);
 
     private static IReadOnlyList<string> PanelShortcutsFor(
         PanelKind panel,

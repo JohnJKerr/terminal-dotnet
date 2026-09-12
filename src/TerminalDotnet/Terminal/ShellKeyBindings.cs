@@ -12,6 +12,7 @@ public abstract record ShellAction
     public sealed record FocusPanels : ShellAction;
     public sealed record FocusRows : ShellAction;
     public sealed record SelectPanel : ShellAction;
+    public sealed record ShowCommands : ShellAction;
     public sealed record Quit : ShellAction;
 }
 
@@ -19,6 +20,11 @@ public static class ShellKeyBindings
 {
     public static ShellAction? ActionFor(Key key, bool searchFocused, bool panelsFocused)
     {
+        if (IsCtrl(key, KeyCode.K))
+        {
+            return new ShellAction.ShowCommands();
+        }
+
         if (searchFocused)
         {
             return SearchActionFor(key);
@@ -65,4 +71,7 @@ public static class ShellKeyBindings
     }
 
     private static bool Is(Key key, KeyCode keyCode) => key.NoShift.KeyCode == keyCode;
+
+    private static bool IsCtrl(Key key, KeyCode keyCode) =>
+        key.IsCtrl && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
 }

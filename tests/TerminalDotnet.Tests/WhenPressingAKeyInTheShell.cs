@@ -107,6 +107,36 @@ public sealed class WhenPressingAKeyInTheShell
         Assert.Equal(new ShellAction.TypeIntoSearch(), action);
     }
 
+    [Fact]
+    public void Pressing_ctrl_k_shows_every_command()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.K).WithCtrl);
+
+        // Assert
+        Assert.Equal(new ShellAction.ShowCommands(), action);
+    }
+
+    [Fact]
+    public void Pressing_ctrl_k_in_the_search_shows_every_command()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.K).WithCtrl, searchFocused: true);
+
+        // Assert
+        Assert.Equal(new ShellAction.ShowCommands(), action);
+    }
+
+    [Fact]
+    public void Pressing_k_on_its_own_still_moves_the_selection()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.K));
+
+        // Assert
+        Assert.Null(action);
+    }
+
     private static ShellAction? ActionFor(
         Key key,
         bool searchFocused = false,
