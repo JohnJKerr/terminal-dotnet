@@ -24,7 +24,7 @@ public sealed class WhenDiscoveringProjectFiles
         {
             // Act
             var files = await new FileSystemExplorerBackend(
-                new RepositoryCommandRunner(root, "", "App.csproj\nOrder.cs\n")).DiscoverAsync(
+                new RepositoryCommandRunner(root, "", "App.csproj\0Order.cs\0")).DiscoverAsync(
                 Path.Combine(root, "TerminalDotnet.slnx"));
 
             // Assert
@@ -52,7 +52,7 @@ public sealed class WhenDiscoveringProjectFiles
         await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "Changed.cs"), "namespace App;");
         await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "Added.cs"), "namespace App;");
         var gitStatus = " M src/App/Changed.cs\0?? src/App/Added.cs\0";
-        var listing = "Added.cs\nChanged.cs\n";
+        var listing = "Added.cs\0Changed.cs\0";
 
         try
         {
@@ -64,6 +64,34 @@ public sealed class WhenDiscoveringProjectFiles
             Assert.Equal(
                 [("Added.cs", FileGitStatus.New), ("Changed.cs", FileGitStatus.Modified)],
                 files.OrderBy(file => file.Path).Select(file => (Path.GetFileName(file.Path), file.GitStatus)));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task It_lists_a_tracked_file_whose_name_holds_a_newline()
+    {
+        // Arrange
+        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
+        await File.WriteAllTextAsync(
+            Path.Combine(root, "TerminalDotnet.slnx"),
+            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
+        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
+        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "two\nlines.cs"), "namespace App;");
+        var listing = "two\nlines.cs\0";
+
+        try
+        {
+            // Act
+            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, "", listing))
+                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+
+            // Assert
+            Assert.Equal(["two\nlines.cs"], files.Select(file => Path.GetFileName(file.Path)));
         }
         finally
         {
@@ -136,7 +164,7 @@ public sealed class WhenDiscoveringProjectFiles
         Directory.CreateDirectory(projectDirectory);
         await File.WriteAllTextAsync(Path.Combine(projectDirectory, "App.csproj"), "<Project />");
         await File.WriteAllTextAsync(Path.Combine(projectDirectory, "Changed.cs"), "namespace App;");
-        var runner = new RepositoryCommandRunner(root, " M samples/App/Changed.cs\0", "Changed.cs\n");
+        var runner = new RepositoryCommandRunner(root, " M samples/App/Changed.cs\0", "Changed.cs\0");
 
         try
         {
@@ -164,7 +192,7 @@ public sealed class WhenDiscoveringProjectFiles
             "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
         await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
         await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "appsettings.json"), "{}");
-        var runner = new RepositoryCommandRunner(root, "", "App.csproj\nappsettings.json\n");
+        var runner = new RepositoryCommandRunner(root, "", "App.csproj\0appsettings.json\0");
 
         try
         {
@@ -192,7 +220,7 @@ public sealed class WhenDiscoveringProjectFiles
             "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
         await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
         await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "secrets.env"), "TOKEN=1");
-        var runner = new RepositoryCommandRunner(root, "", "App.csproj\n");
+        var runner = new RepositoryCommandRunner(root, "", "App.csproj\0");
 
         try
         {
@@ -306,7 +334,7 @@ public sealed class WhenDiscoveringProjectFiles
             Path.Combine(root, "TerminalDotnet.slnx"),
             "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
         await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        var runner = new RepositoryCommandRunner(root, " D src/App/Gone.cs\0", "App.csproj\nGone.cs\n");
+        var runner = new RepositoryCommandRunner(root, " D src/App/Gone.cs\0", "App.csproj\0Gone.cs\0");
 
         try
         {

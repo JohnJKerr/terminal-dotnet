@@ -43,7 +43,7 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         var listing = await commandRunner.RunAsync(
             new CommandRequest(
                 "git",
-                ["ls-files", "--cached", "--others", "--exclude-standard"],
+                ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
                 projectDirectory),
             cancellationToken);
 
@@ -53,8 +53,7 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
     }
 
     private static IReadOnlyList<string> TrackedFiles(string listing, string projectDirectory) => listing
-        .ReplaceLineEndings("\n")
-        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        .Split('\0', StringSplitOptions.RemoveEmptyEntries)
         .Select(path => Path.GetFullPath(path, projectDirectory))
         .Where(File.Exists)
         .Where(IsProjectFile)
