@@ -951,7 +951,7 @@ public sealed class TestRunnerApplication(
             return;
         }
 
-        new ExplorerEditorWorkflow(fileSession, changesetSession, editorLauncher, target)
+        new ExplorerEditorWorkflow(fileSession, changesetSession, session, editorLauncher, target)
             .OpenAsync(openPath, openLine)
             .GetAwaiter()
             .GetResult();
