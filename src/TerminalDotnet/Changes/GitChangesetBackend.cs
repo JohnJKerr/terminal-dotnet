@@ -94,6 +94,8 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
     private static IReadOnlyList<string> RestoreArgumentsFor(ChangedFile file) => file switch
     {
         { Recreated: true } => RestoreIndexOnly(file),
+        // Ignored files are absent from status, and files can be recreated after discovery.
+        { Staged: ChangeKind.Deleted } when Path.Exists(file.Path) => RestoreIndexOnly(file),
         { Unstaged: ChangeKind.Deleted } => RestoreFromIndex(file),
         _ => RestoreFromLastCommit(file)
     };

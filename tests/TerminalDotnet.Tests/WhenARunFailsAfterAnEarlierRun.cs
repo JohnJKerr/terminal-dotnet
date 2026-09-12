@@ -8,6 +8,48 @@ namespace TerminalDotnet.Tests.Terminal;
 public sealed class WhenARunFailsAfterAnEarlierRun
 {
     [Fact]
+    public async Task It_shows_the_retry_running_instead_of_the_previous_error()
+    {
+        // Arrange
+        var pending = new TaskCompletionSource<TestRun>();
+        var session = new TestExplorerSession(new RetryingBackend(pending.Task));
+        await session.LoadAsync("/repo/Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+
+        // Act
+        var retry = session.DispatchAsync(new ExplorerCommand.RerunLast());
+        var snapshot = TestPanelSnapshot.From(session.State, "/repo/Shop.sln");
+        pending.SetResult(Passing());
+        await retry;
+
+        // Assert
+        Assert.Equal("Running 1 tests...", snapshot.StatusLine);
+    }
+
+    private sealed class RetryingBackend(Task<TestRun> retry) : ITestBackend
+    {
+        private bool attempted;
+
+        public Task<IReadOnlyList<TestCase>> DiscoverAsync(
+            string target,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<TestCase>>([CartTest]);
+
+        public Task<TestRun> RunAsync(
+            IReadOnlyCollection<TestCase> tests,
+            CancellationToken cancellationToken = default)
+        {
+            if (attempted)
+            {
+                return retry;
+            }
+
+            attempted = true;
+            throw new InvalidOperationException("previous error");
+        }
+    }
+
+    [Fact]
     public async Task It_shows_why_the_latest_run_failed()
     {
         // Arrange

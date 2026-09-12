@@ -359,7 +359,8 @@ public sealed class TestExplorerSession(
         {
             Status = ExplorerStatus.Running,
             VisibleNodes = CurrentNodes(),
-            Message = $"Running {tests.Count} tests..."
+            Message = $"Running {tests.Count} tests...",
+            Diagnostic = null
         };
         TestRun run;
         try

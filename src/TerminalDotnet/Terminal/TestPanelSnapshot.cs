@@ -30,7 +30,7 @@ public sealed record TestPanelSnapshot(
         state.LastRun,
         state.SelectedIndex,
         state.SearchQuery,
-        state.VisibleNodes.Count(node => node.Kind == TestNodeKind.Test),
+        state.VisibleTestCount,
         StatusLineFrom(state),
         SelectedOutputTitleFrom(state),
         SelectedOutputFrom(state),

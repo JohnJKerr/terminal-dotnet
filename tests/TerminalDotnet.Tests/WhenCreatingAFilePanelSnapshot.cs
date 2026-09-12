@@ -7,6 +7,24 @@ namespace TerminalDotnet.Tests.Explorer;
 public sealed class WhenCreatingAFilePanelSnapshot
 {
     [Fact]
+    public void It_recounts_when_the_visible_files_change()
+    {
+        // Arrange
+        var state = new FileExplorerState([]);
+        var file = new FileEntry("App.csproj", "Changed.cs", FileGitStatus.Modified);
+
+        // Act
+        var updated = state with
+        {
+            VisibleNodes = [new VisibleFileNode(0, FileNodeKind.File, "Changed.cs", [file])]
+        };
+        var snapshot = FilePanelSnapshot.From(updated);
+
+        // Assert
+        Assert.Equal(1, snapshot.SearchHitCount);
+    }
+
+    [Fact]
     public void It_highlights_modified_files_blue_and_new_files_green()
     {
         // Arrange

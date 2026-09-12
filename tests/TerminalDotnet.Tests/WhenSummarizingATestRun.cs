@@ -6,6 +6,32 @@ namespace TerminalDotnet.Tests.Testing;
 public sealed class WhenSummarizingATestRun
 {
     [Fact]
+    public void It_reuses_the_summary_when_only_output_changes()
+    {
+        // Arrange
+        var run = new TestRun(true, "Finished", [Result("Passes", TestOutcome.Passed)]);
+
+        // Act
+        var updated = run with { Output = "More output" };
+
+        // Assert
+        Assert.Same(run.Summary, updated.Summary);
+    }
+
+    [Fact]
+    public void It_recounts_when_results_are_replaced()
+    {
+        // Arrange
+        var run = new TestRun(true, "Finished", [Result("Passes", TestOutcome.Passed)]);
+
+        // Act
+        var updated = run with { Results = [Result("Fails", TestOutcome.Failed)] };
+
+        // Assert
+        Assert.Equal(new TestRunSummary(0, 1, 0), updated.Summary);
+    }
+
+    [Fact]
     public void It_counts_each_outcome()
     {
         // Arrange

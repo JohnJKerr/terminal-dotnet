@@ -85,7 +85,7 @@ public sealed record FilePanelSnapshot(
         state.VisibleNodes,
         state.SelectedIndex,
         state.SearchQuery,
-        state.VisibleNodes.Count(node => node.Kind == FileNodeKind.File),
+        state.VisibleFileCount,
         StatusSegmentsFrom(state.Changes),
         PanelFilters.Chips(state.ActiveFilter),
         EmptyMessageFrom(state));

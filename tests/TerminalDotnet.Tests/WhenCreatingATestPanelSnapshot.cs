@@ -8,6 +8,24 @@ namespace TerminalDotnet.Tests.Testing;
 public class WhenCreatingATestPanelSnapshot
 {
     [Fact]
+    public void It_recounts_when_the_visible_tests_change()
+    {
+        // Arrange
+        var state = new ExplorerState(ExplorerStatus.Ready, [], 0, "Ready");
+        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+
+        // Act
+        var updated = state with
+        {
+            VisibleNodes = [new VisibleTestNode(0, TestNodeKind.Test, test.DisplayName, [test])]
+        };
+        var snapshot = TestPanelSnapshot.From(updated, "Example.slnx");
+
+        // Assert
+        Assert.Equal(1, snapshot.SearchHitCount);
+    }
+
+    [Fact]
     public void It_preserves_the_explorer_selection()
     {
         // Arrange

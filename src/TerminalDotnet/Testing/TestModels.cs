@@ -42,6 +42,14 @@ public sealed record TestRunSummary(int Passed, int Failed, int Skipped);
 
 public sealed record TestRun(bool Passed, string Output, IReadOnlyList<TestResult> Results)
 {
+    private (IReadOnlyList<TestResult> Results, TestRunSummary Summary) recorded = Summarize(Results);
+
+    public IReadOnlyList<TestResult> Results
+    {
+        get => recorded.Results;
+        init => recorded = Summarize(value);
+    }
+
     public TestRun(bool passed, string output) : this(passed, output, [])
     {
     }
@@ -51,17 +59,16 @@ public sealed record TestRun(bool Passed, string Output, IReadOnlyList<TestResul
     /// individual tests went, whatever the exit code was.</summary>
     public string? Diagnostic { get; init; }
 
-    /// <summary>Every navigation redraws the panel's status line, so the
-    /// outcomes are counted in one pass rather than once per outcome.</summary>
-    public TestRunSummary Summary => SummaryOf(Results.CountBy(result => result.Outcome));
+    public TestRunSummary Summary => recorded.Summary;
 
-    private static TestRunSummary SummaryOf(IEnumerable<KeyValuePair<TestOutcome, int>> counted)
+    private static (IReadOnlyList<TestResult>, TestRunSummary) Summarize(IReadOnlyList<TestResult> results)
     {
-        var counts = counted.ToDictionary();
-        return new TestRunSummary(
+        var frozen = Snapshot.Of(results);
+        var counts = frozen.CountBy(result => result.Outcome).ToDictionary();
+        return (frozen, new TestRunSummary(
             CountOf(counts, TestOutcome.Passed),
             CountOf(counts, TestOutcome.Failed),
-            CountOf(counts, TestOutcome.Skipped));
+            CountOf(counts, TestOutcome.Skipped)));
     }
 
     private static int CountOf(IReadOnlyDictionary<TestOutcome, int> counts, TestOutcome outcome) =>

@@ -1,7 +1,6 @@
 using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
-using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Terminal;
 
@@ -50,7 +49,7 @@ public static class PanelShortcuts
         IReadOnlyList<string> selection = state.VisibleNodes[state.SelectedIndex].Kind == FileNodeKind.File
             ? [.. navigation, "Enter/e edit", "p preview"]
             : [.. navigation, "Space/Enter fold"];
-        return [.. selection, .. FoldAllShortcut(FileGroupExpansion(state.VisibleNodes))];
+        return [.. selection, .. FoldAllShortcut(state.HasGroups, state.HasExpandedGroups)];
     }
 
     private static IReadOnlyList<string> ChangesetShortcuts(ChangesetState state)
@@ -82,7 +81,7 @@ public static class PanelShortcuts
             shortcuts.Add("Space fold");
         }
 
-        shortcuts.AddRange(FoldAllShortcut(TestGroupExpansion(state.VisibleNodes)));
+        shortcuts.AddRange(FoldAllShortcut(state.HasGroups, state.HasExpandedGroups));
         if (!IsRunning(state))
         {
             shortcuts.Add("Enter run");
@@ -105,33 +104,23 @@ public static class PanelShortcuts
             return [];
         }
 
-        return state.LastRun.Results.Any(IsFailed)
+        return state.LastRun.Summary.Failed > 0
             ? ["o output", "l rerun", "u failures", "f next failure"]
             : ["o output", "l rerun"];
     }
 
-    private static IEnumerable<bool> FileGroupExpansion(IReadOnlyList<VisibleFileNode> nodes) => nodes
-        .Where(node => node.Kind != FileNodeKind.File)
-        .Select(node => node.IsExpanded);
-
-    private static IEnumerable<bool> TestGroupExpansion(IReadOnlyList<VisibleTestNode> nodes) => nodes
-        .Where(node => node.Kind != TestNodeKind.Test)
-        .Select(node => node.IsExpanded);
-
-    private static IReadOnlyList<string> FoldAllShortcut(IEnumerable<bool> groupExpansion)
+    private static IReadOnlyList<string> FoldAllShortcut(bool hasGroups, bool hasExpandedGroups)
     {
-        var expansion = groupExpansion.ToArray();
-        if (expansion.Length == 0)
+        if (!hasGroups)
         {
             return [];
         }
 
-        return expansion.Any(isExpanded => isExpanded) ? ["z fold all"] : ["z unfold all"];
+        return hasExpandedGroups ? ["z fold all"] : ["z unfold all"];
     }
 
     private static IReadOnlyList<string> Navigation() => ["↑/k up", "↓/j down"];
 
     private static bool IsRunning(ExplorerState state) => state.Status == ExplorerStatus.Running;
 
-    private static bool IsFailed(TestResult result) => result.Outcome == TestOutcome.Failed;
 }
