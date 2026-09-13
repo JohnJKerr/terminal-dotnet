@@ -16,13 +16,23 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_offers_a_section_for_every_panel()
+    public void It_offers_a_section_for_every_panel_and_for_the_preview()
     {
         // Act
         var titles = CommandMenu.Sections().Select(section => section.Title);
 
         // Assert
-        Assert.Equal(["Anywhere", "Explorer", "Files", "Tests", "Changes"], titles);
+        Assert.Equal(["Anywhere", "Explorer", "Files", "Tests", "Changes", "Preview"], titles);
+    }
+
+    [Fact]
+    public void It_lists_the_editing_command_under_the_preview()
+    {
+        // Act
+        var preview = CommandMenu.Sections().Single(section => section.Title == "Preview");
+
+        // Assert
+        Assert.Contains(preview.Entries, entry => entry.Description == "edit the file");
     }
 
     [Fact]

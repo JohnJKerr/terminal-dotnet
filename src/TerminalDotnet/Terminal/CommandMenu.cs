@@ -22,7 +22,8 @@ public static class CommandMenu
         new("Explorer", FileTree),
         new("Files", FileTree),
         new("Tests", Tests),
-        new("Changes", Changes)
+        new("Changes", Changes),
+        new("Preview", Preview)
     ];
 
     public static IReadOnlyList<CommandMenuRow> Rows()
@@ -99,6 +100,15 @@ public static class CommandMenu
         new("e", "edit the file"),
         new("p", "preview the file"),
         new("r", "restore a deleted file")
+    ];
+
+    private static readonly IReadOnlyList<CommandMenuEntry> Preview =
+    [
+        .. Navigation,
+        new("PgUp/PgDn", "move a screen at a time"),
+        new("Home/End", "jump to the first or last line"),
+        new("e", "edit the file"),
+        new("Esc", "close the preview")
     ];
 
     private static IReadOnlyList<CommandMenuEntry> Navigation =>

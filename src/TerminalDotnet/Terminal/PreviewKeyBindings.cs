@@ -8,6 +8,7 @@ public abstract record PreviewAction
     public sealed record Scroll(int Rows) : PreviewAction;
     public sealed record ScrollToStart : PreviewAction;
     public sealed record ScrollToEnd : PreviewAction;
+    public sealed record Edit : PreviewAction;
 }
 
 /// <summary>
@@ -24,6 +25,7 @@ public static class PreviewKeyBindings
         KeyCode.PageUp => new PreviewAction.Scroll(-PageRows(viewportHeight)),
         KeyCode.Home => new PreviewAction.ScrollToStart(),
         KeyCode.End => new PreviewAction.ScrollToEnd(),
+        KeyCode.E => new PreviewAction.Edit(),
         _ => null
     };
 

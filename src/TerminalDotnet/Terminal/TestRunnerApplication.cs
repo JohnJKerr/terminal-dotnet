@@ -779,7 +779,7 @@ internal sealed class TestRunnerApplication(
 
         using var preview = new Window
         {
-            Title = $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  Esc close",
+            Title = PreviewTitle(path, line),
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
@@ -804,7 +804,7 @@ internal sealed class TestRunnerApplication(
                 background);
             args.Handled = true;
         };
-        code.KeyDown += (_, key) => HandlePreviewKey(code, key);
+        code.KeyDown += (_, key) => HandlePreviewKey(application, code, key, path, line);
         preview.Add(code);
         previewVisible = true;
         try
@@ -815,7 +815,23 @@ internal sealed class TestRunnerApplication(
         {
             previewVisible = false;
         }
+
+        LeaveForTheEditor(application);
     }
+
+    /// <summary>Closing the preview only leaves the nested loop, so the shell
+    /// beneath it is asked to stop as well when the reader left for the
+    /// editor.</summary>
+    private void LeaveForTheEditor(IApplication application)
+    {
+        if (openSourceRequested)
+        {
+            application.RequestStop();
+        }
+    }
+
+    private static string PreviewTitle(string path, int line) =>
+        $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  e edit  Esc close";
 
     private void ShowTestOutput(IApplication application)
     {
@@ -886,7 +902,12 @@ internal sealed class TestRunnerApplication(
         };
     }
 
-    private static void HandlePreviewKey(Code code, Key key)
+    private void HandlePreviewKey(
+        IApplication application,
+        Code code,
+        Key key,
+        string path,
+        int line)
     {
         var action = PreviewKeyBindings.ActionFor(key, code.Viewport.Height);
         if (action is null)
@@ -895,6 +916,12 @@ internal sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
+        if (action is PreviewAction.Edit)
+        {
+            RequestOpen(application, path, line);
+            return;
+        }
+
         ScrollPreview(code, action);
     }
 
