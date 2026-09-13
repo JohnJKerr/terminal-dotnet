@@ -1,3 +1,5 @@
+using TerminalDotnet.Search;
+
 namespace TerminalDotnet.Comments;
 
 /// <summary>
@@ -10,6 +12,12 @@ public sealed class CommentSession
     private readonly List<FileComment> comments = [];
 
     public CommentsState State { get; private set; } = new([]);
+
+    /// <summary>The note a file already carries, whatever the panel is showing,
+    /// so commenting on it again starts from what is there rather than from a
+    /// blank page.</summary>
+    public string Against(string path) =>
+        comments.FirstOrDefault(comment => comment.Path == path)?.Text ?? "";
 
     public Task DispatchAsync(
         CommentCommand command,
@@ -25,20 +33,10 @@ public sealed class CommentSession
             Revise(command, selected);
         }
 
-        var listed = InPathOrder();
-        State = new CommentsState(listed, SelectionAfter(command, listed.Count));
+        var query = QueryAfter(command);
+        var listed = Matching(query);
+        State = new CommentsState(listed, SelectionAfter(command, listed.Count), query);
         return Task.CompletedTask;
-    }
-
-    private int SelectionAfter(CommentCommand command, int count)
-    {
-        var lastIndex = Math.Max(0, count - 1);
-        return command switch
-        {
-            CommentCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-            CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
-            _ => Math.Min(State.SelectedIndex, lastIndex)
-        };
     }
 
     private FileComment? Selected() => State.SelectedIndex < State.Comments.Count
@@ -72,15 +70,8 @@ public sealed class CommentSession
         Write(new CommentCommand.Add(selected.Path, selected.DisplayPath, text));
     }
 
-    private void Erase(FileComment selected)
-    {
+    private void Erase(FileComment selected) =>
         comments.RemoveAll(comment => comment.Path == selected.Path);
-    }
-
-    /// <summary>The commented files read as a listing rather than as a history,
-    /// so a note that is rewritten keeps the place its file has.</summary>
-    private IReadOnlyList<FileComment> InPathOrder() => Snapshot.Of(
-        comments.OrderBy(comment => comment.DisplayPath, StringComparer.Ordinal));
 
     /// <summary>A file carries one comment, so commenting on it again rewrites
     /// the note that is already there rather than leaving two behind.</summary>
@@ -94,5 +85,34 @@ public sealed class CommentSession
 
         comments.RemoveAll(comment => comment.Path == add.Path);
         comments.Add(new FileComment(add.Path, add.DisplayPath, text));
+    }
+
+    private string QueryAfter(CommentCommand command) => command switch
+    {
+        CommentCommand.Search search => search.Query,
+        CommentCommand.ClearSearch => "",
+        _ => State.SearchQuery
+    };
+
+    /// <summary>A note is found by the file it is against or by what it says,
+    /// because the reader remembers one or the other.</summary>
+    private IReadOnlyList<FileComment> Matching(string query) => Snapshot.Of(comments
+        .Where(comment => query.Length == 0 || Matches(comment, query))
+        .OrderBy(comment => comment.DisplayPath, StringComparer.Ordinal));
+
+    private static bool Matches(FileComment comment, string query) =>
+        SearchMatch.Matches(comment.DisplayPath, query) ||
+        SearchMatch.Matches(comment.Text, query);
+
+    private int SelectionAfter(CommentCommand command, int count)
+    {
+        var lastIndex = Math.Max(0, count - 1);
+        return command switch
+        {
+            CommentCommand.Search or CommentCommand.ClearSearch => 0,
+            CommentCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
+            CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+            _ => Math.Min(State.SelectedIndex, lastIndex)
+        };
     }
 }

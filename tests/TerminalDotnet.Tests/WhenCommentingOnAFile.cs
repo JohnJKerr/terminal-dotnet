@@ -80,7 +80,7 @@ public sealed class WhenCommentingOnAFile
             new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
 
         // Act
-        var existing = session.State.Against("/repo/src/Order.cs");
+        var existing = session.Against("/repo/src/Order.cs");
 
         // Assert
         Assert.Equal("needs a guard", existing);
@@ -95,7 +95,7 @@ public sealed class WhenCommentingOnAFile
             new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
 
         // Act
-        var existing = session.State.Against("/repo/src/Customer.cs");
+        var existing = session.Against("/repo/src/Customer.cs");
 
         // Assert
         Assert.Equal("", existing);

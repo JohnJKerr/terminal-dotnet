@@ -16,7 +16,7 @@ public sealed class WhenActingOnACommentedFile
         await session.DispatchAsync(new CommentCommand.RewriteSelected("needs two guards"));
 
         // Assert
-        Assert.Equal("needs two guards", session.State.Against("/repo/src/Order.cs"));
+        Assert.Equal("needs two guards", session.Against("/repo/src/Order.cs"));
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public sealed class WhenActingOnACommentedFile
         await session.DispatchAsync(new CommentCommand.RewriteSelected("needs two guards"));
 
         // Assert
-        Assert.Equal("rename this", session.State.Against("/repo/src/Customer.cs"));
+        Assert.Equal("rename this", session.Against("/repo/src/Customer.cs"));
     }
 
     [Fact]

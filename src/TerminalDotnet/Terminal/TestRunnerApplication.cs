@@ -490,21 +490,21 @@ internal sealed class TestRunnerApplication(
 
     private string ActiveSearchQuery() => ActiveFileSession() is { } files
         ? files.State.SearchQuery
-        : ChangesetOrTestSearchQuery();
-
-    private string ChangesetOrTestSearchQuery() =>
-        shell.State.ActivePanel == PanelKind.Changes
-            ? changesetSession.State.SearchQuery
-            : session.State.SearchQuery;
+        : shell.State.ActivePanel switch
+        {
+            PanelKind.Changes => changesetSession.State.SearchQuery,
+            PanelKind.Comments => commentSession.State.SearchQuery,
+            _ => session.State.SearchQuery
+        };
 
     private Task SearchAsync(string query) => ActiveFileSession() is { } files
         ? files.DispatchAsync(new FileExplorerCommand.Search(query))
-        : SearchChangesetOrTestsAsync(query);
-
-    private Task SearchChangesetOrTestsAsync(string query) =>
-        shell.State.ActivePanel == PanelKind.Changes
-            ? changesetSession.DispatchAsync(new ChangesetCommand.Search(query))
-            : session.DispatchAsync(new ExplorerCommand.Search(query));
+        : shell.State.ActivePanel switch
+        {
+            PanelKind.Changes => changesetSession.DispatchAsync(new ChangesetCommand.Search(query)),
+            PanelKind.Comments => commentSession.DispatchAsync(new CommentCommand.Search(query)),
+            _ => session.DispatchAsync(new ExplorerCommand.Search(query))
+        };
 
     private async Task ClearSearchAsync(IApplication application, TextField search, ListView tests)
     {
@@ -520,7 +520,9 @@ internal sealed class TestRunnerApplication(
 
     private Task ClearPanelSearchAsync() => ActiveFileSession() is { } files
         ? files.DispatchAsync(new FileExplorerCommand.ClearSearch())
-        : changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch());
+        : shell.State.ActivePanel == PanelKind.Comments
+            ? commentSession.DispatchAsync(new CommentCommand.ClearSearch())
+            : changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch());
 
 
     private void HandleFileKey(
@@ -956,7 +958,7 @@ internal sealed class TestRunnerApplication(
     private void CommentOn(IApplication application, string path)
     {
         var displayPath = DisplayPathFor(path);
-        var written = CommentDialog.Ask(application, displayPath, commentSession.State.Against(path));
+        var written = CommentDialog.Ask(application, displayPath, commentSession.Against(path));
         if (written is null)
         {
             return;
@@ -1238,8 +1240,8 @@ internal sealed class TestRunnerApplication(
         RenderRows(
             search,
             files,
-            "",
-            snapshot.Comments.Count,
+            snapshot.SearchQuery,
+            snapshot.SearchHitCount,
             snapshot.Comments,
             () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
             snapshot.SelectedIndex,

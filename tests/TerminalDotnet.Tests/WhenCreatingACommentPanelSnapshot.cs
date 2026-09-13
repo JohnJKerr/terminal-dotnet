@@ -74,6 +74,45 @@ public sealed class WhenCreatingACommentPanelSnapshot
         Assert.Equal(1, snapshot.SelectedIndex);
     }
 
+    [Fact]
+    public void It_says_nothing_matches_a_search_that_found_no_notes()
+    {
+        // Arrange
+        var state = new CommentsState([], SearchQuery: "basket");
+
+        // Act
+        var snapshot = CommentPanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal("No comments match 'basket'", snapshot.EmptyMessage);
+    }
+
+    [Fact]
+    public void It_keeps_the_search_the_panel_is_showing()
+    {
+        // Arrange
+        var state = new CommentsState(Comments(), SearchQuery: "src");
+
+        // Act
+        var snapshot = CommentPanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal("src", snapshot.SearchQuery);
+    }
+
+    [Fact]
+    public void It_counts_the_notes_a_search_found()
+    {
+        // Arrange
+        var state = new CommentsState(Comments(), SearchQuery: "src");
+
+        // Act
+        var snapshot = CommentPanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(2, snapshot.SearchHitCount);
+    }
+
     private static IReadOnlyList<FileComment> Comments() =>
     [
         new("/repo/src/Customer.cs", "src/Customer.cs", "rename this"),
