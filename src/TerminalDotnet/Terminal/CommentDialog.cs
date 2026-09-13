@@ -25,6 +25,7 @@ internal static class CommentDialog
             Height = Dim.Percent(60),
             ShadowStyle = ShadowStyles.None
         };
+#pragma warning disable CS0618 // Terminal.Gui.Editor is a separate, non-source-compatible dependency.
         var text = new TextView
         {
             X = 0,
@@ -35,6 +36,7 @@ internal static class CommentDialog
             WordWrap = true,
             Text = existing
         };
+#pragma warning restore CS0618
         var save = new Button { Text = "Save", X = 0, Y = Pos.AnchorEnd(1), IsDefault = false };
         var cancel = new Button { Text = "Cancel", X = Pos.Right(save) + 1, Y = Pos.AnchorEnd(1) };
         save.Accepting += (_, args) =>
