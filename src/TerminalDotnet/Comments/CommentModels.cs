@@ -27,6 +27,8 @@ public interface ICommentClipboard
 /// <summary>Where the comments are kept when they are written out.</summary>
 public interface ICommentStore
 {
+    Task<bool> ExistsAsync(string path, CancellationToken cancellationToken = default);
+
     Task<bool> TryWriteAsync(string path, string text, CancellationToken cancellationToken = default);
 }
 

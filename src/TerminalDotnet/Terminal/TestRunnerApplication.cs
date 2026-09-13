@@ -804,12 +804,31 @@ internal sealed class TestRunnerApplication(
     {
         var path = OverThePanels(
             () => SavePrompt.Ask(application, "Save comments", SuggestedCommentPath()));
-        if (path is null)
+        if (path is null || !MayWriteOver(application, path))
         {
             return;
         }
 
         panelWork.Track(DispatchCommentAsync(new CommentCommand.SaveAll(path), search, files));
+    }
+
+    /// <summary>Saving replaces what the file held, so a path that already has
+    /// something in it is asked about. Keeping it is offered last, because the
+    /// box opens on its last button.</summary>
+    private bool MayWriteOver(IApplication application, string path)
+    {
+        if (!commentSession.HoldsSomethingAtAsync(path).GetAwaiter().GetResult())
+        {
+            return true;
+        }
+
+        var chosen = OverThePanels(() => MessageBox.Query(
+            application,
+            "Save comments",
+            $"{Path.GetFileName(path)} already exists. Saving replaces what is in it.",
+            "Replace it",
+            "Keep it"));
+        return chosen != KeepChoice;
     }
 
     private string SuggestedCommentPath() => Path.Combine(LaunchFolder(), "comments.md");

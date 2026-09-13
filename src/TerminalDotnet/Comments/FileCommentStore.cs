@@ -7,6 +7,9 @@ namespace TerminalDotnet.Comments;
 /// </summary>
 public sealed class FileCommentStore : ICommentStore
 {
+    public Task<bool> ExistsAsync(string path, CancellationToken cancellationToken = default) =>
+        Task.FromResult(File.Exists(path));
+
     public async Task<bool> TryWriteAsync(
         string path,
         string text,

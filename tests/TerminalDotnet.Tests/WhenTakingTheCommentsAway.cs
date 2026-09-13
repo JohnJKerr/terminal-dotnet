@@ -164,6 +164,10 @@ public sealed class WhenTakingTheCommentsAway
 
         public bool WriteSucceeds { get; init; } = true;
 
+        public Task<bool> ExistsAsync(
+            string path,
+            CancellationToken cancellationToken = default) => Task.FromResult(false);
+
         public Task<bool> TryWriteAsync(
             string path,
             string text,

@@ -25,6 +25,13 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
     public string Against(string path) =>
         comments.FirstOrDefault(comment => comment.Path == path)?.Text ?? "";
 
+    /// <summary>Whether saving to this path would write over something. The
+    /// write itself replaces what is there, so the asking is done first.
+    /// </summary>
+    public Task<bool> HoldsSomethingAtAsync(
+        string path,
+        CancellationToken cancellationToken = default) => store.ExistsAsync(path, cancellationToken);
+
     public async Task DispatchAsync(
         CommentCommand command,
         CancellationToken cancellationToken = default)
@@ -190,6 +197,10 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
 
     private sealed class UnreachableStore : ICommentStore
     {
+        public Task<bool> ExistsAsync(
+            string path,
+            CancellationToken cancellationToken = default) => Task.FromResult(false);
+
         public Task<bool> TryWriteAsync(
             string path,
             string text,

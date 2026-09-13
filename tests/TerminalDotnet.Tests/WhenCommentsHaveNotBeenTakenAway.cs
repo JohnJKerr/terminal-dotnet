@@ -138,6 +138,10 @@ public sealed class WhenCommentsHaveNotBeenTakenAway
 
     private sealed class TakingStore : ICommentStore
     {
+        public Task<bool> ExistsAsync(
+            string path,
+            CancellationToken cancellationToken = default) => Task.FromResult(false);
+
         public Task<bool> TryWriteAsync(
             string path,
             string text,
