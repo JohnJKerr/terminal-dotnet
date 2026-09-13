@@ -2,6 +2,7 @@ using TerminalDotnet.Changes;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TerminalDotnet.Flags;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 
@@ -14,10 +15,10 @@ if (target is null)
 
 var commandRunner = new ProcessCommandRunner();
 var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandRunner));
-var folderSession = new FileExplorerSession(
-    new LaunchFolderBackend(commandRunner),
-    FileGrouping.Folder);
+var folderBackend = new LaunchFolderBackend(commandRunner);
+var folderSession = new FileExplorerSession(folderBackend, FileGrouping.Folder);
 var changesetSession = new ChangesetSession(new GitChangesetBackend(commandRunner));
+var flagSession = new FlagSession(new FileFlagBackend(folderBackend));
 var commentSession = new CommentSession(
     new CommandClipboard(commandRunner, Path.GetDirectoryName(Path.GetFullPath(target))!),
     new FileCommentStore());
@@ -36,6 +37,7 @@ new TestRunnerApplication(
     folderSession,
     changesetSession,
     commentSession,
+    flagSession,
     target,
     editorLauncher).Run();
 return 0;

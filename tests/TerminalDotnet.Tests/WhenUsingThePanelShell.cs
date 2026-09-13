@@ -6,7 +6,7 @@ namespace TerminalDotnet.Tests.Terminal;
 public sealed class WhenUsingThePanelShell
 {
     [Fact]
-    public void It_offers_the_explorer_the_files_the_tests_the_changes_and_the_comments()
+    public void It_offers_every_panel()
     {
         // Arrange
         var shell = new PanelShell();
@@ -15,7 +15,7 @@ public sealed class WhenUsingThePanelShell
         var state = shell.State;
 
         // Assert
-        Assert.Equal(["Explorer", "Files", "Tests", "Changes", "Comments"], state.Panels);
+        Assert.Equal(["Explorer", "Files", "Tests", "Changes", "Comments", "Flags"], state.Panels);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed class WhenUsingThePanelShell
         var panels = shell.State.KeyedPanels;
 
         // Assert
-        Assert.Equal(["E", "F", "T", "G", "C"], panels.Select(panel => panel.Key));
+        Assert.Equal(["E", "F", "T", "G", "C", "L"], panels.Select(panel => panel.Key));
     }
 
     [Fact]
@@ -94,7 +94,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Files", "Tests", "Changes", "Comments"],
+            ["Explorer", "Files", "Tests", "Changes", "Comments", "Flags"],
             panels.Select(panel => panel.Name));
     }
 

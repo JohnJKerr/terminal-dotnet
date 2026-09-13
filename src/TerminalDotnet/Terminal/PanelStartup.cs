@@ -1,6 +1,7 @@
 using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TerminalDotnet.Flags;
 
 namespace TerminalDotnet.Terminal;
 
@@ -9,7 +10,8 @@ public sealed class PanelStartup(
     FileExplorerSession folderFiles,
     ChangesetSession changes,
     TestExplorerSession tests,
-    string target)
+    string target,
+    FlagSession? flags = null)
 {
     public async Task LoadPendingAsync(
         Func<Task> onPanelFilled,
@@ -39,7 +41,8 @@ public sealed class PanelStartup(
         .. Pending(changes.State.Loading, token => changes.LoadAsync(target, token)),
         .. Pending(
             tests.State.Status == ExplorerStatus.Loading,
-            token => tests.LoadAsync(target, token))
+            token => tests.LoadAsync(target, token)),
+        .. flags is null ? [] : Pending(flags.State.Loading, token => flags.LoadAsync(target, token))
     ];
 
     private static IEnumerable<Func<CancellationToken, Task>> Pending(

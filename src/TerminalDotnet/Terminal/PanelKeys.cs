@@ -12,7 +12,8 @@ public static class PanelKeys
         PanelKind.Files => "F",
         PanelKind.Tests => "T",
         PanelKind.Changes => "G",
-        _ => "C"
+        PanelKind.Comments => "C",
+        _ => "L"
     };
 
     public static PanelKind? For(string key) => Enum

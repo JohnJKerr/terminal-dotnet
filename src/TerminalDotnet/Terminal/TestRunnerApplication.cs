@@ -10,6 +10,7 @@ using TerminalDotnet.Changes;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TerminalDotnet.Flags;
 using TerminalDotnet.Filters;
 using TerminalDotnet.Search;
 using TextMateSharp.Grammars;
@@ -22,6 +23,7 @@ internal sealed class TestRunnerApplication(
     FileExplorerSession folderSession,
     ChangesetSession changesetSession,
     CommentSession commentSession,
+    FlagSession flagSession,
     string target,
     IFileOpener? editorLauncher = null)
 {
@@ -184,7 +186,8 @@ internal sealed class TestRunnerApplication(
             folderSession,
             changesetSession,
             session,
-            target).LoadPendingAsync(
+            target,
+            flagSession).LoadPendingAsync(
             () =>
             {
                 application.Invoke(() => Render(search, tests));
@@ -377,6 +380,12 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
+        if (shell.State.ActivePanel == PanelKind.Flags)
+        {
+            HandleFlagKey(application, key, tests, search);
+            return;
+        }
+
         HandleTestKey(application, key, search, tests);
     }
 
@@ -526,6 +535,7 @@ internal sealed class TestRunnerApplication(
         {
             PanelKind.Changes => changesetSession.State.SearchQuery,
             PanelKind.Comments => commentSession.State.SearchQuery,
+            PanelKind.Flags => flagSession.State.SearchQuery,
             _ => session.State.SearchQuery
         };
 
@@ -535,6 +545,7 @@ internal sealed class TestRunnerApplication(
         {
             PanelKind.Changes => changesetSession.DispatchAsync(new ChangesetCommand.Search(query)),
             PanelKind.Comments => commentSession.DispatchAsync(new CommentCommand.Search(query)),
+            PanelKind.Flags => flagSession.DispatchAsync(new FlagCommand.Search(query)),
             _ => session.DispatchAsync(new ExplorerCommand.Search(query))
         };
 
@@ -552,9 +563,12 @@ internal sealed class TestRunnerApplication(
 
     private Task ClearPanelSearchAsync() => ActiveFileSession() is { } files
         ? files.DispatchAsync(new FileExplorerCommand.ClearSearch())
-        : shell.State.ActivePanel == PanelKind.Comments
-            ? commentSession.DispatchAsync(new CommentCommand.ClearSearch())
-            : changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch());
+        : shell.State.ActivePanel switch
+        {
+            PanelKind.Comments => commentSession.DispatchAsync(new CommentCommand.ClearSearch()),
+            PanelKind.Flags => flagSession.DispatchAsync(new FlagCommand.ClearSearch()),
+            _ => changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch())
+        };
 
 
     private void HandleFileKey(
@@ -730,6 +744,57 @@ internal sealed class TestRunnerApplication(
         commentSession.State.SelectedIndex < commentSession.State.Comments.Count
             ? commentSession.State.Comments[commentSession.State.SelectedIndex]
             : null;
+
+    private Flag? SelectedFlag() => flagSession.State.SelectedIndex < flagSession.State.Flags.Count
+        ? flagSession.State.Flags[flagSession.State.SelectedIndex]
+        : null;
+
+    private void HandleFlagKey(IApplication application, Key key, ListView rows, TextField search)
+    {
+        if (!rows.HasFocus)
+        {
+            return;
+        }
+
+        var action = FlagPanelKeyBindings.ActionFor(key, SelectedFlag(), search.HasFocus);
+        if (action is FlagPanelAction.Edit edit)
+        {
+            key.Handled = true;
+            RequestOpen(application, edit.Path, edit.Line);
+            return;
+        }
+        if (action is FlagPanelAction.Preview preview)
+        {
+            key.Handled = true;
+            ShowPreview(application, preview.Path, preview.Line, search, rows);
+            return;
+        }
+        if (action is FlagPanelAction.ToggleFilter filter)
+        {
+            key.Handled = true;
+            panelWork.Track(DispatchFlagAsync(new FlagCommand.ToggleFilter(filter.Category), search, rows));
+            return;
+        }
+
+        FlagCommand? command = Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K)
+            ? new FlagCommand.MoveUp()
+            : Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J)
+                ? new FlagCommand.MoveDown()
+                : null;
+        if (command is null)
+        {
+            return;
+        }
+
+        key.Handled = true;
+        panelWork.Track(DispatchFlagAsync(command, search, rows));
+    }
+
+    private async Task DispatchFlagAsync(FlagCommand command, TextField search, ListView rows)
+    {
+        await flagSession.DispatchAsync(command);
+        Render(search, rows);
+    }
 
     private void HandleCommentAction(
         IApplication application,
@@ -1280,6 +1345,7 @@ internal sealed class TestRunnerApplication(
         {
             PanelKind.Changes => changesetSession.State.Files.Count,
             PanelKind.Comments => commentSession.State.Comments.Count,
+            PanelKind.Flags => flagSession.State.Flags.Count,
             _ => session.State.VisibleNodes.Count
         };
 
@@ -1289,6 +1355,7 @@ internal sealed class TestRunnerApplication(
         {
             PanelKind.Changes => changesetSession.State.SelectedIndex,
             PanelKind.Comments => commentSession.State.SelectedIndex,
+            PanelKind.Flags => flagSession.State.SelectedIndex,
             _ => session.State.SelectedIndex
         };
 
@@ -1315,6 +1382,13 @@ internal sealed class TestRunnerApplication(
             await commentSession.DispatchAsync(new CommentCommand.SelectIndex(index));
             var comment = commentSession.State.Comments[commentSession.State.SelectedIndex];
             return new SourceLocation(comment.Path, 1);
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Flags)
+        {
+            await flagSession.DispatchAsync(new FlagCommand.SelectIndex(index));
+            var flag = flagSession.State.Flags[flagSession.State.SelectedIndex];
+            return new SourceLocation(flag.Path, flag.Line);
         }
 
         await session.DispatchAsync(new ExplorerCommand.SelectIndex(index));
@@ -1364,6 +1438,7 @@ internal sealed class TestRunnerApplication(
             editorLauncher,
             target);
         workflow.OpenAsync(openPath, openLine).GetAwaiter().GetResult();
+        flagSession.LoadAsync(target).GetAwaiter().GetResult();
     }
 
     private void Render(TextField search, ListView tests)
@@ -1375,7 +1450,8 @@ internal sealed class TestRunnerApplication(
             changesetSession.State,
             session.State,
             commentSession.State,
-            search.HasFocus);
+            search.HasFocus,
+            flagSession.State);
         ShowShortcuts();
         if (fileExplorer is not null)
         {
@@ -1392,6 +1468,12 @@ internal sealed class TestRunnerApplication(
         if (shell.State.ActivePanel == PanelKind.Comments)
         {
             RenderComments(search, tests);
+            return;
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Flags)
+        {
+            RenderFlags(search, tests);
             return;
         }
 
@@ -1497,6 +1579,23 @@ internal sealed class TestRunnerApplication(
             snapshot.SelectedIndex,
             snapshot.StatusSegments,
             [],
+            snapshot.EmptyMessage);
+    }
+
+    private void RenderFlags(TextField search, ListView rows)
+    {
+        var snapshot = FlagPanelSnapshot.From(flagSession.State);
+        rows.Title = "Flags";
+        RenderRows(
+            search,
+            rows,
+            snapshot.SearchQuery,
+            snapshot.Flags.Count,
+            snapshot.Flags,
+            () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
+            snapshot.SelectedRowIndex,
+            [new($"{snapshot.Flags.Count} Flags", FileRowTone.Neutral)],
+            snapshot.Filters,
             snapshot.EmptyMessage);
     }
 

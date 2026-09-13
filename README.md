@@ -81,10 +81,11 @@ dotnet run --project /path/to/terminal-dotnet/src/TerminalDotnet
 
 Panels: `Explorer` lists the solution's source files, `Files` lists everything in the directory
 you started in, `Tests` lists the discovered tests, `Changes` lists the files git reports as
-added, modified, or deleted beneath that directory, and `Comments` lists the files you have
-left a note against. A panel with nothing to list says so in place of its rows. `Shift` and the
-letter beside a panel in the rail reaches it: `E`, `F`, `T`, `G`, and `C`. `Changes` answers to
-`G` because `C` belongs to `Comments`.
+added, modified, or deleted beneath that directory, `Comments` lists the files you have left a
+note against, and `Flags` gathers task and warning comments from tracked files. A panel with
+nothing to list says so in place of its rows. `Shift` and the letter beside a panel in the rail
+reaches it: `E`, `F`, `T`, `G`, `C`, and `L`. `Changes` answers to `G` because `C` belongs to
+`Comments`; Flags answers to `L` because `F` belongs to Files.
 
 The `Explorer` and `Tests` panels carry filters under the search box, numbered from `1`. The
 `Updated` filter keeps the files git reports as new or changed, and in the `Tests` panel keeps
@@ -94,6 +95,11 @@ narrows whatever the filter left.
 Both panels colour what changed the same way: green for an added file or suite, blue for an
 edited one. A test keeps that colour until it runs, and then reports its outcome instead —
 green passed, red failed, yellow skipped, cyan running.
+
+The `Flags` panel groups comment markers under their headings. Its numbered filters are Tasks
+(`TODO`, `FIXME`), Review (`REVIEW`, `QUESTION`, `NOTE`), Warning (`WARNING`, `WARN`, `HACK`,
+`XXX`, `BUG`, `DEPRECATED`), and Improve (`REFACTOR`, `OPTIMIZE`). Search matches both the file
+path and comment text. `Enter` edits the file at the flagged line; `p` previews it there.
 
 Keys:
 
