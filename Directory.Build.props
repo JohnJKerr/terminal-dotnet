@@ -1,15 +1,19 @@
 <Project>
-  <!-- Major and minor are set by hand. The patch counts builds since that
-       major.minor was cut: CI passes its run number as BuildNumber, and
-       VersionPatchOffset is the run number of the first build of the current
-       major.minor, so that build is patch 0. Bump the offset to the next run
-       number whenever you change the major or minor version. -->
+  <!-- Major and minor are set by hand. The patch counts commits since that
+       major.minor was cut, so a given commit stamps the same version wherever
+       it is built: CI, a local clone, or an install from a fresh clone.
+       VersionPatchOffset is the commit count at the commit that introduced the
+       current major.minor, so that commit is patch 0. When changing the major
+       or minor, set the offset to the count the bump commit will itself have.
+       Counts are inclusive, so that is one more than the commit count reads
+       before the bump is committed.
+       The patch itself is stamped in Directory.Build.targets, which is where
+       the commit count can be read; the 0 here is the fallback for a source
+       tree with no git history. -->
   <PropertyGroup>
     <VersionMajor>0</VersionMajor>
     <VersionMinor>1</VersionMinor>
-    <VersionPatchOffset>1</VersionPatchOffset>
-    <BuildNumber Condition="'$(BuildNumber)' == ''">$(VersionPatchOffset)</BuildNumber>
-    <VersionPatch>$([System.Math]::Max(0, $([MSBuild]::Subtract($(BuildNumber), $(VersionPatchOffset)))))</VersionPatch>
-    <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)</Version>
+    <VersionPatchOffset>94</VersionPatchOffset>
+    <Version>$(VersionMajor).$(VersionMinor).0</Version>
   </PropertyGroup>
 </Project>

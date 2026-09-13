@@ -11,16 +11,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # The patch number counts commits, so the full history is needed.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      # The patch number comes from the run number, so each build is versioned
-      # separately; major and minor stay in Directory.Build.props.
       - name: Build
-        run: dotnet build TerminalDotnet.slnx -m:1 -p:BuildNumber=${{ github.run_number }}
+        run: dotnet build TerminalDotnet.slnx -m:1
 
       - name: Test
-        run: dotnet test TerminalDotnet.slnx -m:1 --no-build -p:BuildNumber=${{ github.run_number }}
+        run: dotnet test TerminalDotnet.slnx -m:1 --no-build
