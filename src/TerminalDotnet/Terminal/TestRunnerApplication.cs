@@ -1149,7 +1149,7 @@ internal sealed class TestRunnerApplication(
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill(PreviewIssueDetails().Length > 0 ? IssueDetailRows : 0),
+            Height = Dim.Fill(PreviewDetails().Length > 0 ? IssueDetailRows : 0),
             Text = text,
             Language = LanguageFrom(path),
             SyntaxHighlighter = new TextMateSyntaxHighlighter(ThemeName.DarkPlus)
@@ -1172,7 +1172,7 @@ internal sealed class TestRunnerApplication(
 
     private Label PreviewDiagnostic()
     {
-        var text = PreviewIssueDetails();
+        var text = PreviewDetails();
         var diagnostic = new Label
         {
             X = 0,
@@ -1188,22 +1188,28 @@ internal sealed class TestRunnerApplication(
         {
             var background = args.Result?.Background ?? Color.Black;
             args.Result = new global::Terminal.Gui.Drawing.Attribute(
-                FileRowAppearance.ForegroundFor(SelectedIssueTone(), Color.White),
+                FileRowAppearance.ForegroundFor(PreviewDetailTone(), Color.White),
                 background);
             args.Handled = true;
         };
         return diagnostic;
     }
 
-    private string PreviewIssueDetails() => shell.State.ActivePanel == PanelKind.Issues
-        ? IssuePanelSnapshot.From(issueSession.State).SelectedDetails
-        : "";
+    private string PreviewDetails() => shell.State.ActivePanel switch
+    {
+        PanelKind.Issues => IssuePanelSnapshot.From(issueSession.State).SelectedDetails,
+        PanelKind.Flags => FlagPanelSnapshot.From(flagSession.State).SelectedDetails,
+        _ => ""
+    };
 
-    private FileRowTone SelectedIssueTone() =>
+    private FileRowTone PreviewDetailTone() =>
+        shell.State.ActivePanel == PanelKind.Issues &&
         issueSession.State.SelectedIndex < issueSession.State.Issues.Count &&
         issueSession.State.Issues[issueSession.State.SelectedIndex].Severity == IssueSeverity.Warning
             ? FileRowTone.Warning
-            : FileRowTone.Deleted;
+            : shell.State.ActivePanel == PanelKind.Issues
+                ? FileRowTone.Deleted
+                : FileRowTone.Neutral;
 
     private string? ReadForPreview(IApplication application, string path)
     {
@@ -1416,7 +1422,7 @@ internal sealed class TestRunnerApplication(
         preview.Title = PreviewTitle(target.Path, target.HighlightLine);
         code.Language = LanguageFrom(target.Path);
         code.Text = text;
-        diagnostic.Text = PreviewIssueDetails();
+        diagnostic.Text = PreviewDetails();
         diagnostic.Visible = diagnostic.Text.Length > 0;
         code.Height = Dim.Fill(diagnostic.Visible ? IssueDetailRows : 0);
         code.ScrollVertical(-code.GetContentSize().Height);

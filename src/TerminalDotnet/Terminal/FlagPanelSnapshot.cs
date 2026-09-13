@@ -11,6 +11,10 @@ public sealed record FlagPanelSnapshot(
     IReadOnlyList<FilterChip> Filters,
     string EmptyMessage)
 {
+    public string SelectedDetails => SelectedIndex < Flags.Count
+        ? DetailsFor(Flags[SelectedIndex])
+        : "";
+
     public IReadOnlyList<FlagPanelRow> Rows => RowsFrom(Flags);
 
     public int SelectedRowIndex => RowsBefore(Flags, SelectedIndex);
@@ -52,6 +56,9 @@ public sealed record FlagPanelSnapshot(
         }
         return rows;
     }
+
+    private static string DetailsFor(Flag flag) =>
+        $"{flag.DisplayPath}:{flag.Line}: {flag.Heading} {flag.Comment}".TrimEnd();
 
     private static int RowsBefore(IReadOnlyList<Flag> flags, int selectedIndex)
     {

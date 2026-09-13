@@ -74,6 +74,19 @@ public sealed class WhenBrowsingTheFlags
         Assert.Equal(["TODO", "  src/Work.cs:12", "    finish it"], snapshot.Rows.Select(row => row.Text));
     }
 
+    [Fact]
+    public void It_exposes_the_complete_selected_flag_for_the_preview()
+    {
+        // Arrange
+        var state = new FlagState([new Flag("Work.cs", "src/Work.cs", 12, FlagKind.Todo, "finish it")]);
+
+        // Act
+        var snapshot = FlagPanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal("src/Work.cs:12: TODO finish it", snapshot.SelectedDetails);
+    }
+
     private sealed class StubBackend(IReadOnlyList<Flag> flags) : IFlagBackend
     {
         public Task<IReadOnlyList<Flag>> DiscoverAsync(string target, CancellationToken cancellationToken = default) =>
