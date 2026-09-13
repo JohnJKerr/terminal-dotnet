@@ -1155,6 +1155,7 @@ internal sealed class TestRunnerApplication(
             SyntaxHighlighter = new TextMateSyntaxHighlighter(ThemeName.DarkPlus)
         };
         var diagnostic = PreviewDiagnostic();
+        var sourceHighlight = PreviewHighlight();
         code.GettingAttributeForRole += (_, args) =>
         {
             var background = args.Result?.Background ?? Color.Black;
@@ -1163,8 +1164,12 @@ internal sealed class TestRunnerApplication(
                 background);
             args.Handled = true;
         };
-        code.KeyDown += (_, key) => HandlePreviewKey(application, preview, code, diagnostic, key);
-        preview.Add(code, diagnostic);
+        code.ViewportChanged += (_, _) => ShowSourceHighlight(code, sourceHighlight);
+        code.KeyDown += (_, key) =>
+            HandlePreviewKey(application, preview, code, sourceHighlight, diagnostic, key);
+        preview.Add(code, sourceHighlight, diagnostic);
+        ScrollToHighlightedLine(code, line);
+        ShowSourceHighlight(code, sourceHighlight);
         OverThePanels(() => application.Run(preview));
         Render(search, rows);
         LeaveForTheEditor(application);
@@ -1210,6 +1215,27 @@ internal sealed class TestRunnerApplication(
             : shell.State.ActivePanel == PanelKind.Issues
                 ? FileRowTone.Deleted
                 : FileRowTone.Neutral;
+
+    private bool PreviewHighlightsSource() =>
+        shell.State.ActivePanel is PanelKind.Issues or PanelKind.Flags;
+
+    private static Label PreviewHighlight()
+    {
+        var highlight = new Label
+        {
+            X = 0,
+            Width = Dim.Fill(),
+            Height = 1,
+            Visible = false
+        };
+        highlight.GettingAttributeForRole += (_, args) =>
+        {
+            var foreground = args.Result?.Foreground ?? Color.White;
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(foreground, Color.BrightBlue);
+            args.Handled = true;
+        };
+        return highlight;
+    }
 
     private string? ReadForPreview(IApplication application, string path)
     {
@@ -1348,6 +1374,7 @@ internal sealed class TestRunnerApplication(
         IApplication application,
         Window preview,
         Code code,
+        Label sourceHighlight,
         Label diagnostic,
         Key key)
     {
@@ -1372,11 +1399,12 @@ internal sealed class TestRunnerApplication(
 
         if (action is PreviewAction.StepFile step)
         {
-            StepPreview(application, preview, code, diagnostic, step.Step);
+            StepPreview(application, preview, code, sourceHighlight, diagnostic, step.Step);
             return;
         }
 
         ScrollPreview(code, action);
+        ShowSourceHighlight(code, sourceHighlight);
     }
 
     /// <summary>
@@ -1394,6 +1422,7 @@ internal sealed class TestRunnerApplication(
         IApplication application,
         Window preview,
         Code code,
+        Label sourceHighlight,
         Label diagnostic,
         int step)
     {
@@ -1403,13 +1432,14 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        ShowInPreview(application, preview, code, diagnostic, target);
+        ShowInPreview(application, preview, code, sourceHighlight, diagnostic, target);
     }
 
     private void ShowInPreview(
         IApplication application,
         Window preview,
         Code code,
+        Label sourceHighlight,
         Label diagnostic,
         SourceLocation target)
     {
@@ -1425,9 +1455,29 @@ internal sealed class TestRunnerApplication(
         diagnostic.Text = PreviewDetails();
         diagnostic.Visible = diagnostic.Text.Length > 0;
         code.Height = Dim.Fill(diagnostic.Visible ? IssueDetailRows : 0);
-        code.ScrollVertical(-code.GetContentSize().Height);
+        ScrollToHighlightedLine(code, target.HighlightLine);
+        ShowSourceHighlight(code, sourceHighlight);
         preview.SetNeedsDraw();
         application.LayoutAndDraw(true);
+    }
+
+    private static void ScrollToHighlightedLine(Code code, int line)
+    {
+        code.ScrollVertical(-code.GetContentSize().Height);
+        code.ScrollVertical(Math.Max(0, line - 1));
+    }
+
+    private void ShowSourceHighlight(Code code, Label label)
+    {
+        var highlight = PreviewSourceHighlight.From(
+            code.Text,
+            previewing.HighlightLine,
+            code.Viewport.Y,
+            code.Viewport.Height,
+            PreviewHighlightsSource());
+        label.Text = highlight.Text;
+        label.Y = highlight.Row;
+        label.Visible = highlight.Visible;
     }
 
     /// <summary>The rows are tried in turn from where the panel stands, because
