@@ -133,6 +133,7 @@ public sealed class FileExplorerSession(
         {
             SelectedIndex = command switch
             {
+                FileExplorerCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
                 FileExplorerCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
                 FileExplorerCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
                 _ => State.SelectedIndex

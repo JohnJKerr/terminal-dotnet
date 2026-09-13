@@ -163,6 +163,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
         return command switch
         {
             CommentCommand.Search or CommentCommand.ClearSearch => 0,
+            CommentCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
             CommentCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
             CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
             _ => Math.Min(State.SelectedIndex, lastIndex)

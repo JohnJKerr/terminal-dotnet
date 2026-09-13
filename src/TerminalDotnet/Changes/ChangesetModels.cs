@@ -46,6 +46,7 @@ public abstract record ChangesetCommand
 {
     public sealed record Search(string Query) : ChangesetCommand;
     public sealed record ClearSearch : ChangesetCommand;
+    public sealed record SelectIndex(int Index) : ChangesetCommand;
     public sealed record MoveUp : ChangesetCommand;
     public sealed record MoveDown : ChangesetCommand;
     public sealed record LoadSelectedDiff : ChangesetCommand;

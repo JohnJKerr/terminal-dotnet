@@ -245,6 +245,7 @@ public sealed class TestExplorerSession(
         {
             SelectedIndex = command switch
             {
+                ExplorerCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
                 ExplorerCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
                 ExplorerCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
                 _ => State.SelectedIndex

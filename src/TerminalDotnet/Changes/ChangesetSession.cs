@@ -79,6 +79,7 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         {
             SelectedIndex = command switch
             {
+                ChangesetCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
                 ChangesetCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
                 ChangesetCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
                 _ => State.SelectedIndex
