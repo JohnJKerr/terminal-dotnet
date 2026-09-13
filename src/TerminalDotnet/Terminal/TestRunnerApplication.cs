@@ -35,6 +35,7 @@ internal sealed class TestRunnerApplication(
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int RowsBelowTheList = StatusRow + 1;
     private const string ConsoleDriver = "dotnet";
+    private const int ClearChoice = 0;
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
 
     private CancellationTokenSource? runCancellation;
@@ -730,10 +731,17 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        panelWork.Track(DispatchCommentAsync(CommentCommandFor(action), search, files));
-    }
+        if (action is CommentAction.CopyComments)
+        {
+            panelWork.Track(DispatchCommentAsync(new CommentCommand.CopyAll(), search, files));
+            return;
+        }
 
-    private const int ClearChoice = 0;
+        panelWork.Track(DispatchCommentAsync(
+            new CommentCommand.DeleteSelected(),
+            search,
+            files));
+    }
 
     /// <summary>Clearing cannot be undone, so it is asked for twice. Cancel is
     /// offered last because the box opens on its last button, and a reader who
@@ -770,11 +778,6 @@ internal sealed class TestRunnerApplication(
     private string SuggestedCommentPath() => Path.Combine(LaunchFolder(), "comments.md");
 
     private string LaunchFolder() => Path.GetDirectoryName(Path.GetFullPath(target))!;
-
-    private static CommentCommand CommentCommandFor(CommentAction action) =>
-        action is CommentAction.CopyComments
-            ? new CommentCommand.CopyAll()
-            : new CommentCommand.DeleteSelected();
 
     private void ShowComment(IApplication application, FileComment selected) => ShowCellDialog(
         application,
