@@ -7,9 +7,10 @@ namespace TerminalDotnet.Comments;
 /// so the reader can gather notes across the panels and take them away in one
 /// go rather than writing them down somewhere else.
 /// </summary>
-public sealed class CommentSession(ICommentClipboard? clipboard = null)
+public sealed class CommentSession(ICommentClipboard? clipboard = null, ICommentStore? store = null)
 {
     private readonly ICommentClipboard clipboard = clipboard ?? new UnreachableClipboard();
+    private readonly ICommentStore store = store ?? new UnreachableStore();
     private readonly List<FileComment> comments = [];
 
     public CommentsState State { get; private set; } = new([]);
@@ -20,7 +21,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null)
     public string Against(string path) =>
         comments.FirstOrDefault(comment => comment.Path == path)?.Text ?? "";
 
-    public Task DispatchAsync(
+    public async Task DispatchAsync(
         CommentCommand command,
         CancellationToken cancellationToken = default)
     {
@@ -34,29 +35,46 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null)
             Revise(command, selected);
         }
 
-        var notice = NoticeFor(command);
+        var notice = await NoticeForAsync(command, cancellationToken);
         var query = QueryAfter(command);
         var listed = Matching(query);
         State = new CommentsState(listed, SelectionAfter(command, listed.Count), query)
         {
             Notice = notice
         };
-        return Task.CompletedTask;
     }
 
     /// <summary>Taking the comments away takes all of them, not only the ones
     /// the panel is showing, because a search narrows the reading rather than
     /// the record.</summary>
-    private string NoticeFor(CommentCommand command)
+    private async Task<string> NoticeForAsync(
+        CommentCommand command,
+        CancellationToken cancellationToken)
     {
-        if (command is not CommentCommand.CopyAll || comments.Count == 0)
+        if (comments.Count == 0)
         {
             return "";
         }
 
-        return clipboard.TryCopy(CommentReport.From(InPathOrder()))
-            ? $"Copied {comments.Count} comments"
-            : "Could not copy the comments";
+        if (command is CommentCommand.CopyAll)
+        {
+            return clipboard.TryCopy(CommentReport.From(InPathOrder()))
+                ? $"Copied {comments.Count} comments"
+                : "Could not copy the comments";
+        }
+
+        if (command is not CommentCommand.SaveAll save)
+        {
+            return "";
+        }
+
+        var saved = await store.TryWriteAsync(
+            save.Path,
+            CommentReport.From(InPathOrder()),
+            cancellationToken);
+        return saved
+            ? $"Saved {comments.Count} comments to {save.Path}"
+            : $"Could not save the comments to {save.Path}";
     }
 
     private IReadOnlyList<FileComment> InPathOrder() => Matching("");
@@ -129,6 +147,14 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null)
     private sealed class UnreachableClipboard : ICommentClipboard
     {
         public bool TryCopy(string text) => false;
+    }
+
+    private sealed class UnreachableStore : ICommentStore
+    {
+        public Task<bool> TryWriteAsync(
+            string path,
+            string text,
+            CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 
     private int SelectionAfter(CommentCommand command, int count)

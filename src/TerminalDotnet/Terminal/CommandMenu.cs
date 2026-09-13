@@ -110,7 +110,8 @@ public static class CommandMenu
         new("Enter/v", "read the comment"),
         new("e", "edit the comment"),
         new("d", "delete the comment"),
-        new("y", "copy every comment to the clipboard")
+        new("y", "copy every comment to the clipboard"),
+        new("w", "save every comment to a file")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Preview =

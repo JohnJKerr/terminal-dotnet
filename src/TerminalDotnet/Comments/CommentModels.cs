@@ -19,6 +19,12 @@ public interface ICommentClipboard
     bool TryCopy(string text);
 }
 
+/// <summary>Where the comments are kept when they are written out.</summary>
+public interface ICommentStore
+{
+    Task<bool> TryWriteAsync(string path, string text, CancellationToken cancellationToken = default);
+}
+
 public abstract record CommentCommand
 {
     public sealed record Add(string Path, string DisplayPath, string Text) : CommentCommand;
@@ -27,6 +33,7 @@ public abstract record CommentCommand
     public sealed record RewriteSelected(string Text) : CommentCommand;
     public sealed record DeleteSelected : CommentCommand;
     public sealed record CopyAll : CommentCommand;
+    public sealed record SaveAll(string Path) : CommentCommand;
     public sealed record MoveUp : CommentCommand;
     public sealed record MoveDown : CommentCommand;
 }

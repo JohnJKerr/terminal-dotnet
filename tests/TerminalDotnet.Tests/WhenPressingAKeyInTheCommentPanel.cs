@@ -78,6 +78,16 @@ public sealed class WhenPressingAKeyInTheCommentPanel
         Assert.Equal(new CommentAction.CopyComments(), action);
     }
 
+    [Fact]
+    public void Pressing_w_saves_the_comments_to_a_file()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.W));
+
+        // Assert
+        Assert.Equal(new CommentAction.SaveComments(), action);
+    }
+
     private static CommentAction? ActionFor(Key key, bool searchActive = false) =>
         CommentPanelKeyBindings.ActionFor(
             key,

@@ -19,7 +19,7 @@ var folderSession = new FileExplorerSession(
     FileGrouping.Folder);
 var changesetSession = new ChangesetSession(new GitChangesetBackend(commandRunner));
 var clipboard = new TerminalClipboard();
-var commentSession = new CommentSession(clipboard);
+var commentSession = new CommentSession(clipboard, new FileCommentStore());
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
     new FileTestSourceLocator(),

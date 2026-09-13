@@ -720,8 +720,29 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
+        if (action is CommentAction.SaveComments)
+        {
+            SaveComments(application, search, files);
+            return;
+        }
+
         panelWork.Track(DispatchCommentAsync(CommentCommandFor(action), search, files));
     }
+
+    private void SaveComments(IApplication application, TextField search, ListView files)
+    {
+        var path = SavePrompt.Ask(application, "Save comments", SuggestedCommentPath());
+        if (path is null)
+        {
+            return;
+        }
+
+        panelWork.Track(DispatchCommentAsync(new CommentCommand.SaveAll(path), search, files));
+    }
+
+    private string SuggestedCommentPath() => Path.Combine(LaunchFolder(), "comments.md");
+
+    private string LaunchFolder() => Path.GetDirectoryName(Path.GetFullPath(target))!;
 
     private static CommentCommand CommentCommandFor(CommentAction action) =>
         action is CommentAction.CopyComments
@@ -974,9 +995,7 @@ internal sealed class TestRunnerApplication(
 
     /// <summary>Comments read against the tree the app was launched in, the
     /// same way the panels name their files.</summary>
-    private string DisplayPathFor(string path) => Path.GetRelativePath(
-        Path.GetDirectoryName(Path.GetFullPath(target))!,
-        path);
+    private string DisplayPathFor(string path) => Path.GetRelativePath(LaunchFolder(), path);
 
     private void ShowTestOutput(IApplication application)
     {
