@@ -12,8 +12,8 @@
        tree with no git history. -->
   <PropertyGroup>
     <VersionMajor>0</VersionMajor>
-    <VersionMinor>1</VersionMinor>
-    <VersionPatchOffset>94</VersionPatchOffset>
+    <VersionMinor>2</VersionMinor>
+    <VersionPatchOffset>179</VersionPatchOffset>
     <Version>$(VersionMajor).$(VersionMinor).0</Version>
   </PropertyGroup>
 </Project>

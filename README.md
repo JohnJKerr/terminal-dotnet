@@ -80,12 +80,13 @@ dotnet run --project /path/to/terminal-dotnet/src/TerminalDotnet
 ```
 
 Panels: `Explorer` lists the solution's source files, `Files` lists everything in the directory
-you started in, `Tests` lists the discovered tests, `Changes` lists the files git reports as
-added, modified, or deleted beneath that directory, `Comments` lists the files you have left a
-note against, and `Flags` gathers task and warning comments from tracked files. A panel with
-nothing to list says so in place of its rows. `Shift` and the letter beside a panel in the rail
-reaches it: `E`, `F`, `T`, `G`, `C`, and `L`. `Changes` answers to `G` because `C` belongs to
-`Comments`; Flags answers to `L` because `F` belongs to Files.
+you started in, `Tests` lists the discovered tests, `Issues` lists compiler errors and warnings,
+`Changes` lists the files git reports as added, modified, or deleted beneath that directory,
+`Comments` lists the files you have left a note against, and `Flags` gathers task and warning
+comments from tracked files. A panel with nothing to list says so in place of its rows. `Shift`
+and the letter beside a panel in the rail reaches it: `E`, `F`, `T`, `I`, `G`, `C`, and `L`.
+`Changes` answers to `G` because `C` belongs to `Comments`; Flags answers to `L` because `F`
+belongs to Files.
 
 The `Explorer` and `Tests` panels carry filters under the search box, numbered from `1`. The
 `Updated` filter keeps the files git reports as new or changed, and in the `Tests` panel keeps
@@ -99,7 +100,14 @@ green passed, red failed, yellow skipped, cyan running.
 The `Flags` panel groups comment markers under their headings. Its numbered filters are Tasks
 (`TODO`, `FIXME`), Review (`REVIEW`, `QUESTION`, `NOTE`), Warning (`WARNING`, `WARN`, `HACK`,
 `XXX`, `BUG`, `DEPRECATED`), and Improve (`REFACTOR`, `OPTIMIZE`). Search matches both the file
-path and comment text. `Enter` edits the file at the flagged line; `p` previews it there.
+path and comment text. `Enter` or `e` edits the file at the flagged line; `p` previews it there.
+The selected flag is repeated below the preview while you inspect its source.
+
+The `Issues` panel runs `dotnet build` without restoring and gathers its compiler errors and
+warnings. Errors are red and warnings yellow; the status line counts each severity. Search
+matches the full compiler message, while `1` and `2` filter to errors and warnings. `Enter` or
+`e` opens the source at the reported line, `p` previews and highlights that line, and `y` copies
+the selected issue to the clipboard. The selected issue remains below the preview for context.
 
 Keys:
 
@@ -108,16 +116,20 @@ Keys:
 - `s`: search the active panel; `Enter` returns to the tree; `n` / `N` select matches; `Esc` clears the search
 - `1`: apply the `Updated` filter, and press it again to drop it; numbers reach the filters only while the search box is not focused
 - `←` / `→`: move directly between the panel rail and workspace
-- `Space`: collapse or expand the highlighted project or class
+- `Ctrl+K`: show the complete, context-aware command list
+- `Space`: collapse or expand the highlighted folder, project, or class
+- `z`: collapse or expand every folder or suite in the active panel
 - `Enter` / `d` (Changes): show the highlighted file's diff
 - `r` (Changes): restore the highlighted deleted file
 - `r` / `Enter`: run every test beneath the highlighted project, class, or test
-- `R`: rerun the previous test set
-- `F`: rerun failed tests
-- `]f`: select the next failed test
+- `l`: rerun the previous test set
+- `u`: rerun failed tests
+- `f`: select the next failed test
 - `c`: cancel the active run
+- `o`: show the captured test output
+- `e`: edit the selected file or test
 - `p`: preview the current file, test, or failure location
-- `q` / `Esc`: quit
+- `q`: quit; `Esc` closes what is open or clears the active search
 
 In the preview, `↑` / `k` and `↓` / `j` move a line, `PgUp` / `PgDn` move a screen, `Home` and
 `End` jump to the ends, `e` hands the same file to your editor, and `c` writes a comment
