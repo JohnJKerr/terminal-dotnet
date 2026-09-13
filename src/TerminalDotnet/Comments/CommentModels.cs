@@ -14,6 +14,8 @@ public sealed record CommentsState(IReadOnlyList<FileComment> Comments, int Sele
 public abstract record CommentCommand
 {
     public sealed record Add(string Path, string DisplayPath, string Text) : CommentCommand;
+    public sealed record RewriteSelected(string Text) : CommentCommand;
+    public sealed record DeleteSelected : CommentCommand;
     public sealed record MoveUp : CommentCommand;
     public sealed record MoveDown : CommentCommand;
 }

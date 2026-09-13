@@ -367,7 +367,7 @@ internal sealed class TestRunnerApplication(
 
         if (shell.State.ActivePanel == PanelKind.Comments)
         {
-            HandleCommentKey(key, tests, search);
+            HandleCommentKey(application, key, tests, search);
             return;
         }
 
@@ -662,10 +662,23 @@ internal sealed class TestRunnerApplication(
         panelWork.Track(DispatchChangesetAsync(command, search, files));
     }
 
-    private void HandleCommentKey(Key key, ListView files, TextField search)
+    private void HandleCommentKey(
+        IApplication application,
+        Key key,
+        ListView files,
+        TextField search)
     {
         if (!files.HasFocus)
         {
+            return;
+        }
+
+        var selected = SelectedComment();
+        var action = CommentPanelKeyBindings.ActionFor(key, selected, search.HasFocus);
+        if (action is not null && selected is not null)
+        {
+            key.Handled = true;
+            HandleCommentAction(application, action, selected, search, files);
             return;
         }
 
@@ -677,6 +690,67 @@ internal sealed class TestRunnerApplication(
 
         key.Handled = true;
         panelWork.Track(DispatchCommentAsync(command, search, files));
+    }
+
+    private FileComment? SelectedComment() =>
+        commentSession.State.SelectedIndex < commentSession.State.Comments.Count
+            ? commentSession.State.Comments[commentSession.State.SelectedIndex]
+            : null;
+
+    private void HandleCommentAction(
+        IApplication application,
+        CommentAction action,
+        FileComment selected,
+        TextField search,
+        ListView files)
+    {
+        if (action is CommentAction.ReadComment)
+        {
+            ShowComment(application, selected);
+            return;
+        }
+
+        if (action is CommentAction.RewriteComment)
+        {
+            RewriteComment(application, selected, search, files);
+            return;
+        }
+
+        panelWork.Track(DispatchCommentAsync(
+            new CommentCommand.DeleteSelected(),
+            search,
+            files));
+    }
+
+    private void ShowComment(IApplication application, FileComment selected) => ShowCellDialog(
+        application,
+        $"Comment — {selected.DisplayPath} — ↑/↓ scroll  Esc close",
+        CommentCells(selected.Text),
+        wordWrap: true);
+
+    private static List<List<Cell>> CommentCells(string text) => text
+        .Split('\n')
+        .Select(line => Cell.ToCellList(
+            line.TrimEnd('\r'),
+            new global::Terminal.Gui.Drawing.Attribute(Color.White, Color.Black)))
+        .ToList();
+
+    private void RewriteComment(
+        IApplication application,
+        FileComment selected,
+        TextField search,
+        ListView files)
+    {
+        var written = CommentDialog.Ask(application, selected.DisplayPath, selected.Text);
+        if (written is null)
+        {
+            return;
+        }
+
+        panelWork.Track(DispatchCommentAsync(
+            new CommentCommand.RewriteSelected(written),
+            search,
+            files));
     }
 
     private static CommentCommand? CommentCommandFor(Key key)

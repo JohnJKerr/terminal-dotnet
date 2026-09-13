@@ -20,6 +20,11 @@ public sealed class CommentSession
             Write(add);
         }
 
+        if (Selected() is { } selected)
+        {
+            Revise(command, selected);
+        }
+
         var listed = InPathOrder();
         State = new CommentsState(listed, SelectionAfter(command, listed.Count));
         return Task.CompletedTask;
@@ -34,6 +39,42 @@ public sealed class CommentSession
             CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
             _ => Math.Min(State.SelectedIndex, lastIndex)
         };
+    }
+
+    private FileComment? Selected() => State.SelectedIndex < State.Comments.Count
+        ? State.Comments[State.SelectedIndex]
+        : null;
+
+    private void Revise(CommentCommand command, FileComment selected)
+    {
+        if (command is CommentCommand.RewriteSelected rewrite)
+        {
+            Rewrite(selected, rewrite.Text);
+            return;
+        }
+
+        if (command is CommentCommand.DeleteSelected)
+        {
+            Erase(selected);
+        }
+    }
+
+    /// <summary>Rubbing a note out is how it is taken back, so a comment
+    /// rewritten to nothing leaves its file uncommented.</summary>
+    private void Rewrite(FileComment selected, string text)
+    {
+        if (text.Trim().Length == 0)
+        {
+            Erase(selected);
+            return;
+        }
+
+        Write(new CommentCommand.Add(selected.Path, selected.DisplayPath, text));
+    }
+
+    private void Erase(FileComment selected)
+    {
+        comments.RemoveAll(comment => comment.Path == selected.Path);
     }
 
     /// <summary>The commented files read as a listing rather than as a history,

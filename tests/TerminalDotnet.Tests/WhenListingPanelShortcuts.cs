@@ -278,7 +278,7 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
-    public void It_offers_moving_through_the_comments_once_something_is_commented()
+    public void It_offers_the_comment_actions_for_a_commented_file()
     {
         // Arrange
         var comments = new CommentsState(
@@ -294,7 +294,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "^K commands", "q quit"],
+            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/v view", "e edit", "d delete", "^K commands", "q quit"],
             shortcuts);
     }
 

@@ -106,7 +106,10 @@ public static class CommandMenu
 
     private static readonly IReadOnlyList<CommandMenuEntry> Comments =
     [
-        .. Navigation
+        .. Navigation,
+        new("Enter/v", "read the comment"),
+        new("e", "edit the comment"),
+        new("d", "delete the comment")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Preview =
