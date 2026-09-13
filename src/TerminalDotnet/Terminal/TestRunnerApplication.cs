@@ -735,17 +735,21 @@ internal sealed class TestRunnerApplication(
         panelWork.Track(DispatchCommentAsync(CommentCommandFor(action), search, files));
     }
 
-    /// <summary>Clearing cannot be undone, so it is asked for twice.</summary>
+    private const int ClearChoice = 0;
+
+    /// <summary>Clearing cannot be undone, so it is asked for twice. Cancel is
+    /// offered last because the box opens on its last button, and a reader who
+    /// presses Enter without reading should keep their notes.</summary>
     private void ClearComments(IApplication application, TextField search, ListView files)
     {
         var count = commentSession.State.Comments.Count;
-        var confirmed = OverThePanels(() => MessageBox.Query(
+        var chosen = OverThePanels(() => MessageBox.Query(
             application,
             "Clear comments",
             $"Clear all {count} comments? This cannot be undone.",
-            "Cancel",
-            "Clear"));
-        if (confirmed != 1)
+            "Clear",
+            "Cancel"));
+        if (chosen != ClearChoice)
         {
             return;
         }
