@@ -98,6 +98,16 @@ public sealed class WhenPressingAKeyInTheCommentPanel
         Assert.Equal(new CommentAction.ClearComments(), action);
     }
 
+    [Fact]
+    public void Pressing_p_previews_the_file_the_note_is_against()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.P));
+
+        // Assert
+        Assert.Equal(new CommentAction.PreviewFile("/repo/src/Order.cs"), action);
+    }
+
     private static CommentAction? ActionFor(Key key, bool searchActive = false) =>
         CommentPanelKeyBindings.ActionFor(
             key,

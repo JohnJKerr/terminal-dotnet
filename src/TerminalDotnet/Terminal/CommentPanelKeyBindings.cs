@@ -7,6 +7,7 @@ namespace TerminalDotnet.Terminal;
 public abstract record CommentAction
 {
     public sealed record ReadComment : CommentAction;
+    public sealed record PreviewFile(string Path) : CommentAction;
     public sealed record RewriteComment : CommentAction;
     public sealed record DeleteComment : CommentAction;
     public sealed record CopyComments : CommentAction;
@@ -31,6 +32,11 @@ public static class CommentPanelKeyBindings
         if (Is(key, KeyCode.E))
         {
             return new CommentAction.RewriteComment();
+        }
+
+        if (Is(key, KeyCode.P))
+        {
+            return new CommentAction.PreviewFile(selected.Path);
         }
 
         if (Is(key, KeyCode.D))

@@ -719,6 +719,13 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
+        if (action is CommentAction.PreviewFile preview)
+        {
+            ShowPreview(application, preview.Path, 1);
+            Render(search, files);
+            return;
+        }
+
         if (action is CommentAction.SaveComments)
         {
             SaveComments(application, search, files);

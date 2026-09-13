@@ -109,6 +109,7 @@ public static class CommandMenu
         .. Navigation,
         new("Enter/v", "read the comment"),
         new("e", "edit the comment"),
+        new("p", "preview the file it is against"),
         new("d", "delete the comment"),
         new("y", "copy every comment to the clipboard"),
         new("w", "save every comment to a file"),
