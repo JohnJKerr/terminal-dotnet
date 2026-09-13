@@ -804,7 +804,7 @@ internal sealed class TestRunnerApplication(
                 background);
             args.Handled = true;
         };
-        code.KeyDown += (_, key) => ScrollPreview(code, key);
+        code.KeyDown += (_, key) => HandlePreviewKey(code, key);
         preview.Add(code);
         previewVisible = true;
         try
@@ -886,23 +886,32 @@ internal sealed class TestRunnerApplication(
         };
     }
 
-    private static void ScrollPreview(Code code, Key key)
+    private static void HandlePreviewKey(Code code, Key key)
     {
-        var rows = key.NoShift.KeyCode switch
-        {
-            KeyCode.CursorUp or KeyCode.K => -1,
-            KeyCode.CursorDown or KeyCode.J => 1,
-            KeyCode.PageUp => -Math.Max(1, code.Viewport.Height - 1),
-            KeyCode.PageDown => Math.Max(1, code.Viewport.Height - 1),
-            _ => 0
-        };
-        if (rows == 0)
+        var action = PreviewKeyBindings.ActionFor(key, code.Viewport.Height);
+        if (action is null)
         {
             return;
         }
 
-        code.ScrollVertical(rows);
         key.Handled = true;
+        ScrollPreview(code, action);
+    }
+
+    private static void ScrollPreview(Code code, PreviewAction action)
+    {
+        switch (action)
+        {
+            case PreviewAction.Scroll scroll:
+                code.ScrollVertical(scroll.Rows);
+                return;
+            case PreviewAction.ScrollToStart:
+                code.ScrollVertical(-code.GetContentSize().Height);
+                return;
+            case PreviewAction.ScrollToEnd:
+                code.ScrollVertical(code.GetContentSize().Height);
+                return;
+        }
     }
 
     private static string LanguageFrom(string path) => Path.GetExtension(path).ToLowerInvariant() switch
