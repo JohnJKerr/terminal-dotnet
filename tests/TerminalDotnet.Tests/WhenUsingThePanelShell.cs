@@ -15,7 +15,9 @@ public sealed class WhenUsingThePanelShell
         var state = shell.State;
 
         // Assert
-        Assert.Equal(["Explorer", "Files", "Tests", "Changes", "Comments", "Flags"], state.Panels);
+        Assert.Equal(
+            ["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"],
+            state.Panels);
     }
 
     [Fact]
@@ -58,13 +60,26 @@ public sealed class WhenUsingThePanelShell
     }
 
     [Fact]
-    public void It_changes_the_active_panel_when_changes_is_selected()
+    public void It_changes_the_active_panel_when_issues_is_selected()
     {
         // Arrange
         var shell = new PanelShell();
 
         // Act
         shell.Select(3);
+
+        // Assert
+        Assert.Equal(PanelKind.Issues, shell.State.ActivePanel);
+    }
+
+    [Fact]
+    public void It_changes_the_active_panel_when_changes_is_selected()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.Select(4);
 
         // Assert
         Assert.Equal(PanelKind.Changes, shell.State.ActivePanel);
@@ -80,7 +95,7 @@ public sealed class WhenUsingThePanelShell
         var panels = shell.State.KeyedPanels;
 
         // Assert
-        Assert.Equal(["E", "F", "T", "G", "C", "L"], panels.Select(panel => panel.Key));
+        Assert.Equal(["E", "F", "T", "I", "G", "C", "L"], panels.Select(panel => panel.Key));
     }
 
     [Fact]
@@ -94,7 +109,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Files", "Tests", "Changes", "Comments", "Flags"],
+            ["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"],
             panels.Select(panel => panel.Name));
     }
 
@@ -105,7 +120,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(4);
+        shell.Select(5);
 
         // Assert
         Assert.Equal(PanelKind.Comments, shell.State.ActivePanel);

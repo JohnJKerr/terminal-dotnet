@@ -39,7 +39,7 @@ public sealed class WhenMovingBetweenPanels
     {
         // Arrange
         var shell = new PanelShell();
-        shell.Select(4);
+        shell.Select(6);
 
         // Act
         shell.SelectNext();
@@ -58,7 +58,7 @@ public sealed class WhenMovingBetweenPanels
         shell.SelectPrevious();
 
         // Assert
-        Assert.Equal(PanelKind.Comments, shell.State.ActivePanel);
+        Assert.Equal(PanelKind.Flags, shell.State.ActivePanel);
     }
 
     [Fact]
@@ -89,6 +89,16 @@ public sealed class WhenMovingBetweenPanels
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Tests), action);
+    }
+
+    [Fact]
+    public void Pressing_capital_I_goes_to_the_issues()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.I | KeyCode.ShiftMask));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Issues), action);
     }
 
     [Fact]

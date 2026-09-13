@@ -8,7 +8,7 @@ namespace TerminalDotnet.Tests.Issues;
 public sealed class WhenUsingTheIssuesPanel
 {
     [Fact]
-    public async Task It_can_filter_out_warnings()
+    public async Task It_can_narrow_the_issues_to_the_warnings()
     {
         // Arrange
         var session = Session();
@@ -18,7 +18,7 @@ public sealed class WhenUsingTheIssuesPanel
         await session.DispatchAsync(new IssueCommand.ToggleWarnings());
 
         // Assert
-        Assert.Equal([IssueSeverity.Error], session.State.Issues.Select(issue => issue.Severity));
+        Assert.Equal([IssueSeverity.Warning], session.State.Issues.Select(issue => issue.Severity));
     }
 
     [Fact]
