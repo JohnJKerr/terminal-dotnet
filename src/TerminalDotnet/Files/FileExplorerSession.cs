@@ -3,9 +3,11 @@ using TerminalDotnet.Search;
 
 namespace TerminalDotnet.Files;
 
-public sealed class FileExplorerSession(IFileExplorerBackend backend)
+public sealed class FileExplorerSession(
+    IFileExplorerBackend backend,
+    FileGrouping grouping = FileGrouping.Project)
 {
-    private IReadOnlyList<TreeNode> tree = [];
+    private IReadOnlyList<FileTreeNode> tree = [];
     private IReadOnlyList<FileEntry> discoveredFiles = [];
     private readonly HashSet<string> collapsedNodes = [];
 
@@ -29,7 +31,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
     {
         var files = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
         discoveredFiles = files;
-        tree = TreeFrom(files);
+        tree = TreeOf(files);
 
         return new FileExplorerState(VisibleNodes()) { Changes = SummaryFrom(files) };
     }
@@ -72,7 +74,7 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
 
     private void Show(string query, ExplorerFilter? filter)
     {
-        tree = TreeFrom(FilesMatching(query, filter));
+        tree = TreeOf(FilesMatching(query, filter));
         State = State with
         {
             VisibleNodes = VisibleNodes(),
@@ -144,9 +146,9 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
     private IReadOnlyList<string> VisibleKeys() =>
         Unfolded().Select(node => node.Key).ToArray();
 
-    private IReadOnlyList<TreeNode> Unfolded()
+    private IReadOnlyList<FileTreeNode> Unfolded()
     {
-        var visible = new List<TreeNode>();
+        var visible = new List<FileTreeNode>();
         int? hiddenBelowDepth = null;
         foreach (var node in tree)
         {
@@ -178,81 +180,6 @@ public sealed class FileExplorerSession(IFileExplorerBackend backend)
         files.Count(file => file.GitStatus == FileGitStatus.Modified),
         files.Count(file => file.GitStatus == FileGitStatus.Deleted));
 
-    private static IReadOnlyList<TreeNode> TreeFrom(IReadOnlyList<FileEntry> files) => files
-        .Where(file => file.GitStatus != FileGitStatus.Deleted)
-        .GroupBy(file => file.ProjectPath, StringComparer.Ordinal)
-        .OrderBy(project => project.Key, StringComparer.Ordinal)
-        .SelectMany(ProjectNodes)
-        .ToArray();
-
-    private static IEnumerable<TreeNode> ProjectNodes(IGrouping<string, FileEntry> project)
-    {
-        var placements = project.Select(file => PlacementFor(project.Key, file)).ToArray();
-        var projectNode = new TreeNode(
-            project.Key,
-            new VisibleFileNode(
-                0,
-                FileNodeKind.Project,
-                Path.GetFileNameWithoutExtension(project.Key),
-                Snapshot.Of(placements.Select(placement => placement.File))));
-
-        return [projectNode, .. ChildNodes(placements, project.Key, 1)];
-    }
-
-    private static FilePlacement PlacementFor(string projectPath, FileEntry file)
-    {
-        var projectDirectory = Path.GetDirectoryName(projectPath);
-        var relativePath = Path.GetRelativePath(
-            string.IsNullOrEmpty(projectDirectory) ? "." : projectDirectory,
-            file.Path);
-        var segments = relativePath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        return new FilePlacement(segments[..^1], file);
-    }
-
-    private static IEnumerable<TreeNode> ChildNodes(
-        IReadOnlyList<FilePlacement> placements,
-        string parentKey,
-        int depth)
-    {
-        var folders = placements
-            .Where(placement => placement.Folders.Count > 0)
-            .GroupBy(placement => placement.Folders[0], StringComparer.Ordinal)
-            .OrderBy(folder => folder.Key, StringComparer.Ordinal)
-            .SelectMany(folder => FolderNodes(folder, parentKey, depth));
-        var files = placements
-            .Where(placement => placement.Folders.Count == 0)
-            .OrderBy(placement => placement.File.Path, StringComparer.Ordinal)
-            .Select(placement => FileNode(placement.File, parentKey, depth));
-
-        return [.. folders, .. files];
-    }
-
-    private static IEnumerable<TreeNode> FolderNodes(
-        IGrouping<string, FilePlacement> folder,
-        string parentKey,
-        int depth)
-    {
-        var key = $"{parentKey}/{folder.Key}";
-        var contents = folder.Select(placement => placement.WithoutLeadingFolder()).ToArray();
-        var folderNode = new TreeNode(
-            key,
-            new VisibleFileNode(
-                depth,
-                FileNodeKind.Folder,
-                folder.Key,
-                Snapshot.Of(contents.Select(placement => placement.File))));
-
-        return [folderNode, .. ChildNodes(contents, key, depth + 1)];
-    }
-
-    private static TreeNode FileNode(FileEntry file, string parentKey, int depth) => new(
-        $"{parentKey}/{Path.GetFileName(file.Path)}",
-        new VisibleFileNode(depth, FileNodeKind.File, Path.GetFileName(file.Path), [file]));
-
-    private sealed record TreeNode(string Key, VisibleFileNode Node);
-
-    private sealed record FilePlacement(IReadOnlyList<string> Folders, FileEntry File)
-    {
-        public FilePlacement WithoutLeadingFolder() => this with { Folders = Folders.Skip(1).ToArray() };
-    }
+    private IReadOnlyList<FileTreeNode> TreeOf(IReadOnlyList<FileEntry> files) =>
+        FileTree.Of(files, grouping);
 }

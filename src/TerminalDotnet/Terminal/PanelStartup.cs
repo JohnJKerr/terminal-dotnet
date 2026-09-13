@@ -5,7 +5,8 @@ using TerminalDotnet.Files;
 namespace TerminalDotnet.Terminal;
 
 public sealed class PanelStartup(
-    FileExplorerSession files,
+    FileExplorerSession projectFiles,
+    FileExplorerSession folderFiles,
     ChangesetSession changes,
     TestExplorerSession tests,
     string target)
@@ -31,7 +32,10 @@ public sealed class PanelStartup(
 
     private IEnumerable<Func<CancellationToken, Task>> PendingLoads() =>
     [
-        .. Pending(files.State.Loading, token => files.LoadAsync(target, token)),
+        .. Pending(projectFiles.State.Loading, token => projectFiles.LoadAsync(target, token)),
+        .. Pending(
+            folderFiles.State.Loading,
+            token => folderFiles.LoadAsync(target, token)),
         .. Pending(changes.State.Loading, token => changes.LoadAsync(target, token)),
         .. Pending(
             tests.State.Status == ExplorerStatus.Loading,

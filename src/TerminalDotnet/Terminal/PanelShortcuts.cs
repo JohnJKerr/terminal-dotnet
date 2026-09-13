@@ -33,7 +33,7 @@ public static class PanelShortcuts
         ChangesetState changesetState,
         ExplorerState testState) => panel switch
     {
-        PanelKind.Explorer => ExplorerShortcuts(fileState),
+        PanelKind.Explorer or PanelKind.Files => ExplorerShortcuts(fileState),
         PanelKind.Changes => ChangesetShortcuts(changesetState),
         _ => TestShortcuts(testState)
     };

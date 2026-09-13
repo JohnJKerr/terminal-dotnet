@@ -17,7 +17,7 @@ public sealed class WhenMovingBetweenPanels
         shell.SelectNext();
 
         // Assert
-        Assert.Equal(PanelKind.Tests, shell.State.ActivePanel);
+        Assert.Equal(PanelKind.Files, shell.State.ActivePanel);
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed class WhenMovingBetweenPanels
     {
         // Arrange
         var shell = new PanelShell();
-        shell.Select(2);
+        shell.Select(3);
 
         // Act
         shell.SelectPrevious();
@@ -39,7 +39,7 @@ public sealed class WhenMovingBetweenPanels
     {
         // Arrange
         var shell = new PanelShell();
-        shell.Select(2);
+        shell.Select(3);
 
         // Act
         shell.SelectNext();
@@ -72,6 +72,16 @@ public sealed class WhenMovingBetweenPanels
     }
 
     [Fact]
+    public void Pressing_capital_F_goes_to_the_files()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.F | KeyCode.ShiftMask));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Files), action);
+    }
+
+    [Fact]
     public void Pressing_capital_T_goes_to_the_tests()
     {
         // Act
@@ -96,6 +106,16 @@ public sealed class WhenMovingBetweenPanels
     {
         // Act
         var action = ActionFor(new Key(KeyCode.E));
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_lowercase_f_leaves_the_panel_alone()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.F));
 
         // Assert
         Assert.Null(action);

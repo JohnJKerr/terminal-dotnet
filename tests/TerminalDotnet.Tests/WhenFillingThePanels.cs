@@ -10,7 +10,7 @@ namespace TerminalDotnet.Tests.Terminal;
 public sealed class WhenFillingThePanels
 {
     [Fact]
-    public async Task It_loads_the_files_the_changes_and_then_the_tests()
+    public async Task It_loads_the_panels_in_the_order_they_are_listed()
     {
         // Arrange
         var loaded = new List<string>();
@@ -20,7 +20,7 @@ public sealed class WhenFillingThePanels
         await startup.LoadPendingAsync();
 
         // Assert
-        Assert.Equal(["files", "changes", "tests"], loaded);
+        Assert.Equal(["files", "folder", "changes", "tests"], loaded);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public sealed class WhenFillingThePanels
         });
 
         // Assert
-        Assert.Equal(3, reports);
+        Assert.Equal(4, reports);
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public sealed class WhenFillingThePanels
         await startup.LoadPendingUntilCancelledAsync();
 
         // Assert
-        Assert.Equal(["files", "changes"], loaded);
+        Assert.Equal(["files", "folder", "changes"], loaded);
     }
 
     [Fact]
@@ -102,7 +102,10 @@ public sealed class WhenFillingThePanels
         var recorder = new Recorder(loaded, cancellation, cancelAfter);
         return new Startup(
             new PanelStartup(
-                new FileExplorerSession(new RecordingFileBackend(recorder)),
+                new FileExplorerSession(new RecordingFileBackend(recorder, "files")),
+                new FileExplorerSession(
+                    new RecordingFileBackend(recorder, "folder"),
+                    FileGrouping.Folder),
                 new ChangesetSession(new RecordingChangesetBackend(recorder)),
                 new TestExplorerSession(new RecordingTestBackend(recorder)),
                 "App.slnx"),
@@ -130,13 +133,13 @@ public sealed class WhenFillingThePanels
         }
     }
 
-    private sealed class RecordingFileBackend(Recorder recorder) : IFileExplorerBackend
+    private sealed class RecordingFileBackend(Recorder recorder, string panel) : IFileExplorerBackend
     {
         public Task<IReadOnlyList<FileEntry>> DiscoverAsync(
             string target,
             CancellationToken cancellationToken = default)
         {
-            recorder.Record("files");
+            recorder.Record(panel);
             return Task.FromResult<IReadOnlyList<FileEntry>>(
                 [new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged)]);
         }

@@ -13,6 +13,9 @@ if (target is null)
 
 var commandRunner = new ProcessCommandRunner();
 var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandRunner));
+var folderSession = new FileExplorerSession(
+    new LaunchFolderBackend(commandRunner),
+    FileGrouping.Folder);
 var changesetSession = new ChangesetSession(new GitChangesetBackend(commandRunner));
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
@@ -23,7 +26,13 @@ var editor = Environment.GetEnvironmentVariable("VISUAL") ??
     Environment.GetEnvironmentVariable("EDITOR") ??
     "omarchy-launch-editor";
 var editorLauncher = new EditorLauncher(editor, commandRunner);
-new TestRunnerApplication(session, fileSession, changesetSession, target, editorLauncher).Run();
+new TestRunnerApplication(
+    session,
+    fileSession,
+    folderSession,
+    changesetSession,
+    target,
+    editorLauncher).Run();
 return 0;
 
 static string? FindTarget(string directory)

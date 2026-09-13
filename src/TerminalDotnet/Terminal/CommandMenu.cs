@@ -19,7 +19,8 @@ public static class CommandMenu
     public static IReadOnlyList<CommandMenuSection> Sections() =>
     [
         new("Anywhere", Anywhere),
-        new("Explorer", Explorer),
+        new("Explorer", FileTree),
+        new("Files", FileTree),
         new("Tests", Tests),
         new("Changes", Changes)
     ];
@@ -50,6 +51,7 @@ public static class CommandMenu
     private static readonly IReadOnlyList<CommandMenuEntry> Anywhere =
     [
         new("E", "go to the Explorer"),
+        new("F", "go to the Files"),
         new("T", "go to the Tests"),
         new("C", "go to the Changes"),
         new("Tab", "move between search, panels and rows"),
@@ -62,7 +64,9 @@ public static class CommandMenu
         new("q", "quit")
     ];
 
-    private static readonly IReadOnlyList<CommandMenuEntry> Explorer =
+    /// <summary>The Explorer and the Files browse the same kind of tree, so
+    /// they answer to the same keys.</summary>
+    private static readonly IReadOnlyList<CommandMenuEntry> FileTree =
     [
         .. Navigation,
         new("Space/Enter", "fold or unfold a folder"),

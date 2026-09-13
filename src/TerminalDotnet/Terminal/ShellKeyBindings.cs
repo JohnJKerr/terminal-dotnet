@@ -81,6 +81,7 @@ public static class ShellKeyBindings
         ? key.NoShift.KeyCode switch
         {
             KeyCode.E => PanelKind.Explorer,
+            KeyCode.F => PanelKind.Files,
             KeyCode.T => PanelKind.Tests,
             KeyCode.C => PanelKind.Changes,
             _ => null

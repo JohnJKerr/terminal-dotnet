@@ -6,7 +6,7 @@ namespace TerminalDotnet.Tests.Terminal;
 public sealed class WhenUsingThePanelShell
 {
     [Fact]
-    public void It_offers_explorer_tests_and_changes()
+    public void It_offers_the_explorer_the_files_the_tests_and_the_changes()
     {
         // Arrange
         var shell = new PanelShell();
@@ -15,7 +15,7 @@ public sealed class WhenUsingThePanelShell
         var state = shell.State;
 
         // Assert
-        Assert.Equal(["Explorer", "Tests", "Changes"], state.Panels);
+        Assert.Equal(["Explorer", "Files", "Tests", "Changes"], state.Panels);
     }
 
     [Fact]
@@ -32,13 +32,26 @@ public sealed class WhenUsingThePanelShell
     }
 
     [Fact]
-    public void It_changes_the_active_panel_when_tests_is_selected()
+    public void It_changes_the_active_panel_when_the_files_are_selected()
     {
         // Arrange
         var shell = new PanelShell();
 
         // Act
         shell.Select(1);
+
+        // Assert
+        Assert.Equal(PanelKind.Files, shell.State.ActivePanel);
+    }
+
+    [Fact]
+    public void It_changes_the_active_panel_when_tests_is_selected()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.Select(2);
 
         // Assert
         Assert.Equal(PanelKind.Tests, shell.State.ActivePanel);
@@ -51,7 +64,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(2);
+        shell.Select(3);
 
         // Assert
         Assert.Equal(PanelKind.Changes, shell.State.ActivePanel);
@@ -67,7 +80,7 @@ public sealed class WhenUsingThePanelShell
         var panels = shell.State.KeyedPanels;
 
         // Assert
-        Assert.Equal(["E", "T", "C"], panels.Select(panel => panel.Key));
+        Assert.Equal(["E", "F", "T", "C"], panels.Select(panel => panel.Key));
     }
 
     [Fact]
@@ -80,6 +93,8 @@ public sealed class WhenUsingThePanelShell
         var panels = shell.State.KeyedPanels;
 
         // Assert
-        Assert.Equal(["Explorer", "Tests", "Changes"], panels.Select(panel => panel.Name));
+        Assert.Equal(
+            ["Explorer", "Files", "Tests", "Changes"],
+            panels.Select(panel => panel.Name));
     }
 }

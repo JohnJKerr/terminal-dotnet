@@ -56,7 +56,7 @@ public sealed class FileTestSourceLocator : ITestSourceLocator
     }
 
     private static IEnumerable<string> SourceFiles(string projectDirectory) =>
-        ProjectTree.FilesUnder(projectDirectory, "*.cs")
+        SourceTree.FilesUnder(projectDirectory, "*.cs")
             .OrderBy(path => path, StringComparer.Ordinal);
 
     private static int LineMatching(

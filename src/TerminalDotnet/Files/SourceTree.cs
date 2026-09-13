@@ -1,8 +1,10 @@
 namespace TerminalDotnet.Files;
 
-internal static class ProjectTree
+internal static class SourceTree
 {
-    private static readonly string[] BuildDirectories = ["bin", "obj"];
+    /// <summary>Neither the compiler's output nor git's own store is
+    /// something the reader browses.</summary>
+    private static readonly string[] SkippedDirectories = ["bin", "obj", ".git"];
 
     public static IEnumerable<string> FilesUnder(string root, string searchPattern)
     {
@@ -25,7 +27,7 @@ internal static class ProjectTree
 
     private static void PushSourceDirectory(Stack<string> pending, string directory)
     {
-        if (IsBuildOutput(directory))
+        if (IsSkipped(directory))
         {
             return;
         }
@@ -33,6 +35,6 @@ internal static class ProjectTree
         pending.Push(directory);
     }
 
-    private static bool IsBuildOutput(string directory) =>
-        BuildDirectories.Contains(Path.GetFileName(directory), StringComparer.OrdinalIgnoreCase);
+    private static bool IsSkipped(string directory) =>
+        SkippedDirectories.Contains(Path.GetFileName(directory), StringComparer.OrdinalIgnoreCase);
 }

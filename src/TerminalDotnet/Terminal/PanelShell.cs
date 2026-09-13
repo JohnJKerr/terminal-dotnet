@@ -3,6 +3,7 @@ namespace TerminalDotnet.Terminal;
 public enum PanelKind
 {
     Explorer,
+    Files,
     Tests,
     Changes
 }
@@ -20,7 +21,7 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
 public sealed class PanelShell
 {
     public PanelShellState State { get; private set; } =
-        new(["Explorer", "Tests", "Changes"], PanelKind.Explorer);
+        new(["Explorer", "Files", "Tests", "Changes"], PanelKind.Explorer);
 
     public void Select(int index)
     {

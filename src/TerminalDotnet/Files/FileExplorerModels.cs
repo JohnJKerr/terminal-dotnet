@@ -17,6 +17,17 @@ public enum FileNodeKind
     File
 }
 
+/// <summary>What the tree hangs its top-level nodes from.</summary>
+public enum FileGrouping
+{
+    /// <summary>Each .NET project heads a node holding the files it claims.</summary>
+    Project,
+
+    /// <summary>Everything in one folder, with its own top-level folders and
+    /// files standing at the root rather than under a node of their own.</summary>
+    Folder
+}
+
 public sealed record FileEntry(
     string ProjectPath,
     string Path,

@@ -17,6 +17,7 @@ namespace TerminalDotnet.Terminal;
 internal sealed class TestRunnerApplication(
     TestExplorerSession session,
     FileExplorerSession fileSession,
+    FileExplorerSession folderSession,
     ChangesetSession changesetSession,
     string target,
     IFileOpener? editorLauncher = null)
@@ -170,7 +171,12 @@ internal sealed class TestRunnerApplication(
         TextField search,
         ListView tests,
         CancellationToken cancellationToken) =>
-        new PanelStartup(fileSession, changesetSession, session, target).LoadPendingAsync(
+        new PanelStartup(
+            fileSession,
+            folderSession,
+            changesetSession,
+            session,
+            target).LoadPendingAsync(
             () =>
             {
                 application.Invoke(() => Render(search, tests));
@@ -345,9 +351,9 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (shell.State.ActivePanel == PanelKind.Explorer)
+        if (ActiveFileSession() is { } files)
         {
-            HandleFileKey(application, key, tests, search);
+            HandleFileKey(application, key, files, tests, search);
             return;
         }
 
@@ -465,19 +471,32 @@ internal sealed class TestRunnerApplication(
         }
     }
 
-    private string ActiveSearchQuery() => shell.State.ActivePanel switch
+    /// <summary>The Explorer and the Files browse the same kind of tree, so
+    /// everything below here treats them as one panel over two sessions.</summary>
+    private FileExplorerSession? ActiveFileSession() => shell.State.ActivePanel switch
     {
-        PanelKind.Explorer => fileSession.State.SearchQuery,
-        PanelKind.Changes => changesetSession.State.SearchQuery,
-        _ => session.State.SearchQuery
+        PanelKind.Explorer => fileSession,
+        PanelKind.Files => folderSession,
+        _ => null
     };
 
-    private Task SearchAsync(string query) => shell.State.ActivePanel switch
-    {
-        PanelKind.Explorer => fileSession.DispatchAsync(new FileExplorerCommand.Search(query)),
-        PanelKind.Changes => changesetSession.DispatchAsync(new ChangesetCommand.Search(query)),
-        _ => session.DispatchAsync(new ExplorerCommand.Search(query))
-    };
+    private string ActiveSearchQuery() => ActiveFileSession() is { } files
+        ? files.State.SearchQuery
+        : ChangesetOrTestSearchQuery();
+
+    private string ChangesetOrTestSearchQuery() =>
+        shell.State.ActivePanel == PanelKind.Changes
+            ? changesetSession.State.SearchQuery
+            : session.State.SearchQuery;
+
+    private Task SearchAsync(string query) => ActiveFileSession() is { } files
+        ? files.DispatchAsync(new FileExplorerCommand.Search(query))
+        : SearchChangesetOrTestsAsync(query);
+
+    private Task SearchChangesetOrTestsAsync(string query) =>
+        shell.State.ActivePanel == PanelKind.Changes
+            ? changesetSession.DispatchAsync(new ChangesetCommand.Search(query))
+            : session.DispatchAsync(new ExplorerCommand.Search(query));
 
     private async Task ClearSearchAsync(IApplication application, TextField search, ListView tests)
     {
@@ -491,14 +510,15 @@ internal sealed class TestRunnerApplication(
         Render(search, tests);
     }
 
-    private Task ClearPanelSearchAsync() => shell.State.ActivePanel == PanelKind.Changes
-        ? changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch())
-        : fileSession.DispatchAsync(new FileExplorerCommand.ClearSearch());
+    private Task ClearPanelSearchAsync() => ActiveFileSession() is { } files
+        ? files.DispatchAsync(new FileExplorerCommand.ClearSearch())
+        : changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch());
 
 
     private void HandleFileKey(
         IApplication application,
         Key key,
+        FileExplorerSession fileExplorer,
         ListView files,
         TextField search)
     {
@@ -507,12 +527,18 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var action = FilePanelKeyBindings.ActionFor(key, SelectedFile(), search.HasFocus);
+        var action = FilePanelKeyBindings.ActionFor(
+            key,
+            SelectedFile(fileExplorer),
+            search.HasFocus);
         if (action is FilePanelAction.ToggleFilter toggle)
         {
             key.Handled = true;
-            panelWork.Track(
-                DispatchFileAsync(new FileExplorerCommand.ToggleFilter(toggle.Filter), search, files));
+            panelWork.Track(DispatchFileAsync(
+                fileExplorer,
+                new FileExplorerCommand.ToggleFilter(toggle.Filter),
+                search,
+                files));
             return;
         }
 
@@ -530,19 +556,20 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var command = FileCommandFor(key, fileSession.State.SearchQuery);
+        var command = FileCommandFor(key, fileExplorer.State.SearchQuery);
         if (command is null)
         {
             return;
         }
 
         key.Handled = true;
-        panelWork.Track(DispatchFileAsync(command, search, files));
+        panelWork.Track(DispatchFileAsync(fileExplorer, command, search, files));
     }
 
-    private VisibleFileNode? SelectedFile() => fileSession.State.VisibleNodes.Count == 0
-        ? null
-        : fileSession.State.VisibleNodes[fileSession.State.SelectedIndex];
+    private static VisibleFileNode? SelectedFile(FileExplorerSession fileExplorer) =>
+        fileExplorer.State.VisibleNodes.Count == 0
+            ? null
+            : fileExplorer.State.VisibleNodes[fileExplorer.State.SelectedIndex];
 
     private static FileExplorerCommand? FileCommandFor(Key key, string searchQuery)
     {
@@ -567,11 +594,12 @@ internal sealed class TestRunnerApplication(
     }
 
     private async Task DispatchFileAsync(
+        FileExplorerSession fileExplorer,
         FileExplorerCommand command,
         TextField search,
         ListView files)
     {
-        await fileSession.DispatchAsync(command);
+        await fileExplorer.DispatchAsync(command);
         Render(search, files);
     }
 
@@ -897,24 +925,27 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        new ExplorerEditorWorkflow(fileSession, changesetSession, editorLauncher, target)
-            .OpenAsync(openPath, openLine)
-            .GetAwaiter()
-            .GetResult();
+        var workflow = new ExplorerEditorWorkflow(
+            [fileSession, folderSession],
+            changesetSession,
+            editorLauncher,
+            target);
+        workflow.OpenAsync(openPath, openLine).GetAwaiter().GetResult();
     }
 
     private void Render(TextField search, ListView tests)
     {
+        var fileExplorer = ActiveFileSession();
         shortcutSegments = PanelShortcuts.For(
             shell.State.ActivePanel,
-            fileSession.State,
+            (fileExplorer ?? fileSession).State,
             changesetSession.State,
             session.State,
             search.HasFocus);
         ShowShortcuts();
-        if (shell.State.ActivePanel == PanelKind.Explorer)
+        if (fileExplorer is not null)
         {
-            RenderFiles(search, tests);
+            RenderFiles(search, tests, fileExplorer);
             return;
         }
 
@@ -978,10 +1009,10 @@ internal sealed class TestRunnerApplication(
         list.SetSource(new ObservableCollection<string>(listed.Select(row => row.Text)));
     }
 
-    private void RenderFiles(TextField search, ListView files)
+    private void RenderFiles(TextField search, ListView files, FileExplorerSession fileExplorer)
     {
-        var snapshot = FilePanelSnapshot.From(fileSession.State);
-        files.Title = "Explorer";
+        var snapshot = FilePanelSnapshot.From(fileExplorer.State);
+        files.Title = shell.State.Panels[shell.State.ActiveIndex];
         RenderRows(
             search,
             files,

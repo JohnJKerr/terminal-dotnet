@@ -4,7 +4,7 @@ using TerminalDotnet.Files;
 namespace TerminalDotnet.Terminal;
 
 public sealed class ExplorerEditorWorkflow(
-    FileExplorerSession explorer,
+    IReadOnlyList<FileExplorerSession> explorers,
     ChangesetSession changes,
     IFileOpener editor,
     string target)
@@ -15,7 +15,11 @@ public sealed class ExplorerEditorWorkflow(
         CancellationToken cancellationToken = default)
     {
         await editor.OpenAsync(path, line, cancellationToken);
-        await explorer.LoadAsync(target, cancellationToken);
+        foreach (var explorer in explorers)
+        {
+            await explorer.LoadAsync(target, cancellationToken);
+        }
+
         await changes.LoadAsync(target, cancellationToken);
     }
 }

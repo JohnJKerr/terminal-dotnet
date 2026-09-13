@@ -17,7 +17,7 @@ public sealed class WhenReturningFromTheEditor
         var explorer = new FileExplorerSession(backend);
         await explorer.LoadAsync("App.csproj");
         var editor = new InMemoryFileOpener(() => backend.File = modified);
-        var workflow = new ExplorerEditorWorkflow(explorer, Changeset(), editor, "App.csproj");
+        var workflow = new ExplorerEditorWorkflow([explorer], Changeset(), editor, "App.csproj");
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
@@ -36,13 +36,36 @@ public sealed class WhenReturningFromTheEditor
         var changes = new ChangesetSession(changesetBackend);
         await changes.LoadAsync("App.csproj");
         var editor = new InMemoryFileOpener(() => changesetBackend.Changed = true);
-        var workflow = new ExplorerEditorWorkflow(explorer, changes, editor, "App.csproj");
+        var workflow = new ExplorerEditorWorkflow([explorer], changes, editor, "App.csproj");
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
 
         // Assert
         Assert.Equal(["Order.cs"], changes.State.Files.Select(file => file.DisplayPath));
+    }
+
+    [Fact]
+    public async Task It_refreshes_every_file_explorer_it_was_given()
+    {
+        // Arrange
+        var unchanged = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
+        var backend = new ChangingFileBackend(unchanged);
+        var folder = new FileExplorerSession(backend, FileGrouping.Folder);
+        await folder.LoadAsync("App.csproj");
+        var editor = new InMemoryFileOpener(
+            () => backend.File = unchanged with { GitStatus = FileGitStatus.Modified });
+        var workflow = new ExplorerEditorWorkflow(
+            [new FileExplorerSession(backend), folder],
+            Changeset(),
+            editor,
+            "App.csproj");
+
+        // Act
+        await workflow.OpenAsync("Order.cs", 1);
+
+        // Assert
+        Assert.Equal(FileGitStatus.Modified, folder.State.VisibleNodes.Last().Files[0].GitStatus);
     }
 
     private static ChangesetSession Changeset() => new(new EmptyChangesetBackend());
