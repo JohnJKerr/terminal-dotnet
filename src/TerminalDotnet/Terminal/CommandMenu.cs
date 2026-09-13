@@ -64,7 +64,7 @@ public static class CommandMenu
         new("Enter", "leave the search, keeping it"),
         new("Esc", "close what is open, or clear the search"),
         new("Ctrl+K", "show this list"),
-        new("q", "quit")
+        new("q", "quit, asking first if comments would be lost")
     ];
 
     /// <summary>The Explorer and the Files browse the same kind of tree, so

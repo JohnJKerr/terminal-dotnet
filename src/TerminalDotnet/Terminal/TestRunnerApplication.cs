@@ -428,8 +428,34 @@ internal sealed class TestRunnerApplication(
             case ShellAction.Dismiss:
                 return;
             case ShellAction.Quit:
-                application.RequestStop();
+                QuitUnlessNotesWouldBeLost(application);
                 return;
+        }
+    }
+
+    private const int KeepChoice = 1;
+
+    /// <summary>Comments live only as long as the app, so quitting on notes
+    /// that have not been copied or saved throws them away. Keeping them is
+    /// offered last, because the box opens on its last button.</summary>
+    private void QuitUnlessNotesWouldBeLost(IApplication application)
+    {
+        if (!commentSession.State.Unsaved)
+        {
+            application.RequestStop();
+            return;
+        }
+
+        var count = commentSession.State.Comments.Count;
+        var chosen = OverThePanels(() => MessageBox.Query(
+            application,
+            "Quit",
+            $"{count} comments have not been copied or saved. Quitting loses them.",
+            "Quit anyway",
+            "Keep them"));
+        if (chosen != KeepChoice)
+        {
+            application.RequestStop();
         }
     }
 

@@ -13,6 +13,10 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
     private readonly ICommentStore store = store ?? new UnreachableStore();
     private readonly List<FileComment> comments = [];
 
+    /// <summary>Set once the notes have been copied or saved, and cleared the
+    /// moment one of them changes again.</summary>
+    private bool takenAway;
+
     public CommentsState State { get; private set; } = new([]);
 
     /// <summary>The note a file already carries, whatever the panel is showing,
@@ -42,7 +46,8 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
         var listed = Matching(query);
         State = new CommentsState(listed, SelectionAfter(command, listed.Count), query)
         {
-            Notice = notice
+            Notice = notice,
+            Unsaved = comments.Count > 0 && !takenAway
         };
     }
 
@@ -73,6 +78,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
             var copied = await clipboard.TryCopyAsync(
                 CommentReport.From(InPathOrder()),
                 cancellationToken);
+            takenAway |= copied;
             return copied ? $"Copied {comments.Count} comments" : "Could not copy the comments";
         }
 
@@ -85,6 +91,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
             save.Path,
             CommentReport.From(InPathOrder()),
             cancellationToken);
+        takenAway |= saved;
         return saved
             ? $"Saved {comments.Count} comments to {save.Path}"
             : $"Could not save the comments to {save.Path}";
@@ -123,8 +130,11 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
         Write(new CommentCommand.Add(selected.Path, selected.DisplayPath, text));
     }
 
-    private void Erase(FileComment selected) =>
+    private void Erase(FileComment selected)
+    {
         comments.RemoveAll(comment => comment.Path == selected.Path);
+        takenAway = false;
+    }
 
     /// <summary>A file carries one comment, so commenting on it again rewrites
     /// the note that is already there rather than leaving two behind.</summary>
@@ -138,6 +148,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
 
         comments.RemoveAll(comment => comment.Path == add.Path);
         comments.Add(new FileComment(add.Path, add.DisplayPath, text));
+        takenAway = false;
     }
 
     private string QueryAfter(CommentCommand command) => command switch

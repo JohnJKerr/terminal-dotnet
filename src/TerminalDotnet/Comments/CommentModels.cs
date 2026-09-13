@@ -11,6 +11,11 @@ public sealed record CommentsState(
     /// <summary>What became of the last thing the reader asked for, shown
     /// beside the count until the next command.</summary>
     public string Notice { get; init; } = "";
+
+    /// <summary>Whether there are notes that have not been copied or saved
+    /// since they were last written. They live only as long as the app, so
+    /// quitting on them loses them.</summary>
+    public bool Unsaved { get; init; }
 }
 
 /// <summary>Where a comment goes when it is taken out of the app.</summary>
