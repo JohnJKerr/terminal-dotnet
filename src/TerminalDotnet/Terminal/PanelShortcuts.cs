@@ -1,4 +1,5 @@
 using TerminalDotnet.Changes;
+using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 
@@ -11,13 +12,14 @@ public static class PanelShortcuts
         FileExplorerState fileState,
         ChangesetState changesetState,
         ExplorerState testState,
+        CommentsState commentState,
         bool searchFocused = false) => searchFocused
         ? SearchingShortcuts
         :
         [
             "Tab pane",
             "s search",
-            .. PanelShortcutsFor(panel, fileState, changesetState, testState),
+            .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState),
             "^K commands",
             "q quit"
         ];
@@ -31,12 +33,19 @@ public static class PanelShortcuts
         PanelKind panel,
         FileExplorerState fileState,
         ChangesetState changesetState,
-        ExplorerState testState) => panel switch
+        ExplorerState testState,
+        CommentsState commentState) => panel switch
     {
         PanelKind.Explorer or PanelKind.Files => ExplorerShortcuts(fileState),
         PanelKind.Changes => ChangesetShortcuts(changesetState),
+        PanelKind.Comments => CommentShortcuts(commentState),
         _ => TestShortcuts(testState)
     };
+
+    private static IReadOnlyList<string> CommentShortcuts(CommentsState state) =>
+        state.Comments.Count == 0
+            ? []
+            : [.. Navigation()];
 
     private static IReadOnlyList<string> ExplorerShortcuts(FileExplorerState state)
     {

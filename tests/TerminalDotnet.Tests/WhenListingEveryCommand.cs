@@ -22,7 +22,9 @@ public sealed class WhenListingEveryCommand
         var titles = CommandMenu.Sections().Select(section => section.Title);
 
         // Assert
-        Assert.Equal(["Anywhere", "Explorer", "Files", "Tests", "Changes", "Preview"], titles);
+        Assert.Equal(
+            ["Anywhere", "Explorer", "Files", "Tests", "Changes", "Comments", "Preview"],
+            titles);
     }
 
     [Fact]
@@ -43,6 +45,30 @@ public sealed class WhenListingEveryCommand
 
         // Assert
         Assert.Contains(preview.Entries, entry => entry.Description == "comment on the file");
+    }
+
+    [Fact]
+    public void It_names_the_key_that_reaches_the_comments()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(
+            anywhere.Entries,
+            entry => entry.Keys == "C" && entry.Description == "go to the Comments");
+    }
+
+    [Fact]
+    public void It_names_the_key_that_reaches_the_changes()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(
+            anywhere.Entries,
+            entry => entry.Keys == "G" && entry.Description == "go to the Changes");
     }
 
     [Fact]

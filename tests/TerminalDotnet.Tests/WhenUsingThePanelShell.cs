@@ -6,7 +6,7 @@ namespace TerminalDotnet.Tests.Terminal;
 public sealed class WhenUsingThePanelShell
 {
     [Fact]
-    public void It_offers_the_explorer_the_files_the_tests_and_the_changes()
+    public void It_offers_the_explorer_the_files_the_tests_the_changes_and_the_comments()
     {
         // Arrange
         var shell = new PanelShell();
@@ -15,7 +15,7 @@ public sealed class WhenUsingThePanelShell
         var state = shell.State;
 
         // Assert
-        Assert.Equal(["Explorer", "Files", "Tests", "Changes"], state.Panels);
+        Assert.Equal(["Explorer", "Files", "Tests", "Changes", "Comments"], state.Panels);
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed class WhenUsingThePanelShell
         var panels = shell.State.KeyedPanels;
 
         // Assert
-        Assert.Equal(["E", "F", "T", "C"], panels.Select(panel => panel.Key));
+        Assert.Equal(["E", "F", "T", "G", "C"], panels.Select(panel => panel.Key));
     }
 
     [Fact]
@@ -94,7 +94,20 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Files", "Tests", "Changes"],
+            ["Explorer", "Files", "Tests", "Changes", "Comments"],
             panels.Select(panel => panel.Name));
+    }
+
+    [Fact]
+    public void It_changes_the_active_panel_when_the_comments_are_selected()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.Select(4);
+
+        // Assert
+        Assert.Equal(PanelKind.Comments, shell.State.ActivePanel);
     }
 }

@@ -77,16 +77,10 @@ public static class ShellKeyBindings
         return Is(key, KeyCode.Enter) ? new ShellAction.SelectFocusedPanel() : null;
     }
 
-    private static PanelKind? PanelFor(Key key) => key.IsShift
-        ? key.NoShift.KeyCode switch
-        {
-            KeyCode.E => PanelKind.Explorer,
-            KeyCode.F => PanelKind.Files,
-            KeyCode.T => PanelKind.Tests,
-            KeyCode.C => PanelKind.Changes,
-            _ => null
-        }
-        : null;
+    private static PanelKind? PanelFor(Key key) =>
+        key.IsShift ? PanelKeys.For(LetterOf(key)) : null;
+
+    private static string LetterOf(Key key) => ((char)key.NoShift.KeyCode).ToString();
 
     private static ShellAction SearchActionFor(Key key)
     {

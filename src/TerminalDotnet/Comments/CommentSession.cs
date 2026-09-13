@@ -20,8 +20,20 @@ public sealed class CommentSession
             Write(add);
         }
 
-        State = new CommentsState(InPathOrder());
+        var listed = InPathOrder();
+        State = new CommentsState(listed, SelectionAfter(command, listed.Count));
         return Task.CompletedTask;
+    }
+
+    private int SelectionAfter(CommentCommand command, int count)
+    {
+        var lastIndex = Math.Max(0, count - 1);
+        return command switch
+        {
+            CommentCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
+            CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+            _ => Math.Min(State.SelectedIndex, lastIndex)
+        };
     }
 
     /// <summary>The commented files read as a listing rather than as a history,

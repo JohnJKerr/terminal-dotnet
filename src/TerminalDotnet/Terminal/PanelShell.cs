@@ -5,7 +5,8 @@ public enum PanelKind
     Explorer,
     Files,
     Tests,
-    Changes
+    Changes,
+    Comments
 }
 
 public sealed record PanelLabel(string Key, string Name);
@@ -15,13 +16,13 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
     public int ActiveIndex => (int)ActivePanel;
 
     public IReadOnlyList<PanelLabel> KeyedPanels =>
-        [.. Panels.Select(name => new PanelLabel(char.ToUpperInvariant(name[0]).ToString(), name))];
+        [.. Panels.Select((name, index) => new PanelLabel(PanelKeys.For((PanelKind)index), name))];
 }
 
 public sealed class PanelShell
 {
     public PanelShellState State { get; private set; } =
-        new(["Explorer", "Files", "Tests", "Changes"], PanelKind.Explorer);
+        new(["Explorer", "Files", "Tests", "Changes", "Comments"], PanelKind.Explorer);
 
     public void Select(int index)
     {

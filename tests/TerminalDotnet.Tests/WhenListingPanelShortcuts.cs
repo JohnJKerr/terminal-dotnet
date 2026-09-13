@@ -1,4 +1,5 @@
 using TerminalDotnet.Changes;
+using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
@@ -18,7 +19,7 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(2, FileNodeKind.File, "Program.cs", [file])]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState());
+        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
 
         // Assert
         Assert.Equal(
@@ -35,7 +36,7 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(0, FileNodeKind.Project, "App", [file])]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState());
+        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
 
         // Assert
         Assert.Equal(
@@ -52,7 +53,7 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(0, FileNodeKind.Project, "App", [file], IsExpanded: false)]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState());
+        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
 
         // Assert
         Assert.Contains("z unfold all", shortcuts);
@@ -73,7 +74,7 @@ public sealed class WhenListingPanelShortcuts
         };
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state, EmptyComments());
 
         // Assert
         Assert.Contains("z fold all", shortcuts);
@@ -86,7 +87,7 @@ public sealed class WhenListingPanelShortcuts
         var state = TestState();
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state, EmptyComments());
 
         // Assert
         Assert.DoesNotContain(shortcuts, shortcut => shortcut.Contains("output"));
@@ -99,7 +100,7 @@ public sealed class WhenListingPanelShortcuts
         var state = TestState() with { LastRun = new TestRun(true, "Passed") };
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state, EmptyComments());
 
         // Assert
         Assert.Contains("o output", shortcuts);
@@ -113,7 +114,8 @@ public sealed class WhenListingPanelShortcuts
             PanelKind.Tests,
             new FileExplorerState([]),
             EmptyChangeset(),
-            TestState());
+            TestState(),
+            EmptyComments());
 
         // Assert
         Assert.DoesNotContain(shortcuts, shortcut => shortcut.Contains("up"));
@@ -130,7 +132,8 @@ public sealed class WhenListingPanelShortcuts
             PanelKind.Tests,
             new FileExplorerState([]),
             EmptyChangeset(),
-            state);
+            state,
+            EmptyComments());
 
         // Assert
         Assert.DoesNotContain(shortcuts, shortcut => shortcut.Contains("match"));
@@ -171,6 +174,7 @@ public sealed class WhenListingPanelShortcuts
         new FileExplorerState([]),
         EmptyChangeset(),
         TestState(),
+        EmptyComments(),
         searchFocused: true);
 
     [Fact]
@@ -180,7 +184,7 @@ public sealed class WhenListingPanelShortcuts
         var state = TestState() with { Status = ExplorerStatus.Running };
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state, EmptyComments());
 
         // Assert
         Assert.Single(shortcuts, shortcut => shortcut == "c cancel");
@@ -195,7 +199,7 @@ public sealed class WhenListingPanelShortcuts
         var state = TestState() with { LastRun = new TestRun(false, "Failed", [failed]) };
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state);
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state, EmptyComments());
 
         // Assert
         Assert.Contains("u failures", shortcuts);
@@ -212,7 +216,8 @@ public sealed class WhenListingPanelShortcuts
             PanelKind.Changes,
             new FileExplorerState([]),
             new ChangesetState([changed]),
-            EmptyTestState());
+            EmptyTestState(),
+            EmptyComments());
 
         // Assert
         Assert.Equal(
@@ -231,7 +236,8 @@ public sealed class WhenListingPanelShortcuts
             PanelKind.Changes,
             new FileExplorerState([]),
             new ChangesetState([deleted]),
-            EmptyTestState());
+            EmptyTestState(),
+            EmptyComments());
 
         // Assert
         Assert.Equal(
@@ -248,7 +254,7 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(1, FileNodeKind.File, "build.sh", [file])]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Files, fileState, EmptyChangeset(), EmptyTestState());
+        var shortcuts = PanelShortcuts.For(PanelKind.Files, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
 
         // Assert
         Assert.Equal(
@@ -265,11 +271,49 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(0, FileNodeKind.Folder, "scripts", [file])]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Files, fileState, EmptyChangeset(), EmptyTestState());
+        var shortcuts = PanelShortcuts.For(PanelKind.Files, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
 
         // Assert
         Assert.Contains("Space/Enter fold", shortcuts);
     }
+
+    [Fact]
+    public void It_offers_moving_through_the_comments_once_something_is_commented()
+    {
+        // Arrange
+        var comments = new CommentsState(
+            [new FileComment("/repo/src/Order.cs", "src/Order.cs", "needs a guard")]);
+
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Comments,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            comments);
+
+        // Assert
+        Assert.Equal(
+            ["Tab pane", "s search", "↑/k up", "↓/j down", "^K commands", "q quit"],
+            shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_no_comment_actions_before_anything_is_commented()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Comments,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments());
+
+        // Assert
+        Assert.Equal(["Tab pane", "s search", "^K commands", "q quit"], shortcuts);
+    }
+
+    private static CommentsState EmptyComments() => new([]);
 
     private static ChangesetState EmptyChangeset() => new([]);
 

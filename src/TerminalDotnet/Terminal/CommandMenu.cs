@@ -23,6 +23,7 @@ public static class CommandMenu
         new("Files", FileTree),
         new("Tests", Tests),
         new("Changes", Changes),
+        new("Comments", Comments),
         new("Preview", Preview)
     ];
 
@@ -54,7 +55,8 @@ public static class CommandMenu
         new("E", "go to the Explorer"),
         new("F", "go to the Files"),
         new("T", "go to the Tests"),
-        new("C", "go to the Changes"),
+        new("G", "go to the Changes"),
+        new("C", "go to the Comments"),
         new("Tab", "move between search, panels and rows"),
         new("←", "focus the panel list"),
         new("→", "focus the rows"),
@@ -100,6 +102,11 @@ public static class CommandMenu
         new("e", "edit the file"),
         new("p", "preview the file"),
         new("r", "restore a deleted file")
+    ];
+
+    private static readonly IReadOnlyList<CommandMenuEntry> Comments =
+    [
+        .. Navigation
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Preview =

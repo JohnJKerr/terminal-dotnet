@@ -365,6 +365,12 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
+        if (shell.State.ActivePanel == PanelKind.Comments)
+        {
+            HandleCommentKey(key, tests, search);
+            return;
+        }
+
         HandleTestKey(application, key, search, tests);
     }
 
@@ -654,6 +660,44 @@ internal sealed class TestRunnerApplication(
 
         key.Handled = true;
         panelWork.Track(DispatchChangesetAsync(command, search, files));
+    }
+
+    private void HandleCommentKey(Key key, ListView files, TextField search)
+    {
+        if (!files.HasFocus)
+        {
+            return;
+        }
+
+        var command = CommentCommandFor(key);
+        if (command is null)
+        {
+            return;
+        }
+
+        key.Handled = true;
+        panelWork.Track(DispatchCommentAsync(command, search, files));
+    }
+
+    private static CommentCommand? CommentCommandFor(Key key)
+    {
+        if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
+        {
+            return new CommentCommand.MoveUp();
+        }
+
+        return Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J)
+            ? new CommentCommand.MoveDown()
+            : null;
+    }
+
+    private async Task DispatchCommentAsync(
+        CommentCommand command,
+        TextField search,
+        ListView files)
+    {
+        await commentSession.DispatchAsync(command);
+        Render(search, files);
     }
 
     private static ChangesetCommand? ChangesetCommandFor(Key key, string searchQuery)
@@ -1004,6 +1048,7 @@ internal sealed class TestRunnerApplication(
             (fileExplorer ?? fileSession).State,
             changesetSession.State,
             session.State,
+            commentSession.State,
             search.HasFocus);
         ShowShortcuts();
         if (fileExplorer is not null)
@@ -1015,6 +1060,12 @@ internal sealed class TestRunnerApplication(
         if (shell.State.ActivePanel == PanelKind.Changes)
         {
             RenderChanges(search, tests);
+            return;
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Comments)
+        {
+            RenderComments(search, tests);
             return;
         }
 
@@ -1099,6 +1150,23 @@ internal sealed class TestRunnerApplication(
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
             snapshot.Files,
+            () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
+            snapshot.SelectedIndex,
+            snapshot.StatusSegments,
+            [],
+            snapshot.EmptyMessage);
+    }
+
+    private void RenderComments(TextField search, ListView files)
+    {
+        var snapshot = CommentPanelSnapshot.From(commentSession.State);
+        files.Title = "Comments";
+        RenderRows(
+            search,
+            files,
+            "",
+            snapshot.Comments.Count,
+            snapshot.Comments,
             () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
             snapshot.SelectedIndex,
             snapshot.StatusSegments,
