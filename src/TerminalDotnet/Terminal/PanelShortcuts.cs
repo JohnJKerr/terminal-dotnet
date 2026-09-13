@@ -45,7 +45,7 @@ public static class PanelShortcuts
     private static IReadOnlyList<string> CommentShortcuts(CommentsState state) =>
         state.Comments.Count == 0
             ? []
-            : [.. Navigation(), "Enter/v view", "e edit", "d delete", "y copy", "w save"];
+            : [.. Navigation(), "Enter/v view", "e edit", "d delete", "y copy", "w save", "x clear all"];
 
     private static IReadOnlyList<string> ExplorerShortcuts(FileExplorerState state)
     {

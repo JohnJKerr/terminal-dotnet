@@ -11,6 +11,7 @@ public abstract record CommentAction
     public sealed record DeleteComment : CommentAction;
     public sealed record CopyComments : CommentAction;
     public sealed record SaveComments : CommentAction;
+    public sealed record ClearComments : CommentAction;
 }
 
 public static class CommentPanelKeyBindings
@@ -42,7 +43,12 @@ public static class CommentPanelKeyBindings
             return new CommentAction.CopyComments();
         }
 
-        return Is(key, KeyCode.W) ? new CommentAction.SaveComments() : null;
+        if (Is(key, KeyCode.W))
+        {
+            return new CommentAction.SaveComments();
+        }
+
+        return Is(key, KeyCode.X) ? new CommentAction.ClearComments() : null;
     }
 
     private static bool Is(Key key, KeyCode keyCode) =>

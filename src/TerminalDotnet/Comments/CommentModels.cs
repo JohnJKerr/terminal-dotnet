@@ -34,6 +34,7 @@ public abstract record CommentCommand
     public sealed record DeleteSelected : CommentCommand;
     public sealed record CopyAll : CommentCommand;
     public sealed record SaveAll(string Path) : CommentCommand;
+    public sealed record ClearAll : CommentCommand;
     public sealed record MoveUp : CommentCommand;
     public sealed record MoveDown : CommentCommand;
 }

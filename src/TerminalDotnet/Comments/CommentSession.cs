@@ -35,7 +35,9 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
             Revise(command, selected);
         }
 
-        var notice = await NoticeForAsync(command, cancellationToken);
+        var notice = command is CommentCommand.ClearAll
+            ? Cleared()
+            : await NoticeForAsync(command, cancellationToken);
         var query = QueryAfter(command);
         var listed = Matching(query);
         State = new CommentsState(listed, SelectionAfter(command, listed.Count), query)
@@ -47,6 +49,16 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
     /// <summary>Taking the comments away takes all of them, not only the ones
     /// the panel is showing, because a search narrows the reading rather than
     /// the record.</summary>
+    /// <summary>Clearing takes the whole book, not the page the panel is
+    /// showing, so a search cannot leave notes behind that nobody asked to
+    /// keep.</summary>
+    private string Cleared()
+    {
+        var cleared = comments.Count;
+        comments.Clear();
+        return cleared == 0 ? "" : $"Cleared {cleared} comments";
+    }
+
     private async Task<string> NoticeForAsync(
         CommentCommand command,
         CancellationToken cancellationToken)

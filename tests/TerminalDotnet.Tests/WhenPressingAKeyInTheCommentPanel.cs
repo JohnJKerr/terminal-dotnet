@@ -88,6 +88,16 @@ public sealed class WhenPressingAKeyInTheCommentPanel
         Assert.Equal(new CommentAction.SaveComments(), action);
     }
 
+    [Fact]
+    public void Pressing_x_clears_every_comment()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.X));
+
+        // Assert
+        Assert.Equal(new CommentAction.ClearComments(), action);
+    }
+
     private static CommentAction? ActionFor(Key key, bool searchActive = false) =>
         CommentPanelKeyBindings.ActionFor(
             key,

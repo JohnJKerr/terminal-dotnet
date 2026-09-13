@@ -726,7 +726,31 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
+        if (action is CommentAction.ClearComments)
+        {
+            ClearComments(application, search, files);
+            return;
+        }
+
         panelWork.Track(DispatchCommentAsync(CommentCommandFor(action), search, files));
+    }
+
+    /// <summary>Clearing cannot be undone, so it is asked for twice.</summary>
+    private void ClearComments(IApplication application, TextField search, ListView files)
+    {
+        var count = commentSession.State.Comments.Count;
+        var confirmed = MessageBox.Query(
+            application,
+            "Clear comments",
+            $"Clear all {count} comments? This cannot be undone.",
+            "Cancel",
+            "Clear");
+        if (confirmed != 1)
+        {
+            return;
+        }
+
+        panelWork.Track(DispatchCommentAsync(new CommentCommand.ClearAll(), search, files));
     }
 
     private void SaveComments(IApplication application, TextField search, ListView files)
