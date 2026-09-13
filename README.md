@@ -79,9 +79,12 @@ Without installing, run it straight from the source tree:
 dotnet run --project /path/to/terminal-dotnet/src/TerminalDotnet
 ```
 
-Panels: `Explorer` lists the solution's source files, `Tests` lists the discovered tests, and
-`Changes` lists the files git reports as added, modified, or deleted beneath the directory you
-started in. A panel with nothing to list says so in place of its rows.
+Panels: `Explorer` lists the solution's source files, `Files` lists everything in the directory
+you started in, `Tests` lists the discovered tests, `Changes` lists the files git reports as
+added, modified, or deleted beneath that directory, and `Comments` lists the files you have
+left a note against. A panel with nothing to list says so in place of its rows. `Shift` and the
+letter beside a panel in the rail reaches it: `E`, `F`, `T`, `G`, and `C`. `Changes` answers to
+`G` because `C` belongs to `Comments`.
 
 The `Explorer` and `Tests` panels carry filters under the search box, numbered from `1`. The
 `Updated` filter keeps the files git reports as new or changed, and in the `Tests` panel keeps
@@ -107,8 +110,22 @@ Keys:
 - `F`: rerun failed tests
 - `]f`: select the next failed test
 - `c`: cancel the active run
-- `p`: preview the current test or failure location
+- `p`: preview the current file, test, or failure location
 - `q` / `Esc`: quit
+
+In the preview, `↑` / `k` and `↓` / `j` move a line, `PgUp` / `PgDn` move a screen, `Home` and
+`End` jump to the ends, `e` hands the same file to your editor, and `c` writes a comment
+against it.
+
+Comments live in memory for as long as the app is open, one note per file. The `Comments`
+panel lists every file carrying one, and search matches either the file or what the note says:
+
+- `Enter` / `v`: read the comment
+- `e`: rewrite it in the box it was written in
+- `d`: delete it
+- `y`: copy every comment to the clipboard
+- `w`: save every comment to a file, suggesting `comments.md` beside the solution
+- `x`: clear every comment, after confirming
 
 Run the prototype's tests with:
 

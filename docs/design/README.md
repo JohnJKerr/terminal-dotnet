@@ -27,5 +27,9 @@ variant 1b:
   running cyan. Execution output uses red for failures, green for passes,
   yellow for skips, cyan for status, and the terminal theme for neutral lines.
 
+- The Comments workspace lists the files carrying a note, each row showing the
+  file and the note's opening line. Notes are written from the preview and
+  leave with the clipboard or a file.
+
 The Explorer and Tests panels reuse the same two-column shell and replace the
 right-hand workspace rather than introducing a permanent third column.
