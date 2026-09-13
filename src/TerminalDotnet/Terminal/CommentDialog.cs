@@ -1,3 +1,4 @@
+using System.Drawing;
 using Terminal.Gui.App;
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
@@ -58,10 +59,20 @@ internal static class CommentDialog
             key.Handled = true;
             application.RequestStop(dialog);
         };
+        text.Initialized += (_, _) => text.InsertionPoint = EndOf(existing);
         dialog.Add(text, save, cancel);
         text.SetFocus();
         application.Run(dialog);
         return written;
+    }
+
+    /// <summary>A note is carried on from where it left off, so reopening one
+    /// puts the cursor after what is already written rather than in front of
+    /// it.</summary>
+    private static Point EndOf(string text)
+    {
+        var lines = text.Split('\n');
+        return new Point(lines[^1].Length, lines.Length - 1);
     }
 
     private static bool IsCtrl(Key key, KeyCode keyCode) =>
