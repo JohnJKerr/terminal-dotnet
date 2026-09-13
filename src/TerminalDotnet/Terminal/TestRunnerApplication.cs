@@ -50,7 +50,7 @@ internal sealed class TestRunnerApplication(
     private bool openSourceRequested;
     private string? openPath;
     private int openLine = 1;
-    private bool dialogVisible;
+    private int openDialogs;
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
     private IReadOnlyList<FileStatusSegment> statusSegments = [];
@@ -339,7 +339,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (dialogVisible)
+        if (openDialogs > 0)
         {
             return;
         }
@@ -1071,18 +1071,20 @@ internal sealed class TestRunnerApplication(
     /// Runs a dialog over the panels. The shell listens for keys across the
     /// whole application, so the panels are told to stand down for as long as
     /// something is open in front of them; otherwise a q typed into a comment
-    /// would quit rather than be written.
+    /// would quit rather than be written. Dialogs open over one another — a
+    /// comment is written over the preview it was prompted by — so what is
+    /// open is counted rather than flagged.
     /// </summary>
     private T OverThePanels<T>(Func<T> show)
     {
-        dialogVisible = true;
+        openDialogs++;
         try
         {
             return show();
         }
         finally
         {
-            dialogVisible = false;
+            openDialogs--;
         }
     }
 
