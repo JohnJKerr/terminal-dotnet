@@ -21,6 +21,7 @@ internal sealed class TestRunnerApplication(
     FileExplorerSession folderSession,
     ChangesetSession changesetSession,
     CommentSession commentSession,
+    TerminalClipboard clipboard,
     string target,
     IFileOpener? editorLauncher = null)
 {
@@ -75,6 +76,7 @@ internal sealed class TestRunnerApplication(
         listedContent = null;
         using IApplication application = Application.Create();
         application.Init(TerminalDriver());
+        clipboard.Attach(application);
 
         using var window = new Window { Title = $"terminal-dotnet - {VersionNumber.Current}" };
         var panels = Panels();
@@ -718,11 +720,13 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        panelWork.Track(DispatchCommentAsync(
-            new CommentCommand.DeleteSelected(),
-            search,
-            files));
+        panelWork.Track(DispatchCommentAsync(CommentCommandFor(action), search, files));
     }
+
+    private static CommentCommand CommentCommandFor(CommentAction action) =>
+        action is CommentAction.CopyComments
+            ? new CommentCommand.CopyAll()
+            : new CommentCommand.DeleteSelected();
 
     private void ShowComment(IApplication application, FileComment selected) => ShowCellDialog(
         application,

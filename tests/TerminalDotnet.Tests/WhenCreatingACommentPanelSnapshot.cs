@@ -113,6 +113,21 @@ public sealed class WhenCreatingACommentPanelSnapshot
         Assert.Equal(2, snapshot.SearchHitCount);
     }
 
+    [Fact]
+    public void It_shows_a_notice_on_the_status_line()
+    {
+        // Arrange
+        var state = new CommentsState(Comments()) { Notice = "Copied 2 comments" };
+
+        // Act
+        var snapshot = CommentPanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(
+            ["2 Commented", "Copied 2 comments"],
+            snapshot.StatusSegments.Select(segment => segment.Text));
+    }
+
     private static IReadOnlyList<FileComment> Comments() =>
     [
         new("/repo/src/Customer.cs", "src/Customer.cs", "rename this"),

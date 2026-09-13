@@ -19,8 +19,16 @@ public sealed record CommentPanelSnapshot(
         state.SelectedIndex,
         state.SearchQuery,
         state.Comments.Count,
-        [new FileStatusSegment($"{state.Comments.Count} Commented", FileRowTone.Neutral)],
+        StatusSegmentsFrom(state),
         PanelEmptyState.For("comments", state.Comments.Count, state.SearchQuery));
+
+    private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(CommentsState state) =>
+    [
+        new($"{state.Comments.Count} Commented", FileRowTone.Neutral),
+        .. state.Notice.Length > 0
+            ? new FileStatusSegment[] { new(state.Notice, FileRowTone.Neutral) }
+            : []
+    ];
 
     /// <summary>A row reads as the file and the note's opening line, so the
     /// listing says what was said without unfolding the whole comment.</summary>

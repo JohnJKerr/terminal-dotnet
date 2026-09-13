@@ -9,6 +9,7 @@ public abstract record CommentAction
     public sealed record ReadComment : CommentAction;
     public sealed record RewriteComment : CommentAction;
     public sealed record DeleteComment : CommentAction;
+    public sealed record CopyComments : CommentAction;
 }
 
 public static class CommentPanelKeyBindings
@@ -30,7 +31,12 @@ public static class CommentPanelKeyBindings
             return new CommentAction.RewriteComment();
         }
 
-        return Is(key, KeyCode.D) ? new CommentAction.DeleteComment() : null;
+        if (Is(key, KeyCode.D))
+        {
+            return new CommentAction.DeleteComment();
+        }
+
+        return Is(key, KeyCode.Y) ? new CommentAction.CopyComments() : null;
     }
 
     private static bool Is(Key key, KeyCode keyCode) =>

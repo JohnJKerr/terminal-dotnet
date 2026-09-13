@@ -18,7 +18,8 @@ var folderSession = new FileExplorerSession(
     new LaunchFolderBackend(commandRunner),
     FileGrouping.Folder);
 var changesetSession = new ChangesetSession(new GitChangesetBackend(commandRunner));
-var commentSession = new CommentSession();
+var clipboard = new TerminalClipboard();
+var commentSession = new CommentSession(clipboard);
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
     new FileTestSourceLocator(),
@@ -34,6 +35,7 @@ new TestRunnerApplication(
     folderSession,
     changesetSession,
     commentSession,
+    clipboard,
     target,
     editorLauncher).Run();
 return 0;

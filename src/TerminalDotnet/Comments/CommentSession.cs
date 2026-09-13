@@ -7,8 +7,9 @@ namespace TerminalDotnet.Comments;
 /// so the reader can gather notes across the panels and take them away in one
 /// go rather than writing them down somewhere else.
 /// </summary>
-public sealed class CommentSession
+public sealed class CommentSession(ICommentClipboard? clipboard = null)
 {
+    private readonly ICommentClipboard clipboard = clipboard ?? new UnreachableClipboard();
     private readonly List<FileComment> comments = [];
 
     public CommentsState State { get; private set; } = new([]);
@@ -33,11 +34,32 @@ public sealed class CommentSession
             Revise(command, selected);
         }
 
+        var notice = NoticeFor(command);
         var query = QueryAfter(command);
         var listed = Matching(query);
-        State = new CommentsState(listed, SelectionAfter(command, listed.Count), query);
+        State = new CommentsState(listed, SelectionAfter(command, listed.Count), query)
+        {
+            Notice = notice
+        };
         return Task.CompletedTask;
     }
+
+    /// <summary>Taking the comments away takes all of them, not only the ones
+    /// the panel is showing, because a search narrows the reading rather than
+    /// the record.</summary>
+    private string NoticeFor(CommentCommand command)
+    {
+        if (command is not CommentCommand.CopyAll || comments.Count == 0)
+        {
+            return "";
+        }
+
+        return clipboard.TryCopy(CommentReport.From(InPathOrder()))
+            ? $"Copied {comments.Count} comments"
+            : "Could not copy the comments";
+    }
+
+    private IReadOnlyList<FileComment> InPathOrder() => Matching("");
 
     private FileComment? Selected() => State.SelectedIndex < State.Comments.Count
         ? State.Comments[State.SelectedIndex]
@@ -103,6 +125,11 @@ public sealed class CommentSession
     private static bool Matches(FileComment comment, string query) =>
         SearchMatch.Matches(comment.DisplayPath, query) ||
         SearchMatch.Matches(comment.Text, query);
+
+    private sealed class UnreachableClipboard : ICommentClipboard
+    {
+        public bool TryCopy(string text) => false;
+    }
 
     private int SelectionAfter(CommentCommand command, int count)
     {

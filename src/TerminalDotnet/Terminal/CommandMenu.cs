@@ -109,7 +109,8 @@ public static class CommandMenu
         .. Navigation,
         new("Enter/v", "read the comment"),
         new("e", "edit the comment"),
-        new("d", "delete the comment")
+        new("d", "delete the comment"),
+        new("y", "copy every comment to the clipboard")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Preview =

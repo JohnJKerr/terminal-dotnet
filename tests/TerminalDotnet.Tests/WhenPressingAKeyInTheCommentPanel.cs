@@ -68,6 +68,16 @@ public sealed class WhenPressingAKeyInTheCommentPanel
         Assert.Null(action);
     }
 
+    [Fact]
+    public void Pressing_y_copies_the_comments_to_the_clipboard()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Y));
+
+        // Assert
+        Assert.Equal(new CommentAction.CopyComments(), action);
+    }
+
     private static CommentAction? ActionFor(Key key, bool searchActive = false) =>
         CommentPanelKeyBindings.ActionFor(
             key,
