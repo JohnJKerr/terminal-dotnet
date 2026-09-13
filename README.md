@@ -117,15 +117,26 @@ In the preview, `↑` / `k` and `↓` / `j` move a line, `PgUp` / `PgDn` move a 
 `End` jump to the ends, `e` hands the same file to your editor, and `c` writes a comment
 against it.
 
+`n` and `N` move the preview to the next and previous row of the panel you opened it from,
+without closing it. They step through what the panel is showing, so a search or a filter
+decides what you move between, and rows with nothing to show — folders, deleted files, suites
+whose source cannot be found — are skipped. The panel's selection follows, so closing the
+preview leaves you on the file you stopped at.
+
 Comments live in memory for as long as the app is open, one note per file. The `Comments`
 panel lists every file carrying one, and search matches either the file or what the note says:
 
 - `Enter` / `v`: read the comment
 - `e`: rewrite it in the box it was written in
 - `d`: delete it
+- `p`: preview the file the note is against
 - `y`: copy every comment to the clipboard
-- `w`: save every comment to a file, suggesting `comments.md` beside the solution
+- `w`: save every comment to a file, suggesting `comments.md` beside the solution; saving onto
+  a file that already exists asks first
 - `x`: clear every comment, after confirming
+
+Comments are lost when the app closes, so quitting with notes you have not copied or saved
+asks before it goes.
 
 Run the prototype's tests with:
 
