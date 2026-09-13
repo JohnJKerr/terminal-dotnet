@@ -70,4 +70,34 @@ public sealed class WhenCommentingOnAFile
             ["src/Customer.cs", "src/Order.cs"],
             session.State.Comments.Select(comment => comment.DisplayPath));
     }
+
+    [Fact]
+    public async Task It_finds_the_note_already_left_against_a_file()
+    {
+        // Arrange
+        var session = new CommentSession();
+        await session.DispatchAsync(
+            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
+
+        // Act
+        var existing = session.State.Against("/repo/src/Order.cs");
+
+        // Assert
+        Assert.Equal("needs a guard", existing);
+    }
+
+    [Fact]
+    public async Task It_finds_nothing_against_a_file_nobody_has_commented_on()
+    {
+        // Arrange
+        var session = new CommentSession();
+        await session.DispatchAsync(
+            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
+
+        // Act
+        var existing = session.State.Against("/repo/src/Customer.cs");
+
+        // Assert
+        Assert.Equal("", existing);
+    }
 }

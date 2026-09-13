@@ -7,6 +7,7 @@ using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 using TerminalDotnet.Changes;
+using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Filters;
@@ -19,6 +20,7 @@ internal sealed class TestRunnerApplication(
     FileExplorerSession fileSession,
     FileExplorerSession folderSession,
     ChangesetSession changesetSession,
+    CommentSession commentSession,
     string target,
     IFileOpener? editorLauncher = null)
 {
@@ -831,7 +833,26 @@ internal sealed class TestRunnerApplication(
     }
 
     private static string PreviewTitle(string path, int line) =>
-        $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  e edit  Esc close";
+        $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  e edit  c comment  Esc close";
+
+    private void CommentOn(IApplication application, string path)
+    {
+        var displayPath = DisplayPathFor(path);
+        var written = CommentDialog.Ask(application, displayPath, commentSession.State.Against(path));
+        if (written is null)
+        {
+            return;
+        }
+
+        panelWork.Track(commentSession.DispatchAsync(
+            new CommentCommand.Add(path, displayPath, written)));
+    }
+
+    /// <summary>Comments read against the tree the app was launched in, the
+    /// same way the panels name their files.</summary>
+    private string DisplayPathFor(string path) => Path.GetRelativePath(
+        Path.GetDirectoryName(Path.GetFullPath(target))!,
+        path);
 
     private void ShowTestOutput(IApplication application)
     {
@@ -919,6 +940,12 @@ internal sealed class TestRunnerApplication(
         if (action is PreviewAction.Edit)
         {
             RequestOpen(application, path, line);
+            return;
+        }
+
+        if (action is PreviewAction.Comment)
+        {
+            CommentOn(application, path);
             return;
         }
 

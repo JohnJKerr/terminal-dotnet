@@ -108,6 +108,7 @@ public static class CommandMenu
         new("PgUp/PgDn", "move a screen at a time"),
         new("Home/End", "jump to the first or last line"),
         new("e", "edit the file"),
+        new("c", "comment on the file"),
         new("Esc", "close the preview")
     ];
 

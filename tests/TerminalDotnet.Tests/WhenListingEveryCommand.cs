@@ -36,6 +36,16 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_lists_the_commenting_command_under_the_preview()
+    {
+        // Act
+        var preview = CommandMenu.Sections().Single(section => section.Title == "Preview");
+
+        // Assert
+        Assert.Contains(preview.Entries, entry => entry.Description == "comment on the file");
+    }
+
+    [Fact]
     public void It_names_the_key_that_opens_it()
     {
         // Act

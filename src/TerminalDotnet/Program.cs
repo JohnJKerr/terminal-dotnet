@@ -1,4 +1,5 @@
 using TerminalDotnet.Changes;
+using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
@@ -17,6 +18,7 @@ var folderSession = new FileExplorerSession(
     new LaunchFolderBackend(commandRunner),
     FileGrouping.Folder);
 var changesetSession = new ChangesetSession(new GitChangesetBackend(commandRunner));
+var commentSession = new CommentSession();
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
     new FileTestSourceLocator(),
@@ -31,6 +33,7 @@ new TestRunnerApplication(
     fileSession,
     folderSession,
     changesetSession,
+    commentSession,
     target,
     editorLauncher).Run();
 return 0;

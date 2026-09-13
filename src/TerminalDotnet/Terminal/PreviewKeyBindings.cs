@@ -9,6 +9,7 @@ public abstract record PreviewAction
     public sealed record ScrollToStart : PreviewAction;
     public sealed record ScrollToEnd : PreviewAction;
     public sealed record Edit : PreviewAction;
+    public sealed record Comment : PreviewAction;
 }
 
 /// <summary>
@@ -26,6 +27,7 @@ public static class PreviewKeyBindings
         KeyCode.Home => new PreviewAction.ScrollToStart(),
         KeyCode.End => new PreviewAction.ScrollToEnd(),
         KeyCode.E => new PreviewAction.Edit(),
+        KeyCode.C => new PreviewAction.Comment(),
         _ => null
     };
 

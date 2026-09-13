@@ -16,4 +16,14 @@ public sealed class WhenActingOnAPreviewedFile
         // Assert
         Assert.Equal(new PreviewAction.Edit(), action);
     }
+
+    [Fact]
+    public void Pressing_c_comments_on_the_file()
+    {
+        // Act
+        var action = PreviewKeyBindings.ActionFor(new Key(KeyCode.C), viewportHeight: 20);
+
+        // Assert
+        Assert.Equal(new PreviewAction.Comment(), action);
+    }
 }
