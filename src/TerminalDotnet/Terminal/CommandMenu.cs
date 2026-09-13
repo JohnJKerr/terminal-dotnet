@@ -22,6 +22,7 @@ public static class CommandMenu
         new("Explorer", FileTree),
         new("Files", FileTree),
         new("Tests", Tests),
+        new("Issues", Issues),
         new("Changes", Changes),
         new("Comments", Comments),
         new("Flags", Flags),
@@ -56,6 +57,7 @@ public static class CommandMenu
         new("E", "go to the Explorer"),
         new("F", "go to the Files"),
         new("T", "go to the Tests"),
+        new("I", "go to the Issues"),
         new("G", "go to the Changes"),
         new("C", "go to the Comments"),
         new("L", "go to the Flags"),
@@ -104,6 +106,16 @@ public static class CommandMenu
         new("e", "edit the file"),
         new("p", "preview the file"),
         new("r", "restore a deleted file")
+    ];
+
+    private static readonly IReadOnlyList<CommandMenuEntry> Issues =
+    [
+        .. Navigation,
+        new("Enter/e", "edit the issue's file"),
+        new("p", "preview the issue's file"),
+        new("y", "copy the issue"),
+        new("1", "filter errors"),
+        new("2", "filter warnings")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Comments =

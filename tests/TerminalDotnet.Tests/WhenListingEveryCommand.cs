@@ -23,8 +23,20 @@ public sealed class WhenListingEveryCommand
 
         // Assert
         Assert.Equal(
-            ["Anywhere", "Explorer", "Files", "Tests", "Changes", "Comments", "Preview"],
+            ["Anywhere", "Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags", "Preview"],
             titles);
+    }
+
+    [Fact]
+    public void It_lists_the_issue_commands_under_issues()
+    {
+        // Act
+        var issues = CommandMenu.Sections().Single(section => section.Title == "Issues");
+
+        // Assert
+        Assert.Equal(
+            ["↑/k", "↓/j", "Enter/e", "p", "y", "1", "2"],
+            issues.Entries.Select(entry => entry.Keys));
     }
 
     [Fact]
@@ -69,6 +81,18 @@ public sealed class WhenListingEveryCommand
         Assert.Contains(
             anywhere.Entries,
             entry => entry.Keys == "G" && entry.Description == "go to the Changes");
+    }
+
+    [Fact]
+    public void It_names_the_key_that_reaches_the_issues()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(
+            anywhere.Entries,
+            entry => entry.Keys == "I" && entry.Description == "go to the Issues");
     }
 
     [Fact]
