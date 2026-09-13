@@ -195,15 +195,15 @@ public sealed class WhenTakingTheCommentsAway
 
         public bool CopySucceeds { get; init; } = true;
 
-        public bool TryCopy(string text)
+        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default)
         {
             if (!CopySucceeds)
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             Copied = text;
-            return true;
+            return Task.FromResult(true);
         }
     }
 }

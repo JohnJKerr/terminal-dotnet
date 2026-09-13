@@ -21,7 +21,6 @@ internal sealed class TestRunnerApplication(
     FileExplorerSession folderSession,
     ChangesetSession changesetSession,
     CommentSession commentSession,
-    TerminalClipboard clipboard,
     string target,
     IFileOpener? editorLauncher = null)
 {
@@ -76,7 +75,6 @@ internal sealed class TestRunnerApplication(
         listedContent = null;
         using IApplication application = Application.Create();
         application.Init(TerminalDriver());
-        clipboard.Attach(application);
 
         using var window = new Window { Title = $"terminal-dotnet - {VersionNumber.Current}" };
         var panels = Panels();

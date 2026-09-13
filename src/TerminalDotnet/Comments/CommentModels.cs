@@ -16,7 +16,7 @@ public sealed record CommentsState(
 /// <summary>Where a comment goes when it is taken out of the app.</summary>
 public interface ICommentClipboard
 {
-    bool TryCopy(string text);
+    Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default);
 }
 
 /// <summary>Where the comments are kept when they are written out.</summary>

@@ -70,9 +70,10 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
 
         if (command is CommentCommand.CopyAll)
         {
-            return clipboard.TryCopy(CommentReport.From(InPathOrder()))
-                ? $"Copied {comments.Count} comments"
-                : "Could not copy the comments";
+            var copied = await clipboard.TryCopyAsync(
+                CommentReport.From(InPathOrder()),
+                cancellationToken);
+            return copied ? $"Copied {comments.Count} comments" : "Could not copy the comments";
         }
 
         if (command is not CommentCommand.SaveAll save)
@@ -158,7 +159,9 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
 
     private sealed class UnreachableClipboard : ICommentClipboard
     {
-        public bool TryCopy(string text) => false;
+        public Task<bool> TryCopyAsync(
+            string text,
+            CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 
     private sealed class UnreachableStore : ICommentStore
