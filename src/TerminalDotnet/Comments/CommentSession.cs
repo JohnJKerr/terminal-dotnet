@@ -46,9 +46,6 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
         };
     }
 
-    /// <summary>Taking the comments away takes all of them, not only the ones
-    /// the panel is showing, because a search narrows the reading rather than
-    /// the record.</summary>
     /// <summary>Clearing takes the whole book, not the page the panel is
     /// showing, so a search cannot leave notes behind that nobody asked to
     /// keep.</summary>
@@ -59,6 +56,9 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
         return cleared == 0 ? "" : $"Cleared {cleared} comments";
     }
 
+    /// <summary>Taking the comments away takes all of them, not only the ones
+    /// the panel is showing, because a search narrows the reading rather than
+    /// the record.</summary>
     private async Task<string> NoticeForAsync(
         CommentCommand command,
         CancellationToken cancellationToken)
@@ -157,6 +157,18 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
         SearchMatch.Matches(comment.DisplayPath, query) ||
         SearchMatch.Matches(comment.Text, query);
 
+    private int SelectionAfter(CommentCommand command, int count)
+    {
+        var lastIndex = Math.Max(0, count - 1);
+        return command switch
+        {
+            CommentCommand.Search or CommentCommand.ClearSearch => 0,
+            CommentCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
+            CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+            _ => Math.Min(State.SelectedIndex, lastIndex)
+        };
+    }
+
     private sealed class UnreachableClipboard : ICommentClipboard
     {
         public Task<bool> TryCopyAsync(
@@ -170,17 +182,5 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
             string path,
             string text,
             CancellationToken cancellationToken = default) => Task.FromResult(false);
-    }
-
-    private int SelectionAfter(CommentCommand command, int count)
-    {
-        var lastIndex = Math.Max(0, count - 1);
-        return command switch
-        {
-            CommentCommand.Search or CommentCommand.ClearSearch => 0,
-            CommentCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-            CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
-            _ => Math.Min(State.SelectedIndex, lastIndex)
-        };
     }
 }
