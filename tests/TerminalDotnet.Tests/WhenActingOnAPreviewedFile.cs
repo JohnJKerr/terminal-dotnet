@@ -26,4 +26,38 @@ public sealed class WhenActingOnAPreviewedFile
         // Assert
         Assert.Equal(new PreviewAction.Comment(), action);
     }
+
+    [Fact]
+    public void Pressing_n_moves_to_the_next_file()
+    {
+        // Act
+        var action = PreviewKeyBindings.ActionFor(new Key(KeyCode.N), viewportHeight: 20);
+
+        // Assert
+        Assert.Equal(new PreviewAction.StepFile(1), action);
+    }
+
+    [Fact]
+    public void Pressing_capital_N_moves_to_the_previous_file()
+    {
+        // Act
+        var action = PreviewKeyBindings.ActionFor(
+            new Key(KeyCode.N | KeyCode.ShiftMask),
+            viewportHeight: 20);
+
+        // Assert
+        Assert.Equal(new PreviewAction.StepFile(-1), action);
+    }
+
+    [Fact]
+    public void Pressing_capital_J_still_scrolls_rather_than_stepping()
+    {
+        // Act
+        var action = PreviewKeyBindings.ActionFor(
+            new Key(KeyCode.J | KeyCode.ShiftMask),
+            viewportHeight: 20);
+
+        // Assert
+        Assert.Equal(new PreviewAction.Scroll(1), action);
+    }
 }

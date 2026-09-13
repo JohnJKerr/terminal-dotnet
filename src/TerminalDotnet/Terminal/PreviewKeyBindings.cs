@@ -10,6 +10,10 @@ public abstract record PreviewAction
     public sealed record ScrollToEnd : PreviewAction;
     public sealed record Edit : PreviewAction;
     public sealed record Comment : PreviewAction;
+
+    /// <summary>Move to another of the panel's rows. One step forward or back
+    /// through what the panel is showing, not through the file.</summary>
+    public sealed record StepFile(int Step) : PreviewAction;
 }
 
 /// <summary>
@@ -18,18 +22,29 @@ public abstract record PreviewAction
 /// </summary>
 public static class PreviewKeyBindings
 {
-    public static PreviewAction? ActionFor(Key key, int viewportHeight) => key.NoShift.KeyCode switch
+    public static PreviewAction? ActionFor(Key key, int viewportHeight)
     {
-        KeyCode.CursorDown or KeyCode.J => new PreviewAction.Scroll(1),
-        KeyCode.CursorUp or KeyCode.K => new PreviewAction.Scroll(-1),
-        KeyCode.PageDown => new PreviewAction.Scroll(PageRows(viewportHeight)),
-        KeyCode.PageUp => new PreviewAction.Scroll(-PageRows(viewportHeight)),
-        KeyCode.Home => new PreviewAction.ScrollToStart(),
-        KeyCode.End => new PreviewAction.ScrollToEnd(),
-        KeyCode.E => new PreviewAction.Edit(),
-        KeyCode.C => new PreviewAction.Comment(),
-        _ => null
-    };
+        if (key.NoShift.KeyCode == KeyCode.N)
+        {
+            return new PreviewAction.StepFile(key.IsShift ? -1 : 1);
+        }
+
+        return ScrollingOrLeavingFor(key, viewportHeight);
+    }
+
+    private static PreviewAction? ScrollingOrLeavingFor(Key key, int viewportHeight) =>
+        key.NoShift.KeyCode switch
+        {
+            KeyCode.CursorDown or KeyCode.J => new PreviewAction.Scroll(1),
+            KeyCode.CursorUp or KeyCode.K => new PreviewAction.Scroll(-1),
+            KeyCode.PageDown => new PreviewAction.Scroll(PageRows(viewportHeight)),
+            KeyCode.PageUp => new PreviewAction.Scroll(-PageRows(viewportHeight)),
+            KeyCode.Home => new PreviewAction.ScrollToStart(),
+            KeyCode.End => new PreviewAction.ScrollToEnd(),
+            KeyCode.E => new PreviewAction.Edit(),
+            KeyCode.C => new PreviewAction.Comment(),
+            _ => null
+        };
 
     /// <summary>A page keeps one row of the last screen, so the reader has a
     /// line of context to carry across the jump.</summary>

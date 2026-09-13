@@ -72,6 +72,18 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_lists_stepping_to_the_next_row_under_the_preview()
+    {
+        // Act
+        var preview = CommandMenu.Sections().Single(section => section.Title == "Preview");
+
+        // Assert
+        Assert.Contains(
+            preview.Entries,
+            entry => entry.Keys == "n" && entry.Description == "preview the next row of the panel");
+    }
+
+    [Fact]
     public void It_names_the_key_that_opens_it()
     {
         // Act

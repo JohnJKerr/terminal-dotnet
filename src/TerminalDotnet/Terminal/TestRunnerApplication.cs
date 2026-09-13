@@ -11,6 +11,7 @@ using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Filters;
+using TerminalDotnet.Search;
 using TextMateSharp.Grammars;
 
 namespace TerminalDotnet.Terminal;
@@ -51,6 +52,10 @@ internal sealed class TestRunnerApplication(
     private string? openPath;
     private int openLine = 1;
     private int openDialogs;
+
+    /// <summary>The file the preview is showing. Stepping to another of the
+    /// panel's rows replaces it without closing the preview.</summary>
+    private SourceLocation previewing = new("", 1);
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
     private IReadOnlyList<FileStatusSegment> statusSegments = [];
@@ -463,10 +468,10 @@ internal sealed class TestRunnerApplication(
         switch (action)
         {
             case TestPanelAction.OpenSource:
-                RequestTestSource(application, preview: false);
+                RequestTestSource(application, preview: false, search, tests);
                 return;
             case TestPanelAction.PreviewSource:
-                RequestTestSource(application, preview: true);
+                RequestTestSource(application, preview: true, search, tests);
                 return;
             case TestPanelAction.ShowOutput:
                 ShowTestOutput(application);
@@ -563,7 +568,7 @@ internal sealed class TestRunnerApplication(
         if (action is FilePanelAction.PreviewFile preview)
         {
             key.Handled = true;
-            ShowPreview(application, preview.Path, 1);
+            ShowPreview(application, preview.Path, 1, search, files);
             return;
         }
 
@@ -644,7 +649,7 @@ internal sealed class TestRunnerApplication(
         if (action is ChangesetAction.PreviewFile preview)
         {
             key.Handled = true;
-            ShowPreview(application, preview.Path, 1);
+            ShowPreview(application, preview.Path, 1, search, files);
             return;
         }
 
@@ -721,8 +726,7 @@ internal sealed class TestRunnerApplication(
 
         if (action is CommentAction.PreviewFile preview)
         {
-            ShowPreview(application, preview.Path, 1);
-            Render(search, files);
+            ShowPreview(application, preview.Path, 1, search, files);
             return;
         }
 
@@ -924,12 +928,20 @@ internal sealed class TestRunnerApplication(
         application.Invoke(() => Render(search, tests));
     }
 
-    private void RequestTestSource(IApplication application, bool preview)
+    private void RequestTestSource(
+        IApplication application,
+        bool preview,
+        TextField search,
+        ListView rows)
     {
-        panelWork.Track(RequestTestSourceAsync(application, preview));
+        panelWork.Track(RequestTestSourceAsync(application, preview, search, rows));
     }
 
-    private async Task RequestTestSourceAsync(IApplication application, bool preview)
+    private async Task RequestTestSourceAsync(
+        IApplication application,
+        bool preview,
+        TextField search,
+        ListView rows)
     {
         await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
         if (session.State.SourceLocation is not { } source)
@@ -941,7 +953,7 @@ internal sealed class TestRunnerApplication(
         {
             if (preview)
             {
-                ShowPreview(application, source.Path, source.HighlightLine);
+                ShowPreview(application, source.Path, source.HighlightLine, search, rows);
                 return;
             }
 
@@ -949,19 +961,19 @@ internal sealed class TestRunnerApplication(
         });
     }
 
-    private void ShowPreview(IApplication application, string path, int line)
+    private void ShowPreview(
+        IApplication application,
+        string path,
+        int line,
+        TextField search,
+        ListView rows)
     {
-        string text;
-        try
+        if (ReadForPreview(application, path) is not { } text)
         {
-            text = File.ReadAllText(path);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            OverThePanels(() => MessageBox.ErrorQuery(application, "Preview", exception.Message, "Ok"));
             return;
         }
 
+        previewing = new SourceLocation(path, line);
         using var preview = new Window
         {
             Title = PreviewTitle(path, line),
@@ -989,11 +1001,24 @@ internal sealed class TestRunnerApplication(
                 background);
             args.Handled = true;
         };
-        code.KeyDown += (_, key) => HandlePreviewKey(application, code, key, path, line);
+        code.KeyDown += (_, key) => HandlePreviewKey(application, preview, code, key);
         preview.Add(code);
         OverThePanels(() => application.Run(preview));
-
+        Render(search, rows);
         LeaveForTheEditor(application);
+    }
+
+    private string? ReadForPreview(IApplication application, string path)
+    {
+        try
+        {
+            return File.ReadAllText(path);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            OverThePanels(() => MessageBox.ErrorQuery(application, "Preview", exception.Message, "Ok"));
+            return null;
+        }
     }
 
     /// <summary>Closing the preview only leaves the nested loop, so the shell
@@ -1008,7 +1033,7 @@ internal sealed class TestRunnerApplication(
     }
 
     private static string PreviewTitle(string path, int line) =>
-        $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  e edit  c comment  Esc close";
+        $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  n/N file  e edit  c comment  Esc close";
 
     private void CommentOn(IApplication application, string path)
     {
@@ -1116,12 +1141,7 @@ internal sealed class TestRunnerApplication(
         };
     }
 
-    private void HandlePreviewKey(
-        IApplication application,
-        Code code,
-        Key key,
-        string path,
-        int line)
+    private void HandlePreviewKey(IApplication application, Window preview, Code code, Key key)
     {
         var action = PreviewKeyBindings.ActionFor(key, code.Viewport.Height);
         if (action is null)
@@ -1132,17 +1152,129 @@ internal sealed class TestRunnerApplication(
         key.Handled = true;
         if (action is PreviewAction.Edit)
         {
-            RequestOpen(application, path, line);
+            RequestOpen(application, previewing.Path, previewing.HighlightLine);
             return;
         }
 
         if (action is PreviewAction.Comment)
         {
-            CommentOn(application, path);
+            CommentOn(application, previewing.Path);
+            return;
+        }
+
+        if (action is PreviewAction.StepFile step)
+        {
+            StepPreview(application, preview, code, step.Step);
             return;
         }
 
         ScrollPreview(code, action);
+    }
+
+    /// <summary>
+    /// Moves the preview to another of the panel's rows. The panel's selection
+    /// goes with it, so the rows it steps through are the ones the search and
+    /// the filter left, and closing the preview leaves the reader on the file
+    /// they stopped at.
+    ///
+    /// The work is waited out here rather than handed to the background: the
+    /// preview runs a loop of its own that only turns when a key arrives, so a
+    /// result posted back to it would not be picked up until the reader pressed
+    /// something else.
+    /// </summary>
+    private void StepPreview(IApplication application, Window preview, Code code, int step)
+    {
+        var target = NextPreviewAsync(step).GetAwaiter().GetResult();
+        if (target is null || target == previewing)
+        {
+            return;
+        }
+
+        ShowInPreview(application, preview, code, target);
+    }
+
+    private void ShowInPreview(
+        IApplication application,
+        Window preview,
+        Code code,
+        SourceLocation target)
+    {
+        if (ReadForPreview(application, target.Path) is not { } text)
+        {
+            return;
+        }
+
+        previewing = target;
+        preview.Title = PreviewTitle(target.Path, target.HighlightLine);
+        code.Language = LanguageFrom(target.Path);
+        code.Text = text;
+        code.ScrollVertical(-code.GetContentSize().Height);
+        preview.SetNeedsDraw();
+        application.LayoutAndDraw(true);
+    }
+
+    /// <summary>The rows are tried in turn from where the panel stands, because
+    /// a row can have nothing to show: a folder, a suite whose source cannot be
+    /// found, or a file that has been deleted.</summary>
+    private async Task<SourceLocation?> NextPreviewAsync(int step)
+    {
+        foreach (var index in RowRing.From(ActiveRowCount(), ActiveSelectedIndex(), step))
+        {
+            if (await PreviewAtAsync(index) is { } target)
+            {
+                return target;
+            }
+        }
+
+        return null;
+    }
+
+    private int ActiveRowCount() => ActiveFileSession() is { } files
+        ? files.State.VisibleNodes.Count
+        : shell.State.ActivePanel switch
+        {
+            PanelKind.Changes => changesetSession.State.Files.Count,
+            PanelKind.Comments => commentSession.State.Comments.Count,
+            _ => session.State.VisibleNodes.Count
+        };
+
+    private int ActiveSelectedIndex() => ActiveFileSession() is { } files
+        ? files.State.SelectedIndex
+        : shell.State.ActivePanel switch
+        {
+            PanelKind.Changes => changesetSession.State.SelectedIndex,
+            PanelKind.Comments => commentSession.State.SelectedIndex,
+            _ => session.State.SelectedIndex
+        };
+
+    private async Task<SourceLocation?> PreviewAtAsync(int index)
+    {
+        if (ActiveFileSession() is { } files)
+        {
+            await files.DispatchAsync(new FileExplorerCommand.SelectIndex(index));
+            var node = files.State.VisibleNodes[files.State.SelectedIndex];
+            return node.Kind == FileNodeKind.File
+                ? new SourceLocation(node.Files[0].Path, 1)
+                : null;
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Changes)
+        {
+            await changesetSession.DispatchAsync(new ChangesetCommand.SelectIndex(index));
+            var file = changesetSession.State.Files[changesetSession.State.SelectedIndex];
+            return file.Kind == ChangeKind.Deleted ? null : new SourceLocation(file.Path, 1);
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Comments)
+        {
+            await commentSession.DispatchAsync(new CommentCommand.SelectIndex(index));
+            var comment = commentSession.State.Comments[commentSession.State.SelectedIndex];
+            return new SourceLocation(comment.Path, 1);
+        }
+
+        await session.DispatchAsync(new ExplorerCommand.SelectIndex(index));
+        await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
+        return session.State.SourceLocation;
     }
 
     private static void ScrollPreview(Code code, PreviewAction action)
