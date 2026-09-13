@@ -11,6 +11,7 @@ using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Flags;
+using TerminalDotnet.Issues;
 using TerminalDotnet.Filters;
 using TerminalDotnet.Search;
 using TextMateSharp.Grammars;
@@ -24,6 +25,7 @@ internal sealed class TestRunnerApplication(
     ChangesetSession changesetSession,
     CommentSession commentSession,
     FlagSession flagSession,
+    IssueSession issueSession,
     string target,
     IFileOpener? editorLauncher = null)
 {
@@ -37,6 +39,7 @@ internal sealed class TestRunnerApplication(
     private const int MaxFilterChips = 4;
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int RowsBelowTheList = StatusRow + 1;
+    private const int IssueDetailRows = 4;
     private const string ConsoleDriver = "dotnet";
     private const int ClearChoice = 0;
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
@@ -187,7 +190,8 @@ internal sealed class TestRunnerApplication(
             changesetSession,
             session,
             target,
-            flagSession).LoadPendingAsync(
+            flagSession,
+            issueSession).LoadPendingAsync(
             () =>
             {
                 application.Invoke(() => Render(search, tests));
@@ -374,6 +378,12 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
+        if (shell.State.ActivePanel == PanelKind.Issues)
+        {
+            HandleIssueKey(application, key, tests, search);
+            return;
+        }
+
         if (shell.State.ActivePanel == PanelKind.Comments)
         {
             HandleCommentKey(application, key, tests, search);
@@ -534,6 +544,7 @@ internal sealed class TestRunnerApplication(
         : shell.State.ActivePanel switch
         {
             PanelKind.Changes => changesetSession.State.SearchQuery,
+            PanelKind.Issues => issueSession.State.SearchQuery,
             PanelKind.Comments => commentSession.State.SearchQuery,
             PanelKind.Flags => flagSession.State.SearchQuery,
             _ => session.State.SearchQuery
@@ -544,6 +555,7 @@ internal sealed class TestRunnerApplication(
         : shell.State.ActivePanel switch
         {
             PanelKind.Changes => changesetSession.DispatchAsync(new ChangesetCommand.Search(query)),
+            PanelKind.Issues => issueSession.DispatchAsync(new IssueCommand.Search(query)),
             PanelKind.Comments => commentSession.DispatchAsync(new CommentCommand.Search(query)),
             PanelKind.Flags => flagSession.DispatchAsync(new FlagCommand.Search(query)),
             _ => session.DispatchAsync(new ExplorerCommand.Search(query))
@@ -567,6 +579,7 @@ internal sealed class TestRunnerApplication(
         {
             PanelKind.Comments => commentSession.DispatchAsync(new CommentCommand.ClearSearch()),
             PanelKind.Flags => flagSession.DispatchAsync(new FlagCommand.ClearSearch()),
+            PanelKind.Issues => issueSession.DispatchAsync(new IssueCommand.ClearSearch()),
             _ => changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch())
         };
 
@@ -708,6 +721,44 @@ internal sealed class TestRunnerApplication(
 
         key.Handled = true;
         panelWork.Track(DispatchChangesetAsync(command, search, files));
+    }
+
+    private void HandleIssueKey(IApplication application, Key key, ListView rows, TextField search)
+    {
+        if (!rows.HasFocus) return;
+        var selected = issueSession.State.SelectedIndex < issueSession.State.Issues.Count
+            ? issueSession.State.Issues[issueSession.State.SelectedIndex]
+            : null;
+        var action = IssuePanelKeyBindings.ActionFor(key, selected, search.HasFocus);
+        if (action is IssuePanelAction.Edit edit)
+        {
+            key.Handled = true;
+            RequestOpen(application, edit.Path, edit.Line);
+            return;
+        }
+        if (action is IssuePanelAction.Preview preview)
+        {
+            key.Handled = true;
+            ShowPreview(application, preview.Path, preview.Line, search, rows);
+            return;
+        }
+        var command = action switch
+        {
+            IssuePanelAction.Copy => new IssueCommand.CopySelected(),
+            IssuePanelAction.Dispatch dispatch => dispatch.Command,
+            _ when Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K) => new IssueCommand.MoveUp(),
+            _ when Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J) => new IssueCommand.MoveDown(),
+            _ => null
+        };
+        if (command is null) return;
+        key.Handled = true;
+        panelWork.Track(DispatchIssueAsync(command, search, rows));
+    }
+
+    private async Task DispatchIssueAsync(IssueCommand command, TextField search, ListView rows)
+    {
+        await issueSession.DispatchAsync(command);
+        Render(search, rows);
     }
 
     private void HandleCommentKey(
@@ -1098,11 +1149,12 @@ internal sealed class TestRunnerApplication(
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill(),
+            Height = Dim.Fill(PreviewIssueDetails().Length > 0 ? IssueDetailRows : 0),
             Text = text,
             Language = LanguageFrom(path),
             SyntaxHighlighter = new TextMateSyntaxHighlighter(ThemeName.DarkPlus)
         };
+        var diagnostic = PreviewDiagnostic();
         code.GettingAttributeForRole += (_, args) =>
         {
             var background = args.Result?.Background ?? Color.Black;
@@ -1111,12 +1163,47 @@ internal sealed class TestRunnerApplication(
                 background);
             args.Handled = true;
         };
-        code.KeyDown += (_, key) => HandlePreviewKey(application, preview, code, key);
-        preview.Add(code);
+        code.KeyDown += (_, key) => HandlePreviewKey(application, preview, code, diagnostic, key);
+        preview.Add(code, diagnostic);
         OverThePanels(() => application.Run(preview));
         Render(search, rows);
         LeaveForTheEditor(application);
     }
+
+    private Label PreviewDiagnostic()
+    {
+        var text = PreviewIssueDetails();
+        var diagnostic = new Label
+        {
+            X = 0,
+            Y = Pos.AnchorEnd(IssueDetailRows),
+            Width = Dim.Fill(),
+            Height = IssueDetailRows,
+            Text = text,
+            Visible = text.Length > 0
+        };
+        diagnostic.TextFormatter.MultiLine = true;
+        diagnostic.TextFormatter.WordWrap = true;
+        diagnostic.GettingAttributeForRole += (_, args) =>
+        {
+            var background = args.Result?.Background ?? Color.Black;
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(
+                FileRowAppearance.ForegroundFor(SelectedIssueTone(), Color.White),
+                background);
+            args.Handled = true;
+        };
+        return diagnostic;
+    }
+
+    private string PreviewIssueDetails() => shell.State.ActivePanel == PanelKind.Issues
+        ? IssuePanelSnapshot.From(issueSession.State).SelectedDetails
+        : "";
+
+    private FileRowTone SelectedIssueTone() =>
+        issueSession.State.SelectedIndex < issueSession.State.Issues.Count &&
+        issueSession.State.Issues[issueSession.State.SelectedIndex].Severity == IssueSeverity.Warning
+            ? FileRowTone.Warning
+            : FileRowTone.Deleted;
 
     private string? ReadForPreview(IApplication application, string path)
     {
@@ -1251,7 +1338,12 @@ internal sealed class TestRunnerApplication(
         };
     }
 
-    private void HandlePreviewKey(IApplication application, Window preview, Code code, Key key)
+    private void HandlePreviewKey(
+        IApplication application,
+        Window preview,
+        Code code,
+        Label diagnostic,
+        Key key)
     {
         var action = PreviewKeyBindings.ActionFor(key, code.Viewport.Height);
         if (action is null)
@@ -1274,7 +1366,7 @@ internal sealed class TestRunnerApplication(
 
         if (action is PreviewAction.StepFile step)
         {
-            StepPreview(application, preview, code, step.Step);
+            StepPreview(application, preview, code, diagnostic, step.Step);
             return;
         }
 
@@ -1292,7 +1384,12 @@ internal sealed class TestRunnerApplication(
     /// result posted back to it would not be picked up until the reader pressed
     /// something else.
     /// </summary>
-    private void StepPreview(IApplication application, Window preview, Code code, int step)
+    private void StepPreview(
+        IApplication application,
+        Window preview,
+        Code code,
+        Label diagnostic,
+        int step)
     {
         var target = NextPreviewAsync(step).GetAwaiter().GetResult();
         if (target is null || target == previewing)
@@ -1300,13 +1397,14 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        ShowInPreview(application, preview, code, target);
+        ShowInPreview(application, preview, code, diagnostic, target);
     }
 
     private void ShowInPreview(
         IApplication application,
         Window preview,
         Code code,
+        Label diagnostic,
         SourceLocation target)
     {
         if (ReadForPreview(application, target.Path) is not { } text)
@@ -1318,6 +1416,9 @@ internal sealed class TestRunnerApplication(
         preview.Title = PreviewTitle(target.Path, target.HighlightLine);
         code.Language = LanguageFrom(target.Path);
         code.Text = text;
+        diagnostic.Text = PreviewIssueDetails();
+        diagnostic.Visible = diagnostic.Text.Length > 0;
+        code.Height = Dim.Fill(diagnostic.Visible ? IssueDetailRows : 0);
         code.ScrollVertical(-code.GetContentSize().Height);
         preview.SetNeedsDraw();
         application.LayoutAndDraw(true);
@@ -1344,6 +1445,7 @@ internal sealed class TestRunnerApplication(
         : shell.State.ActivePanel switch
         {
             PanelKind.Changes => changesetSession.State.Files.Count,
+            PanelKind.Issues => issueSession.State.Issues.Count,
             PanelKind.Comments => commentSession.State.Comments.Count,
             PanelKind.Flags => flagSession.State.Flags.Count,
             _ => session.State.VisibleNodes.Count
@@ -1354,6 +1456,7 @@ internal sealed class TestRunnerApplication(
         : shell.State.ActivePanel switch
         {
             PanelKind.Changes => changesetSession.State.SelectedIndex,
+            PanelKind.Issues => issueSession.State.SelectedIndex,
             PanelKind.Comments => commentSession.State.SelectedIndex,
             PanelKind.Flags => flagSession.State.SelectedIndex,
             _ => session.State.SelectedIndex
@@ -1375,6 +1478,13 @@ internal sealed class TestRunnerApplication(
             await changesetSession.DispatchAsync(new ChangesetCommand.SelectIndex(index));
             var file = changesetSession.State.Files[changesetSession.State.SelectedIndex];
             return file.Kind == ChangeKind.Deleted ? null : new SourceLocation(file.Path, 1);
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Issues)
+        {
+            await issueSession.DispatchAsync(new IssueCommand.SelectIndex(index));
+            var issue = issueSession.State.Issues[issueSession.State.SelectedIndex];
+            return new SourceLocation(issue.Path, issue.Line);
         }
 
         if (shell.State.ActivePanel == PanelKind.Comments)
@@ -1439,6 +1549,7 @@ internal sealed class TestRunnerApplication(
             target);
         workflow.OpenAsync(openPath, openLine).GetAwaiter().GetResult();
         flagSession.LoadAsync(target).GetAwaiter().GetResult();
+        issueSession.LoadAsync(target).GetAwaiter().GetResult();
     }
 
     private void Render(TextField search, ListView tests)
@@ -1451,7 +1562,8 @@ internal sealed class TestRunnerApplication(
             session.State,
             commentSession.State,
             search.HasFocus,
-            flagSession.State);
+            flagSession.State,
+            issueSession.State);
         ShowShortcuts();
         if (fileExplorer is not null)
         {
@@ -1462,6 +1574,12 @@ internal sealed class TestRunnerApplication(
         if (shell.State.ActivePanel == PanelKind.Changes)
         {
             RenderChanges(search, tests);
+            return;
+        }
+
+        if (shell.State.ActivePanel == PanelKind.Issues)
+        {
+            RenderIssues(search, tests);
             return;
         }
 
@@ -1563,6 +1681,16 @@ internal sealed class TestRunnerApplication(
             snapshot.StatusSegments,
             [],
             snapshot.EmptyMessage);
+    }
+
+    private void RenderIssues(TextField search, ListView rows)
+    {
+        var snapshot = IssuePanelSnapshot.From(issueSession.State);
+        var layout = IssuePanelLayout.From(snapshot, rows.Viewport.Width);
+        rows.Title = "Issues";
+        RenderRows(search, rows, snapshot.SearchQuery, snapshot.Issues.Count, layout,
+            () => [.. layout.Rows.Select(row => (row.Text, row.Tone))], layout.SelectedRowIndex,
+            snapshot.StatusSegments, snapshot.Filters, snapshot.EmptyMessage);
     }
 
     private void RenderComments(TextField search, ListView files)

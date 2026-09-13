@@ -11,6 +11,7 @@ public static class PanelKeys
         PanelKind.Explorer => "E",
         PanelKind.Files => "F",
         PanelKind.Tests => "T",
+        PanelKind.Issues => "I",
         PanelKind.Changes => "G",
         PanelKind.Comments => "C",
         _ => "L"

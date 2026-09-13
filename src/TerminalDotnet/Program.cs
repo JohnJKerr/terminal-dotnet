@@ -3,6 +3,7 @@ using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Flags;
+using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 
@@ -22,6 +23,8 @@ var flagSession = new FlagSession(new FileFlagBackend(folderBackend));
 var commentSession = new CommentSession(
     new CommandClipboard(commandRunner, Path.GetDirectoryName(Path.GetFullPath(target))!),
     new FileCommentStore());
+var clipboard = new CommandClipboard(commandRunner, Path.GetDirectoryName(Path.GetFullPath(target))!);
+var issueSession = new IssueSession(new DotnetBuildIssueBackend(commandRunner), clipboard);
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
     new FileTestSourceLocator(),
@@ -38,6 +41,7 @@ new TestRunnerApplication(
     changesetSession,
     commentSession,
     flagSession,
+    issueSession,
     target,
     editorLauncher).Run();
 return 0;

@@ -8,7 +8,8 @@ public enum FileRowTone
     Neutral,
     Modified,
     New,
-    Deleted
+    Deleted,
+    Warning
 }
 
 public sealed record FilePanelRow(string Text, FileRowTone Tone);
@@ -66,6 +67,7 @@ public static class FileRowAppearance
         FileRowTone.Modified => Color.BrightBlue,
         FileRowTone.New => Color.BrightGreen,
         FileRowTone.Deleted => Color.BrightRed,
+        FileRowTone.Warning => Color.BrightYellow,
         _ => unchanged
     };
 }

@@ -5,6 +5,7 @@ public enum PanelKind
     Explorer,
     Files,
     Tests,
+    Issues,
     Changes,
     Comments,
     Flags
@@ -23,7 +24,7 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
 public sealed class PanelShell
 {
     public PanelShellState State { get; private set; } =
-        new(["Explorer", "Files", "Tests", "Changes", "Comments", "Flags"], PanelKind.Explorer);
+        new(["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"], PanelKind.Explorer);
 
     public void Select(int index)
     {
