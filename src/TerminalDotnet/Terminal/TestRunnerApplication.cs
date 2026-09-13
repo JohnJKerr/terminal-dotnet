@@ -50,7 +50,7 @@ internal sealed class TestRunnerApplication(
     private bool openSourceRequested;
     private string? openPath;
     private int openLine = 1;
-    private bool previewVisible;
+    private bool dialogVisible;
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
     private IReadOnlyList<FileStatusSegment> statusSegments = [];
@@ -339,7 +339,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (previewVisible)
+        if (dialogVisible)
         {
             return;
         }
@@ -739,12 +739,12 @@ internal sealed class TestRunnerApplication(
     private void ClearComments(IApplication application, TextField search, ListView files)
     {
         var count = commentSession.State.Comments.Count;
-        var confirmed = MessageBox.Query(
+        var confirmed = OverThePanels(() => MessageBox.Query(
             application,
             "Clear comments",
             $"Clear all {count} comments? This cannot be undone.",
             "Cancel",
-            "Clear");
+            "Clear"));
         if (confirmed != 1)
         {
             return;
@@ -755,7 +755,8 @@ internal sealed class TestRunnerApplication(
 
     private void SaveComments(IApplication application, TextField search, ListView files)
     {
-        var path = SavePrompt.Ask(application, "Save comments", SuggestedCommentPath());
+        var path = OverThePanels(
+            () => SavePrompt.Ask(application, "Save comments", SuggestedCommentPath()));
         if (path is null)
         {
             return;
@@ -792,7 +793,8 @@ internal sealed class TestRunnerApplication(
         TextField search,
         ListView files)
     {
-        var written = CommentDialog.Ask(application, selected.DisplayPath, selected.Text);
+        var written = OverThePanels(
+            () => CommentDialog.Ask(application, selected.DisplayPath, selected.Text));
         if (written is null)
         {
             return;
@@ -944,7 +946,7 @@ internal sealed class TestRunnerApplication(
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
-            MessageBox.ErrorQuery(application, "Preview", exception.Message, "Ok");
+            OverThePanels(() => MessageBox.ErrorQuery(application, "Preview", exception.Message, "Ok"));
             return;
         }
 
@@ -977,15 +979,7 @@ internal sealed class TestRunnerApplication(
         };
         code.KeyDown += (_, key) => HandlePreviewKey(application, code, key, path, line);
         preview.Add(code);
-        previewVisible = true;
-        try
-        {
-            application.Run(preview);
-        }
-        finally
-        {
-            previewVisible = false;
-        }
+        OverThePanels(() => application.Run(preview));
 
         LeaveForTheEditor(application);
     }
@@ -1007,7 +1001,8 @@ internal sealed class TestRunnerApplication(
     private void CommentOn(IApplication application, string path)
     {
         var displayPath = DisplayPathFor(path);
-        var written = CommentDialog.Ask(application, displayPath, commentSession.Against(path));
+        var written = OverThePanels(
+            () => CommentDialog.Ask(application, displayPath, commentSession.Against(path)));
         if (written is null)
         {
             return;
@@ -1069,16 +1064,33 @@ internal sealed class TestRunnerApplication(
         SetBlackBackground(dialog);
         SetBlackBackground(text);
         dialog.Add(text);
-        previewVisible = true;
+        OverThePanels(() => application.Run(dialog));
+    }
+
+    /// <summary>
+    /// Runs a dialog over the panels. The shell listens for keys across the
+    /// whole application, so the panels are told to stand down for as long as
+    /// something is open in front of them; otherwise a q typed into a comment
+    /// would quit rather than be written.
+    /// </summary>
+    private T OverThePanels<T>(Func<T> show)
+    {
+        dialogVisible = true;
         try
         {
-            application.Run(dialog);
+            return show();
         }
         finally
         {
-            previewVisible = false;
+            dialogVisible = false;
         }
     }
+
+    private void OverThePanels(Action show) => OverThePanels<object?>(() =>
+    {
+        show();
+        return null;
+    });
 
     private static void SetBlackBackground(View view)
     {
