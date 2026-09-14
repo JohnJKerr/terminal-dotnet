@@ -56,6 +56,13 @@ internal sealed class TestRunnerApplication(
     private readonly PanelShell shell = new();
     private readonly BackgroundWork panelWork = new();
     private readonly EditBurst outsideEdits = new();
+    private readonly EditsSinceTheBuild editsSinceTheBuild = new();
+    private readonly Stopwatch sinceRebuildStarted = new();
+    private const int ToastPadding = 4;
+    private View? toast;
+    private Label? toastText;
+    private Toast? shownToast;
+    private int toastsShown;
     private readonly Stopwatch sinceWatching = new();
     private bool openSourceRequested;
     private bool panelsWereEdited;
@@ -102,7 +109,11 @@ internal sealed class TestRunnerApplication(
         sinceWatching.Restart();
         workspaceWatcher.Watch(
             Path.GetDirectoryName(Path.GetFullPath(target))!,
-            path => outsideEdits.Noticed(path, sinceWatching.Elapsed));
+            path =>
+            {
+                outsideEdits.Noticed(path, sinceWatching.Elapsed);
+                editsSinceTheBuild.Noticed(path);
+            });
     }
 
     private bool RunTerminal()
@@ -136,6 +147,8 @@ internal sealed class TestRunnerApplication(
         window.Add(panels, search, tests, emptyState, testStatus, shortcuts);
         window.Add([.. segmentLabels]);
         window.Add([.. filterLabels]);
+        toast = Toast();
+        window.Add(toast);
         search.ValueChanged += async (_, _) =>
         {
             await SearchAsync(search.Text);
@@ -463,18 +476,16 @@ internal sealed class TestRunnerApplication(
                 Render(search, tests);
                 return;
             case ShellAction.SelectFocusedPanel:
-                shell.Select(panels.SelectedItem ?? 0);
-                ShowActivePanel(panels, search, tests);
+                OpenPanel(application, panels.SelectedItem ?? 0, panels, search, tests);
                 return;
             case ShellAction.SelectPanel selected:
-                shell.Select((int)selected.Panel);
-                ShowActivePanel(panels, search, tests);
+                OpenPanel(application, (int)selected.Panel, panels, search, tests);
                 return;
             case ShellAction.ShowCommands:
                 ShowCommands(application);
                 return;
             case ShellAction.Rebuild:
-                Rebuild(application, panels, search, tests);
+                Rebuild(application, search, tests, askedFor: true);
                 return;
             case ShellAction.Dismiss:
                 return;
@@ -507,6 +518,25 @@ internal sealed class TestRunnerApplication(
         if (chosen != KeepChoice)
         {
             application.RequestStop();
+        }
+    }
+
+    /// <summary>The tests and the issues describe the last build, so opening
+    /// either after the tree has been edited sets a rebuild off rather than
+    /// showing the reader what the project used to be.</summary>
+    private void OpenPanel(
+        IApplication application,
+        int index,
+        ListView panels,
+        TextField search,
+        ListView tests)
+    {
+        var from = shell.State.ActivePanel;
+        shell.Select(index);
+        ShowActivePanel(panels, search, tests);
+        if (editsSinceTheBuild.WorthRebuildingOnOpening(from, shell.State.ActivePanel))
+        {
+            Rebuild(application, search, tests, askedFor: false);
         }
     }
 
@@ -1751,34 +1781,135 @@ internal sealed class TestRunnerApplication(
 
     /// <summary>
     /// The issues and the tests are the panels an outside edit does not
-    /// reload, because both have to build before they can answer, so the
-    /// reader asks for the rebuild themselves. The issues are shown as it
-    /// starts, because a reader who asks what compiles is asking to be told,
-    /// and from any other panel the answer would land out of sight.
+    /// reload, because both have to build before they can answer. The reader
+    /// stays on the panel they were on, and the rebuild is told in a toast over
+    /// it. A rebuild set off by opening a panel keeps quiet when it cannot
+    /// start: only a reader who pressed for one is owed the reason.
     /// </summary>
-    private void Rebuild(
-        IApplication application,
-        ListView panels,
-        TextField search,
-        ListView rows)
+    private void Rebuild(IApplication application, TextField search, ListView rows, bool askedFor)
     {
         var rebuild = new ProjectRebuild(issueSession, session, target);
-        if (!rebuild.Start())
+        var started = rebuild.Start();
+        if (started == RebuildStart.WaitingOnTheRun && askedFor)
+        {
+            ShowToast(application, RebuildToast.WaitingOnTheRun());
+            return;
+        }
+
+        if (started != RebuildStart.Started)
         {
             return;
         }
 
-        shell.Select((int)PanelKind.Issues);
-        ShowActivePanel(panels, search, rows);
+        editsSinceTheBuild.Built();
+        Render(search, rows);
         sinceLoadStarted.Restart();
         TurnActivityMarker(application, search, rows);
-        panelWork.Track(rebuild.RunAsync(
+        sinceRebuildStarted.Restart();
+        ShowToast(application, RebuildToast.Rebuilding(TimeSpan.Zero));
+        TurnRebuildToast(application);
+        panelWork.Track(RebuildAsync(application, rebuild, search, rows, loadCancellation!.Token));
+    }
+
+    private async Task RebuildAsync(
+        IApplication application,
+        ProjectRebuild rebuild,
+        TextField search,
+        ListView rows,
+        CancellationToken cancellationToken)
+    {
+        await rebuild.RunAsync(
             () =>
             {
                 application.Invoke(() => Render(search, rows));
                 return Task.CompletedTask;
             },
-            loadCancellation!.Token));
+            cancellationToken);
+        application.Invoke(() => ShowToast(
+            application,
+            RebuildToast.Finished(issueSession.State, session.State)));
+    }
+
+    /// <summary>Turns the marker in the toast for as long as the rebuild is out,
+    /// asking for the draw because nothing else wakes the loop meanwhile.
+    /// </summary>
+    private void TurnRebuildToast(IApplication application) =>
+        application.AddTimeout(ActivityMarker.FrameDuration, () =>
+        {
+            if (shownToast is not { Tone: ToastTone.Working })
+            {
+                return false;
+            }
+
+            ShowToastText(RebuildToast.Rebuilding(sinceRebuildStarted.Elapsed));
+            application.LayoutAndDraw(true);
+            return true;
+        });
+
+    private View Toast()
+    {
+        toastText = new Label { X = 1, Y = 0 };
+        toastText.GettingAttributeForRole += (_, args) =>
+        {
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(ToastColor(), Color.Black);
+            args.Handled = true;
+        };
+        var shown = new View
+        {
+            Y = 1,
+            Height = 3,
+            BorderStyle = LineStyle.Rounded,
+            CanFocus = false,
+            TabStop = TabBehavior.NoStop,
+            Visible = false
+        };
+        SetBlackBackground(shown);
+        shown.Add(toastText);
+        return shown;
+    }
+
+    private Color ToastColor() => shownToast?.Tone switch
+    {
+        ToastTone.Succeeded => Color.BrightGreen,
+        ToastTone.Failed => Color.BrightRed,
+        ToastTone.Waiting => Color.BrightYellow,
+        _ => Color.White
+    };
+
+    /// <summary>Each toast replaces the one before it, so a fade scheduled for
+    /// an older toast must not take down the one showing now.</summary>
+    private void ShowToast(IApplication application, Toast shown)
+    {
+        var showing = ++toastsShown;
+        ShowToastText(shown);
+        toast!.Visible = true;
+        application.LayoutAndDraw(true);
+        if (!shown.FadesAway)
+        {
+            return;
+        }
+
+        application.AddTimeout(RebuildToast.FadeAfter, () =>
+        {
+            if (showing == toastsShown)
+            {
+                toast.Visible = false;
+                shownToast = null;
+                application.LayoutAndDraw(true);
+            }
+
+            return false;
+        });
+    }
+
+    private void ShowToastText(Toast shown)
+    {
+        shownToast = shown;
+        var width = shown.Text.Length + ToastPadding;
+        toastText!.Text = shown.Text;
+        toastText.Width = shown.Text.Length;
+        toast!.Width = width;
+        toast.X = Pos.AnchorEnd(width + ContentInset);
     }
 
     /// <summary>The issues are left out: an agent saves often enough that a
@@ -1820,6 +1951,7 @@ internal sealed class TestRunnerApplication(
 
         panelsWereEdited = false;
         outsideEdits.Forget();
+        editsSinceTheBuild.Noticed();
         panelWork.Track(RefreshEditedPanelsAsync(application, search, tests, loadCancellation!.Token));
     }
 

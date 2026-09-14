@@ -79,22 +79,6 @@ public sealed class WhenRebuildingTheIssues
     }
 
     [Fact]
-    public async Task A_rebuild_says_it_is_building_while_it_runs()
-    {
-        // Arrange
-        var session = new IssueSession(new StubIssueBackend(), new SilentClipboard());
-        await session.LoadAsync("App.csproj");
-
-        // Act
-        session.Rebuilding();
-
-        // Assert
-        Assert.Contains(
-            IssuePanelSnapshot.From(session.State).StatusSegments,
-            segment => segment.Text == "Building");
-    }
-
-    [Fact]
     public async Task It_keeps_the_issues_from_the_last_build_in_front_of_the_reader()
     {
         // Arrange
@@ -106,22 +90,6 @@ public sealed class WhenRebuildingTheIssues
 
         // Assert
         Assert.Equal(2, session.State.Issues.Count);
-    }
-
-    [Fact]
-    public async Task It_stops_saying_it_is_building_once_the_build_lands()
-    {
-        // Arrange
-        var session = new IssueSession(new StubIssueBackend(), new SilentClipboard());
-        session.Rebuilding();
-
-        // Act
-        await session.LoadAsync("App.csproj");
-
-        // Assert
-        Assert.DoesNotContain(
-            IssuePanelSnapshot.From(session.State).StatusSegments,
-            segment => segment.Text == "Building");
     }
 
     [Fact]

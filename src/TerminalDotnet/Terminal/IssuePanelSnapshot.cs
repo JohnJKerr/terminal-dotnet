@@ -50,7 +50,6 @@ public sealed record IssuePanelSnapshot(
         state.Issues, state.SelectedIndex, state.SearchQuery,
         [new($"{state.Issues.Count(x => x.Severity == IssueSeverity.Error)} Errors", FileRowTone.Deleted),
          new($"{state.Issues.Count(x => x.Severity == IssueSeverity.Warning)} Warnings", FileRowTone.Warning),
-         .. state.Loading ? new[] { new FileStatusSegment("Building", FileRowTone.Neutral) } : [],
          .. state.Notice.Length == 0 ? [] : new[] { new FileStatusSegment(state.Notice, FileRowTone.Neutral) }],
         [new("1. Errors", state.ActiveFilter == IssueFilter.Errors),
          new("2. Warnings", state.ActiveFilter == IssueFilter.Warnings)],

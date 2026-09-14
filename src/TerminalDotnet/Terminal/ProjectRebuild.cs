@@ -3,6 +3,21 @@ using TerminalDotnet.Issues;
 
 namespace TerminalDotnet.Terminal;
 
+/// <summary>Whether asking for a rebuild started one, and if not, which
+/// panel holds the reason.</summary>
+public enum RebuildStart
+{
+    Started,
+
+    /// <summary>The build or discovery is already out; the panels already
+    /// say so.</summary>
+    AlreadyRebuilding,
+
+    /// <summary>A test run is using the build output a rebuild would replace.
+    /// </summary>
+    WaitingOnTheRun
+}
+
 /// <summary>
 /// A rebuild answers two questions: does it compile, and what tests does it
 /// hold. Discovery builds too, so the two run one after the other rather than
@@ -16,16 +31,21 @@ public sealed class ProjectRebuild(IssueSession issues, TestExplorerSession test
     /// rebuild start. Refused while either is already busy: a second build
     /// would only queue behind the first, and a run would lose its output.
     /// </summary>
-    public bool Start()
+    public RebuildStart Start()
     {
-        if (issues.State.Loading || tests.State.Status is ExplorerStatus.Loading or ExplorerStatus.Running)
+        if (tests.State.Status == ExplorerStatus.Running)
         {
-            return false;
+            return RebuildStart.WaitingOnTheRun;
+        }
+
+        if (issues.State.Loading || tests.State.Status == ExplorerStatus.Loading)
+        {
+            return RebuildStart.AlreadyRebuilding;
         }
 
         issues.Rebuilding();
         tests.Rediscovering();
-        return true;
+        return RebuildStart.Started;
     }
 
     /// <summary>Reports each panel as it lands, because the issues are ready

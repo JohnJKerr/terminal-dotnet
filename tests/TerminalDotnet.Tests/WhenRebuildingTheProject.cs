@@ -117,25 +117,64 @@ public sealed class WhenRebuildingTheProject
     }
 
     [Fact]
-    public async Task It_will_not_start_while_the_tests_are_running()
+    public async Task It_waits_on_a_run_the_reader_already_started()
     {
         // Arrange
-        var issues = new IssueSession(new LoggingIssueBackend([], []), new SilentClipboard());
-        var tests = new TestExplorerSession(new RunningTestBackend());
-        await issues.LoadAsync("Shop.sln");
-        await tests.LoadAsync("Shop.sln");
-        _ = tests.DispatchAsync(new ExplorerCommand.RunSelected());
+        var (issues, tests) = await MidRunAsync();
 
         // Act
         var started = new ProjectRebuild(issues, tests, "Shop.sln").Start();
 
         // Assert
-        Assert.False(started);
+        Assert.Equal(RebuildStart.WaitingOnTheRun, started);
     }
 
-    private sealed class RunningTestBackend : ITestBackend
+    [Fact]
+    public async Task A_rebuild_waiting_on_a_run_does_not_say_it_is_building()
     {
-        private readonly TaskCompletionSource<TestRun> never = new();
+        // Arrange
+        var (issues, tests) = await MidRunAsync();
+
+        // Act
+        new ProjectRebuild(issues, tests, "Shop.sln").Start();
+
+        // Assert
+        Assert.False(issues.State.Loading);
+    }
+
+    [Fact]
+    public async Task A_rebuild_already_underway_is_not_started_again()
+    {
+        // Arrange
+        var issues = new IssueSession(new LoggingIssueBackend([], []), new SilentClipboard());
+        var tests = new TestExplorerSession(new LoggingTestBackend([]));
+        await issues.LoadAsync("Shop.sln");
+        await tests.LoadAsync("Shop.sln");
+        new ProjectRebuild(issues, tests, "Shop.sln").Start();
+
+        // Act
+        var started = new ProjectRebuild(issues, tests, "Shop.sln").Start();
+
+        // Assert
+        Assert.Equal(RebuildStart.AlreadyRebuilding, started);
+    }
+
+    private static async Task<(IssueSession, TestExplorerSession)> MidRunAsync()
+    {
+        var issues = new IssueSession(new LoggingIssueBackend([], []), new SilentClipboard());
+        var tests = new TestExplorerSession(new HeldRun());
+        await issues.LoadAsync("Shop.sln");
+        await tests.LoadAsync("Shop.sln");
+        await tests.DispatchAsync(new ExplorerCommand.SelectIndex(tests.State.VisibleNodes.Count - 1));
+        _ = tests.DispatchAsync(new ExplorerCommand.RunSelected());
+        return (issues, tests);
+    }
+
+    /// <summary>A run that stays out at `dotnet test`, so the rebuild can be
+    /// asked for part-way through it.</summary>
+    private sealed class HeldRun : ITestBackend
+    {
+        private readonly TaskCompletionSource<TestRun> finished = new();
 
         public Task<IReadOnlyList<TestCase>> DiscoverAsync(
             string target,
@@ -145,7 +184,7 @@ public sealed class WhenRebuildingTheProject
         public Task<TestRun> RunAsync(
             IReadOnlyCollection<TestCase> tests,
             CancellationToken cancellationToken = default) =>
-            never.Task;
+            finished.Task;
     }
 
     private static ProjectRebuild Rebuild(List<string> log, IReadOnlyList<CompilationIssue> found) => new(
