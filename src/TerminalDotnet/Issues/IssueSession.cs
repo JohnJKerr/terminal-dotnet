@@ -8,17 +8,42 @@ public sealed class IssueSession(IIssueBackend backend, ICommentClipboard clipbo
     private IReadOnlyList<CompilationIssue> discovered = [];
     public IssueState State { get; private set; } = new([]);
 
+    /// <summary>Stands the panel back up as building. The issues the last build
+    /// found stay in front of the reader while it runs, because a build takes
+    /// long enough that emptying the panel would leave them with nothing to read.
+    /// </summary>
+    public void Rebuilding() => State = State with { Loading = true, Notice = "" };
+
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
         try
         {
+            var standingOn = Selected();
             discovered = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
-            State = State with { Issues = Matching(), SelectedIndex = 0, Loading = false };
+            State = State with { Issues = Matching(), Loading = false, Notice = "" };
+            State = State with { SelectedIndex = RowFor(standingOn) };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            State = State with { Issues = [], Loading = false, Notice = exception.Message };
+            State = State with { Issues = [], SelectedIndex = 0, Loading = false, Notice = exception.Message };
         }
+    }
+
+    private CompilationIssue? Selected() => State.SelectedIndex < State.Issues.Count
+        ? State.Issues[State.SelectedIndex]
+        : null;
+
+    /// <summary>A rebuild can land while the reader is part-way down the list,
+    /// so the issue they were on is found again wherever the build moved it to.
+    /// </summary>
+    private int RowFor(CompilationIssue? standingOn)
+    {
+        var moved = standingOn is null
+            ? -1
+            : State.Issues.ToList().FindIndex(issue => issue.Details == standingOn.Details);
+        return moved >= 0
+            ? moved
+            : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, State.Issues.Count - 1));
     }
 
     public async Task DispatchAsync(IssueCommand command, CancellationToken cancellationToken = default)

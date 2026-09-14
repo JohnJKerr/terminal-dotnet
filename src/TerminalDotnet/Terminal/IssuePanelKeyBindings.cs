@@ -9,6 +9,7 @@ public abstract record IssuePanelAction
     public sealed record Edit(string Path, int Line) : IssuePanelAction;
     public sealed record Preview(string Path, int Line) : IssuePanelAction;
     public sealed record Copy : IssuePanelAction;
+    public sealed record Rebuild : IssuePanelAction;
     public sealed record Dispatch(IssueCommand Command) : IssuePanelAction;
 }
 
@@ -19,6 +20,9 @@ public static class IssuePanelKeyBindings
         if (searchActive) return null;
         if (!key.IsShift && key.NoShift.KeyCode == KeyCode.D1) return new IssuePanelAction.Dispatch(new IssueCommand.ToggleErrors());
         if (!key.IsShift && key.NoShift.KeyCode == KeyCode.D2) return new IssuePanelAction.Dispatch(new IssueCommand.ToggleWarnings());
+        // A build that found nothing still leaves the panel worth rebuilding,
+        // so this answers before the keys that need a row to stand on.
+        if (!key.IsShift && key.NoShift.KeyCode == KeyCode.R) return new IssuePanelAction.Rebuild();
         if (issue is null) return null;
         return key.NoShift.KeyCode switch
         {

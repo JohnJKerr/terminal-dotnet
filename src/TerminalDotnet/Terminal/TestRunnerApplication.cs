@@ -771,6 +771,12 @@ internal sealed class TestRunnerApplication(
             ShowPreview(application, preview.Path, preview.Line, search, rows);
             return;
         }
+        if (action is IssuePanelAction.Rebuild)
+        {
+            key.Handled = true;
+            RebuildIssues(application, search, rows);
+            return;
+        }
         var command = action switch
         {
             IssuePanelAction.Copy => new IssueCommand.CopySelected(),
@@ -1744,6 +1750,33 @@ internal sealed class TestRunnerApplication(
 
             return true;
         });
+    }
+
+    /// <summary>
+    /// The issues are the one panel an outside edit does not reload, so the
+    /// reader asks for the build themselves. Asking again while one is already
+    /// running would only queue a second build behind the first.
+    /// </summary>
+    private void RebuildIssues(IApplication application, TextField search, ListView rows)
+    {
+        if (issueSession.State.Loading)
+        {
+            return;
+        }
+
+        issueSession.Rebuilding();
+        Render(search, rows);
+        panelWork.Track(RebuildIssuesAsync(application, search, rows, loadCancellation!.Token));
+    }
+
+    private async Task RebuildIssuesAsync(
+        IApplication application,
+        TextField search,
+        ListView rows,
+        CancellationToken cancellationToken)
+    {
+        await issueSession.LoadAsync(target, cancellationToken);
+        application.Invoke(() => Render(search, rows));
     }
 
     /// <summary>The issues are left out: an agent saves often enough that a

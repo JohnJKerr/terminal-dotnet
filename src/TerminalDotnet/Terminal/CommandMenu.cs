@@ -115,6 +115,7 @@ public static class CommandMenu
         new("Enter/e", "edit the issue's file"),
         new("p", "preview the issue's file"),
         new("y", "copy the issue"),
+        new("r", "rebuild"),
         new("1", "filter errors"),
         new("2", "filter warnings")
     ];
