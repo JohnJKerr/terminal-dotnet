@@ -343,7 +343,7 @@ public sealed class WhenDiscoveringProjectFiles
                 .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
 
             // Assert
-            Assert.Single(files.Where(file => Path.GetFileName(file.Path) == "Gone.cs"));
+            Assert.Single(files, file => Path.GetFileName(file.Path) == "Gone.cs");
         }
         finally
         {
