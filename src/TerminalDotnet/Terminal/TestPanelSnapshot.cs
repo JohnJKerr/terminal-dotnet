@@ -39,9 +39,10 @@ public sealed record TestPanelSnapshot(
 
     // Discovery builds the solution before it can list anything, so the panel
     // says what it is waiting for, with a marker that turns, rather than
-    // sitting blank or claiming there are no tests.
+    // sitting blank or claiming there are no tests. A rediscovery keeps the
+    // tree it had, and the message is not laid over it.
     private static string EmptyMessageFrom(ExplorerState state, TimeSpan elapsed) =>
-        state.Status == ExplorerStatus.Loading
+        state.Status == ExplorerStatus.Loading && state.VisibleNodes.Count == 0
             ? ActivityMarker.Marking(state.Message, elapsed)
             : PanelEmptyState.For(
                 "tests",
@@ -59,7 +60,8 @@ public sealed record TestPanelSnapshot(
             return diagnostic;
         }
 
-        if (state.LastRun is null || state.Status == ExplorerStatus.Running)
+        if (state.LastRun is null ||
+            state.Status is ExplorerStatus.Running or ExplorerStatus.Loading)
         {
             return state.Message;
         }

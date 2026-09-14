@@ -22,6 +22,33 @@ public sealed class TestExplorerSession(
     public ExplorerState State { get; private set; } =
         new(ExplorerStatus.Loading, [], 0, "Discovering tests...");
 
+    private const string DiscoveringMessage = "Discovering tests...";
+
+    private ExplorerState? beforeRediscovery;
+
+    /// <summary>Stands the tree back up as discovering. The tree the last
+    /// discovery found stays in front of the reader while it runs, because
+    /// discovery builds first and emptying the panel for that long would leave
+    /// them with nothing to read.</summary>
+    public void Rediscovering()
+    {
+        beforeRediscovery = State;
+        State = State with { Status = ExplorerStatus.Loading, Message = DiscoveringMessage };
+    }
+
+    /// <summary>Puts the tree back as the last discovery left it, for when the
+    /// rediscovery it was stood up for is not going to happen.</summary>
+    public void LeaveAsDiscovered()
+    {
+        if (beforeRediscovery is not { } before)
+        {
+            return;
+        }
+
+        State = State with { Status = before.Status, Message = before.Message };
+        beforeRediscovery = null;
+    }
+
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
         try
@@ -38,19 +65,36 @@ public sealed class TestExplorerSession(
         string target,
         CancellationToken cancellationToken)
     {
+        var standingOn = SelectedNodeId();
         var tests = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
         discoveredTests = tests;
         updatedSuites = await UpdatedSuitesAsync(target, cancellationToken);
+        beforeRediscovery = null;
 
         // The panels are open while discovery runs, so a search or filter
-        // entered in the meantime survives the tests arriving.
+        // entered in the meantime survives the tests arriving, and a reader
+        // who asked for a rediscovery keeps the row they were standing on.
+        var nodes = VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter));
         return State with
         {
             Status = ExplorerStatus.Ready,
-            VisibleNodes = VisibleNodes(TestsMatching(State.SearchQuery, State.ActiveFilter)),
-            SelectedIndex = 0,
+            VisibleNodes = nodes,
+            SelectedIndex = RowFor(standingOn, nodes),
             Message = $"Ready — {tests.Count} tests discovered"
         };
+    }
+
+    private string? SelectedNodeId() => State.SelectedIndex < State.VisibleNodes.Count
+        ? NodeId(State.VisibleNodes[State.SelectedIndex])
+        : null;
+
+    /// <summary>The row the reader was on, wherever the rediscovery moved it
+    /// to. A row it took away leaves them where they were standing instead.
+    /// </summary>
+    private int RowFor(string? nodeId, IReadOnlyList<VisibleTestNode> nodes)
+    {
+        var moved = nodeId is null ? -1 : nodes.Select(NodeId).ToList().IndexOf(nodeId);
+        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, nodes.Count - 1));
     }
 
     public Task DispatchAsync(ExplorerCommand command, CancellationToken cancellationToken = default) =>

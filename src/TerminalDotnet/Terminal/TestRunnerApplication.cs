@@ -179,7 +179,7 @@ internal sealed class TestRunnerApplication(
     {
         loadCancellation = new CancellationTokenSource();
         sinceLoadStarted.Restart();
-        TurnActivityMarker(application);
+        TurnActivityMarker(application, search, tests);
         panelWork.Track(FillPanelsAsync(application, search, tests, loadCancellation.Token));
     }
 
@@ -189,7 +189,7 @@ internal sealed class TestRunnerApplication(
     /// draw is asked for explicitly because nothing else wakes the loop while
     /// the reader is waiting.
     /// </summary>
-    private void TurnActivityMarker(IApplication application) =>
+    private void TurnActivityMarker(IApplication application, TextField search, ListView tests) =>
         application.AddTimeout(ActivityMarker.FrameDuration, () =>
         {
             if (session.State.Status != ExplorerStatus.Loading)
@@ -203,7 +203,7 @@ internal sealed class TestRunnerApplication(
                 return true;
             }
 
-            ShowEmptyState(ActivityMarker.Marking(session.State.Message, sinceLoadStarted.Elapsed));
+            ShowEmptyState(TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed).EmptyMessage);
             application.LayoutAndDraw(true);
             return true;
         });
@@ -474,7 +474,7 @@ internal sealed class TestRunnerApplication(
                 ShowCommands(application);
                 return;
             case ShellAction.Rebuild:
-                RebuildIssues(application, panels, search, tests);
+                Rebuild(application, panels, search, tests);
                 return;
             case ShellAction.Dismiss:
                 return;
@@ -1750,37 +1750,35 @@ internal sealed class TestRunnerApplication(
     }
 
     /// <summary>
-    /// The issues are the one panel an outside edit does not reload, so the
-    /// reader asks for the build themselves. The panel it reports into is shown
-    /// as the build starts, because a reader who asks what compiles is asking
-    /// to be told, and from any other panel the answer would land out of sight.
-    /// Asking again while a build is running would only queue a second behind it.
+    /// The issues and the tests are the panels an outside edit does not
+    /// reload, because both have to build before they can answer, so the
+    /// reader asks for the rebuild themselves. The issues are shown as it
+    /// starts, because a reader who asks what compiles is asking to be told,
+    /// and from any other panel the answer would land out of sight.
     /// </summary>
-    private void RebuildIssues(
+    private void Rebuild(
         IApplication application,
         ListView panels,
         TextField search,
         ListView rows)
     {
-        if (issueSession.State.Loading)
+        var rebuild = new ProjectRebuild(issueSession, session, target);
+        if (!rebuild.Start())
         {
             return;
         }
 
-        issueSession.Rebuilding();
         shell.Select((int)PanelKind.Issues);
         ShowActivePanel(panels, search, rows);
-        panelWork.Track(RebuildIssuesAsync(application, search, rows, loadCancellation!.Token));
-    }
-
-    private async Task RebuildIssuesAsync(
-        IApplication application,
-        TextField search,
-        ListView rows,
-        CancellationToken cancellationToken)
-    {
-        await issueSession.LoadAsync(target, cancellationToken);
-        application.Invoke(() => Render(search, rows));
+        sinceLoadStarted.Restart();
+        TurnActivityMarker(application, search, rows);
+        panelWork.Track(rebuild.RunAsync(
+            () =>
+            {
+                application.Invoke(() => Render(search, rows));
+                return Task.CompletedTask;
+            },
+            loadCancellation!.Token));
     }
 
     /// <summary>The issues are left out: an agent saves often enough that a
