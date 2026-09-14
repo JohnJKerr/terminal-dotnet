@@ -68,6 +68,7 @@ public static class CommandMenu
         new("s", "search the active panel"),
         new("Enter", "leave the search, keeping it"),
         new("Esc", "close what is open, or clear the search"),
+        new("Ctrl+R", "rebuild, and show what it found"),
         new("Ctrl+K", "show this list"),
         new("q", "quit, asking first if comments would be lost")
     ];
@@ -115,7 +116,6 @@ public static class CommandMenu
         new("Enter/e", "edit the issue's file"),
         new("p", "preview the issue's file"),
         new("y", "copy the issue"),
-        new("r", "rebuild"),
         new("1", "filter errors"),
         new("2", "filter warnings")
     ];

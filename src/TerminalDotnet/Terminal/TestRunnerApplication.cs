@@ -473,6 +473,9 @@ internal sealed class TestRunnerApplication(
             case ShellAction.ShowCommands:
                 ShowCommands(application);
                 return;
+            case ShellAction.Rebuild:
+                RebuildIssues(application, panels, search, tests);
+                return;
             case ShellAction.Dismiss:
                 return;
             case ShellAction.Quit:
@@ -769,12 +772,6 @@ internal sealed class TestRunnerApplication(
         {
             key.Handled = true;
             ShowPreview(application, preview.Path, preview.Line, search, rows);
-            return;
-        }
-        if (action is IssuePanelAction.Rebuild)
-        {
-            key.Handled = true;
-            RebuildIssues(application, search, rows);
             return;
         }
         var command = action switch
@@ -1754,10 +1751,16 @@ internal sealed class TestRunnerApplication(
 
     /// <summary>
     /// The issues are the one panel an outside edit does not reload, so the
-    /// reader asks for the build themselves. Asking again while one is already
-    /// running would only queue a second build behind the first.
+    /// reader asks for the build themselves. The panel it reports into is shown
+    /// as the build starts, because a reader who asks what compiles is asking
+    /// to be told, and from any other panel the answer would land out of sight.
+    /// Asking again while a build is running would only queue a second behind it.
     /// </summary>
-    private void RebuildIssues(IApplication application, TextField search, ListView rows)
+    private void RebuildIssues(
+        IApplication application,
+        ListView panels,
+        TextField search,
+        ListView rows)
     {
         if (issueSession.State.Loading)
         {
@@ -1765,7 +1768,8 @@ internal sealed class TestRunnerApplication(
         }
 
         issueSession.Rebuilding();
-        Render(search, rows);
+        shell.Select((int)PanelKind.Issues);
+        ShowActivePanel(panels, search, rows);
         panelWork.Track(RebuildIssuesAsync(application, search, rows, loadCancellation!.Token));
     }
 

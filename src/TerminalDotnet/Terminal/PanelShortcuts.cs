@@ -24,14 +24,15 @@ public static class PanelShortcuts
             "Tab pane",
             "s search",
             .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, flagState, issueState),
+            "^R rebuild",
             "^K commands",
             "q quit"
         ];
 
     /// <summary>Every letter types into the search box, so the line offers only
-    /// the two ways out of it and the one command that still answers.</summary>
+    /// the two ways out of it and the commands that still answer.</summary>
     private static readonly IReadOnlyList<string> SearchingShortcuts =
-        ["Enter keep search", "Esc clear search", "^K commands"];
+        ["Enter keep search", "Esc clear search", "^R rebuild", "^K commands"];
 
     private static IReadOnlyList<string> PanelShortcutsFor(
         PanelKind panel,
@@ -45,8 +46,8 @@ public static class PanelShortcuts
         PanelKind.Explorer or PanelKind.Files => ExplorerShortcuts(fileState),
         PanelKind.Changes => ChangesetShortcuts(changesetState),
         PanelKind.Issues => issueState is { Issues.Count: > 0 }
-            ? [.. Navigation(), "Enter/e edit", "p preview", "y copy", "r rebuild", "1 errors", "2 warnings"]
-            : ["r rebuild", "1 errors", "2 warnings"],
+            ? [.. Navigation(), "Enter/e edit", "p preview", "y copy", "1 errors", "2 warnings"]
+            : ["1 errors", "2 warnings"],
         PanelKind.Comments => CommentShortcuts(commentState),
         PanelKind.Flags => flagState is { Flags.Count: > 0 }
             ? [.. Navigation(), "Enter/e edit", "p preview"]

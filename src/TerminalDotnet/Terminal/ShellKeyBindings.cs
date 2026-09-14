@@ -14,6 +14,7 @@ public abstract record ShellAction
     public sealed record SelectPanel(PanelKind Panel) : ShellAction;
     public sealed record SelectFocusedPanel : ShellAction;
     public sealed record ShowCommands : ShellAction;
+    public sealed record Rebuild : ShellAction;
     public sealed record Quit : ShellAction;
 
     /// <summary>Escape with nothing left to close. It is taken so that it
@@ -32,6 +33,14 @@ public static class ShellKeyBindings
         if (IsCtrl(key, KeyCode.K))
         {
             return new ShellAction.ShowCommands();
+        }
+
+        // The build is the project's, not the Issues panel's, so it answers
+        // from wherever the reader is standing and through the search box,
+        // which every bare letter would otherwise be typed into.
+        if (IsCtrl(key, KeyCode.R))
+        {
+            return new ShellAction.Rebuild();
         }
 
         if (searchFocused)
