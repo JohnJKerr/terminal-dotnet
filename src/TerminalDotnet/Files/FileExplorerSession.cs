@@ -25,15 +25,41 @@ public sealed class FileExplorerSession(
         }
     }
 
+    /// <summary>A reload can arrive while the reader is part-way through the
+    /// tree, so what they searched for, filtered to and were standing on is
+    /// carried across rather than dropped back to the top of an unfiltered list.
+    /// </summary>
     private async Task<FileExplorerState> DiscoveredStateAsync(
         string target,
         CancellationToken cancellationToken)
     {
+        var standingOn = SelectedKey();
         var files = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
         discoveredFiles = files;
-        tree = TreeOf(files);
+        tree = TreeOf(FilesMatching(State.SearchQuery, State.ActiveFilter));
+        var nodes = VisibleNodes();
 
-        return new FileExplorerState(VisibleNodes()) { Changes = SummaryFrom(files) };
+        return State with
+        {
+            VisibleNodes = nodes,
+            SelectedIndex = RowFor(standingOn, nodes.Count),
+            Changes = SummaryFrom(files),
+            Loading = false
+        };
+    }
+
+    private string? SelectedKey() =>
+        VisibleKeys() is { } keys && State.SelectedIndex < keys.Count
+            ? keys[State.SelectedIndex]
+            : null;
+
+    /// <summary>The row the reader was on, wherever it has moved to. A row that
+    /// the edit took away leaves them where they were standing instead.
+    /// </summary>
+    private int RowFor(string? key, int rowCount)
+    {
+        var moved = key is null ? -1 : VisibleKeys().IndexOf(key);
+        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, rowCount - 1));
     }
 
     public Task DispatchAsync(FileExplorerCommand command)
@@ -144,8 +170,8 @@ public sealed class FileExplorerSession(
     private IReadOnlyList<VisibleFileNode> VisibleNodes() => Snapshot.Of(
         Unfolded().Select(node => node.Node with { IsExpanded = IsExpanded(node.Key) }));
 
-    private IReadOnlyList<string> VisibleKeys() =>
-        Unfolded().Select(node => node.Key).ToArray();
+    private List<string> VisibleKeys() =>
+        [.. Unfolded().Select(node => node.Key)];
 
     private IReadOnlyList<FileTreeNode> Unfolded()
     {

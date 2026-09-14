@@ -19,34 +19,16 @@ public sealed class ExplorerEditorWorkflow(
     FlagSession? flags = null,
     IssueSession? issues = null)
 {
-    private delegate Task PanelLoad(CancellationToken cancellationToken);
+    private readonly PanelReload reload = new(explorers, changes, target, flags, issues);
 
     public Task OpenAsync(string path, int line, CancellationToken cancellationToken = default) =>
         editor.OpenAsync(path, line, cancellationToken);
 
-    /// <summary>Reports each panel as it lands, because the build behind the
-    /// issues takes far longer than the rest and must not hold them back.
+    /// <summary>A reader who has just left the editor is waiting on the result
+    /// of what they wrote, so the build behind the issues is worth its wait.
     /// </summary>
-    public async Task RefreshAsync(
+    public Task RefreshAsync(
         Func<Task> onPanelRefreshed,
-        CancellationToken cancellationToken = default)
-    {
-        foreach (var load in EditedPanels())
-        {
-            await load(cancellationToken);
-            await onPanelRefreshed();
-        }
-    }
-
-    private IEnumerable<PanelLoad> EditedPanels() =>
-    [
-        .. explorers.Select<FileExplorerSession, PanelLoad>(
-            explorer => token => explorer.LoadAsync(target, token)),
-        token => changes.LoadAsync(target, token),
-        .. Present<FlagSession>(flags, token => flags!.LoadAsync(target, token)),
-        .. Present<IssueSession>(issues, token => issues!.LoadAsync(target, token))
-    ];
-
-    private static IEnumerable<PanelLoad> Present<TSession>(TSession? panel, PanelLoad load)
-        where TSession : class => panel is null ? [] : [load];
+        CancellationToken cancellationToken = default) =>
+        reload.EverythingAsync(onPanelRefreshed, cancellationToken);
 }

@@ -22,16 +22,29 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         }
     }
 
+    /// <summary>A reload can arrive while the reader is part-way down the
+    /// changeset, so the file they were on is found again rather than dropping
+    /// them back to the top of a list that has grown underneath them.</summary>
     private async Task<ChangesetState> DiscoveredStateAsync(
         string target,
         CancellationToken cancellationToken)
     {
+        var standingOn = Selected()?.DisplayPath;
         changedFiles = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
+        var matching = Matching(State.SearchQuery);
 
-        return new ChangesetState(Matching(State.SearchQuery), 0, State.SearchQuery)
+        return new ChangesetState(matching, RowFor(standingOn, matching), State.SearchQuery)
         {
             Summary = SummaryFrom(changedFiles)
         };
+    }
+
+    private int RowFor(string? displayPath, IReadOnlyList<ChangedFile> files)
+    {
+        var moved = displayPath is null
+            ? -1
+            : files.ToList().FindIndex(file => file.DisplayPath == displayPath);
+        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, files.Count - 1));
     }
 
     public async Task DispatchAsync(

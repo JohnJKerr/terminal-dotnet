@@ -12,8 +12,10 @@ public sealed class FlagSession(IFlagBackend backend)
     {
         try
         {
+            var standingOn = Selected();
             discovered = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
             Show(State.SearchQuery, State.ActiveFilter);
+            State = State with { SelectedIndex = RowFor(standingOn) };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -44,6 +46,24 @@ public sealed class FlagSession(IFlagBackend backend)
             .ThenBy(flag => flag.Line)),
         SearchQuery: query,
         ActiveFilter: filter);
+
+    private Flag? Selected() => State.SelectedIndex < State.Flags.Count
+        ? State.Flags[State.SelectedIndex]
+        : null;
+
+    /// <summary>A reload can arrive while the reader is part-way down the list,
+    /// so the flag they were on is found again wherever the edit moved it to.
+    /// </summary>
+    private int RowFor(Flag? standingOn)
+    {
+        var moved = standingOn is null
+            ? -1
+            : State.Flags.ToList().FindIndex(
+                flag => flag.Path == standingOn.Path && flag.Line == standingOn.Line);
+        return moved >= 0
+            ? moved
+            : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, State.Flags.Count - 1));
+    }
 
     private void Move(FlagCommand command)
     {

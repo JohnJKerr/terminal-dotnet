@@ -27,7 +27,8 @@ internal sealed class TestRunnerApplication(
     FlagSession flagSession,
     IssueSession issueSession,
     string target,
-    IFileOpener? editorLauncher = null)
+    IFileOpener? editorLauncher = null,
+    IWorkspaceWatcher? workspaceWatcher = null)
 {
     private const int ContentInset = 1;
     private const int PanelWidth = 20;
@@ -43,6 +44,7 @@ internal sealed class TestRunnerApplication(
     private const string ConsoleDriver = "dotnet";
     private const int ClearChoice = 0;
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan EditPollInterval = TimeSpan.FromMilliseconds(250);
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? loadCancellation;
@@ -53,8 +55,11 @@ internal sealed class TestRunnerApplication(
     private object? listedContent;
     private readonly PanelShell shell = new();
     private readonly BackgroundWork panelWork = new();
+    private readonly EditBurst outsideEdits = new();
+    private readonly Stopwatch sinceWatching = new();
     private bool openSourceRequested;
     private bool panelsWereEdited;
+    private bool reloadingWhatIsOnDisk;
     private string? openPath;
     private int openLine = 1;
     private int openDialogs;
@@ -73,10 +78,31 @@ internal sealed class TestRunnerApplication(
 
     public void Run()
     {
+        WatchTheWorkingTree();
         while (RunTerminal())
         {
             OpenRequestedFile();
         }
+    }
+
+    /// <summary>
+    /// The panels are the only thing in the app that knows what the working
+    /// tree looked like, and an agent editing alongside the reader moves it
+    /// underneath them. Watching starts before the first terminal and outlives
+    /// each one, so the edits made while the editor holds the screen are still
+    /// there to be reloaded when it hands the screen back.
+    /// </summary>
+    private void WatchTheWorkingTree()
+    {
+        if (workspaceWatcher is null)
+        {
+            return;
+        }
+
+        sinceWatching.Restart();
+        workspaceWatcher.Watch(
+            Path.GetDirectoryName(Path.GetFullPath(target))!,
+            path => outsideEdits.Noticed(path, sinceWatching.Elapsed));
     }
 
     private bool RunTerminal()
@@ -123,6 +149,7 @@ internal sealed class TestRunnerApplication(
         tests.SetFocus();
         FillPanels(application, search, tests);
         RefreshEditedPanels(application, search, tests);
+        ReloadWhenTheWorkingTreeSettles(application, search, tests);
 
         application.Run(window);
         ShutDown();
@@ -1686,6 +1713,69 @@ internal sealed class TestRunnerApplication(
         flagSession,
         issueSession);
 
+    private PanelReload PanelReload() => new(
+        [fileSession, folderSession],
+        changesetSession,
+        target,
+        flagSession,
+        issueSession);
+
+    /// <summary>
+    /// Asks on every frame rather than reloading as the edits land, because a
+    /// single save arrives as several edits and an agent's change arrives as
+    /// dozens. The burst answers once the tree has been quiet.
+    /// </summary>
+    private void ReloadWhenTheWorkingTreeSettles(
+        IApplication application,
+        TextField search,
+        ListView tests)
+    {
+        if (workspaceWatcher is null)
+        {
+            return;
+        }
+
+        application.AddTimeout(EditPollInterval, () =>
+        {
+            if (!reloadingWhatIsOnDisk && outsideEdits.SettledAt(sinceWatching.Elapsed))
+            {
+                ReloadWhatIsOnDisk(application, search, tests);
+            }
+
+            return true;
+        });
+    }
+
+    /// <summary>The issues are left out: an agent saves often enough that a
+    /// build per burst would never finish one before the next began.</summary>
+    private void ReloadWhatIsOnDisk(IApplication application, TextField search, ListView tests)
+    {
+        reloadingWhatIsOnDisk = true;
+        panelWork.Track(ReloadWhatIsOnDiskAsync(application, search, tests, loadCancellation!.Token));
+    }
+
+    private async Task ReloadWhatIsOnDiskAsync(
+        IApplication application,
+        TextField search,
+        ListView tests,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await PanelReload().FromDiskAsync(
+                () =>
+                {
+                    application.Invoke(() => Render(search, tests));
+                    return Task.CompletedTask;
+                },
+                cancellationToken);
+        }
+        finally
+        {
+            reloadingWhatIsOnDisk = false;
+        }
+    }
+
     private void RefreshEditedPanels(IApplication application, TextField search, ListView tests)
     {
         if (!panelsWereEdited)
@@ -1694,6 +1784,7 @@ internal sealed class TestRunnerApplication(
         }
 
         panelsWereEdited = false;
+        outsideEdits.Forget();
         panelWork.Track(RefreshEditedPanelsAsync(application, search, tests, loadCancellation!.Token));
     }
 

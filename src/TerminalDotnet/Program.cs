@@ -34,6 +34,7 @@ var editor = Environment.GetEnvironmentVariable("VISUAL") ??
     Environment.GetEnvironmentVariable("EDITOR") ??
     "omarchy-launch-editor";
 var editorLauncher = new EditorLauncher(editor, commandRunner);
+using var workspaceWatcher = new FileSystemWorkspaceWatcher();
 new TestRunnerApplication(
     session,
     fileSession,
@@ -43,7 +44,8 @@ new TestRunnerApplication(
     flagSession,
     issueSession,
     target,
-    editorLauncher).Run();
+    editorLauncher,
+    workspaceWatcher).Run();
 return 0;
 
 static string? FindTarget(string directory)
