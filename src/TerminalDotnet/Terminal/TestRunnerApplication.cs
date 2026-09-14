@@ -690,7 +690,7 @@ internal sealed class TestRunnerApplication(
         if (action is ChangesetAction.ShowDiff)
         {
             key.Handled = true;
-            ShowDiff(application);
+            ShowDiff(application, search, files);
             return;
         }
 
@@ -1036,18 +1036,94 @@ internal sealed class TestRunnerApplication(
         application.Invoke(() => Render(search, files));
     }
 
-    private void ShowDiff(IApplication application) => panelWork.Track(ShowDiffAsync(application));
+    private void ShowDiff(IApplication application, TextField search, ListView files) =>
+        panelWork.Track(ShowDiffAsync(application, search, files));
 
-    private async Task ShowDiffAsync(IApplication application)
+    private async Task ShowDiffAsync(IApplication application, TextField search, ListView files)
     {
         await changesetSession.DispatchAsync(new ChangesetCommand.LoadSelectedDiff());
-        var snapshot = ChangesetPanelSnapshot.From(changesetSession.State);
-        application.Invoke(() => ShowCellDialog(
-            application,
-            $"Diff — {snapshot.DiffTitle} — ↑/k up  ↓/j down  Esc close",
-            DiffCells(snapshot.DiffLines),
-            wordWrap: false));
+        application.Invoke(() => ShowDiffDialog(application, search, files));
     }
+
+    /// <summary>The diff is read in its own window rather than the shared cell
+    /// dialog, because it answers to keys of its own: the reader steps through
+    /// the changeset without closing what they are reading.</summary>
+    private void ShowDiffDialog(IApplication application, TextField search, ListView files)
+    {
+        using var dialog = FullScreenDialog(DiffTitle());
+        var diff = new ColoredTextView(wordWrap: false)
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill()
+        };
+        diff.Load(DiffContent());
+        SetBlackBackground(dialog);
+        SetBlackBackground(diff);
+        diff.KeyDown += (_, key) => HandleDiffKey(application, dialog, diff, key);
+        dialog.Add(diff);
+        OverThePanels(() => application.Run(dialog));
+        Render(search, files);
+    }
+
+    private void HandleDiffKey(
+        IApplication application,
+        Window dialog,
+        ColoredTextView diff,
+        Key key)
+    {
+        var action = DiffKeyBindings.ActionFor(key);
+        if (action is null)
+        {
+            return;
+        }
+
+        key.Handled = true;
+        if (action is DiffAction.StepFile step)
+        {
+            StepDiff(application, dialog, diff, step.Step);
+            return;
+        }
+
+        if (action is DiffAction.Scroll scroll)
+        {
+            diff.ScrollVertical(scroll.Rows);
+        }
+    }
+
+    /// <summary>
+    /// Moves the diff to another of the panel's files. The panel's selection
+    /// goes with it, so the files it steps through are the ones the search left,
+    /// and closing the diff leaves the reader on the file they stopped at.
+    ///
+    /// The load is waited out here for the same reason the preview waits out
+    /// its own: the diff runs a loop that only turns when a key arrives, so a
+    /// result posted back to it would sit unread until the reader pressed
+    /// something else.
+    /// </summary>
+    private void StepDiff(
+        IApplication application,
+        Window dialog,
+        ColoredTextView diff,
+        int step)
+    {
+        changesetSession
+            .DispatchAsync(new ChangesetCommand.StepDiff(step))
+            .GetAwaiter()
+            .GetResult();
+        dialog.Title = DiffTitle();
+        diff.Load(DiffContent());
+        dialog.SetNeedsDraw();
+        application.LayoutAndDraw(true);
+    }
+
+    private string DiffTitle() =>
+        $"Diff — {ChangesetPanelSnapshot.From(changesetSession.State).DiffTitle} — " +
+        "↑/k up  ↓/j down  n/N file  Esc close";
+
+    private List<List<Cell>> DiffContent() =>
+        DiffCells(ChangesetPanelSnapshot.From(changesetSession.State).DiffLines);
 
     private static List<List<Cell>> DiffCells(IReadOnlyList<DiffLine> lines) => lines
         .Select(line => Cell.ToCellList(
@@ -1137,15 +1213,7 @@ internal sealed class TestRunnerApplication(
         }
 
         previewing = new SourceLocation(path, line);
-        using var preview = new Window
-        {
-            Title = PreviewTitle(path, line),
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            ShadowStyle = ShadowStyles.None
-        };
+        using var preview = FullScreenDialog(PreviewTitle(path, line));
         var code = new Code
         {
             X = 0,
@@ -1312,15 +1380,7 @@ internal sealed class TestRunnerApplication(
         List<List<Cell>> lines,
         bool wordWrap)
     {
-        using var dialog = new Window
-        {
-            Title = title,
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            ShadowStyle = ShadowStyles.None
-        };
+        using var dialog = FullScreenDialog(title);
         var text = new ColoredTextView(wordWrap)
         {
             X = 0,
@@ -1334,6 +1394,16 @@ internal sealed class TestRunnerApplication(
         dialog.Add(text);
         OverThePanels(() => application.Run(dialog));
     }
+
+    private static Window FullScreenDialog(string title) => new()
+    {
+        Title = title,
+        X = 0,
+        Y = 0,
+        Width = Dim.Fill(),
+        Height = Dim.Fill(),
+        ShadowStyle = ShadowStyles.None
+    };
 
     /// <summary>
     /// Runs a dialog over the panels. The shell listens for keys across the

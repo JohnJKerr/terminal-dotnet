@@ -16,14 +16,14 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_offers_a_section_for_every_panel_and_for_the_preview()
+    public void It_offers_a_section_for_every_panel_the_preview_and_the_diff()
     {
         // Act
         var titles = CommandMenu.Sections().Select(section => section.Title);
 
         // Assert
         Assert.Equal(
-            ["Anywhere", "Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags", "Preview"],
+            ["Anywhere", "Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags", "Preview", "Diff"],
             titles);
     }
 
@@ -105,6 +105,18 @@ public sealed class WhenListingEveryCommand
         Assert.Contains(
             preview.Entries,
             entry => entry.Keys == "n" && entry.Description == "preview the next row of the panel");
+    }
+
+    [Fact]
+    public void It_lists_stepping_to_the_next_file_under_the_diff()
+    {
+        // Act
+        var diff = CommandMenu.Sections().Single(section => section.Title == "Diff");
+
+        // Assert
+        Assert.Contains(
+            diff.Entries,
+            entry => entry.Keys == "n" && entry.Description == "show the next file's diff");
     }
 
     [Fact]

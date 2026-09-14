@@ -57,8 +57,13 @@ public sealed class ChangesetSession(IChangesetBackend backend)
 
         if (command is ChangesetCommand.LoadSelectedDiff && Selected() is { } file)
         {
-            var diff = await backend.DiffAsync(file, cancellationToken);
-            State = State with { Diff = new DiffContext(file.DisplayPath, diff) };
+            State = State with { Diff = await DiffOfAsync(file, cancellationToken) };
+            return;
+        }
+
+        if (command is ChangesetCommand.StepDiff step)
+        {
+            await ShowSteppedDiffAsync(step.Step, cancellationToken);
             return;
         }
 
@@ -86,6 +91,29 @@ public sealed class ChangesetSession(IChangesetBackend backend)
             }
         };
     }
+
+    /// <summary>The files are walked as a ring, so the last one leads back to
+    /// the first rather than stopping the reader at the end of the changeset.
+    /// </summary>
+    private async Task ShowSteppedDiffAsync(int step, CancellationToken cancellationToken)
+    {
+        if (RowRing.From(State.Files.Count, State.SelectedIndex, step) is not [var next, ..])
+        {
+            return;
+        }
+
+        var stepped = State.Files[next];
+        State = State with
+        {
+            SelectedIndex = next,
+            Diff = await DiffOfAsync(stepped, cancellationToken)
+        };
+    }
+
+    private async Task<DiffContext> DiffOfAsync(
+        ChangedFile file,
+        CancellationToken cancellationToken) =>
+        new(file.DisplayPath, await backend.DiffAsync(file, cancellationToken));
 
     private ChangedFile? Selected() => State.SelectedIndex < State.Files.Count
         ? State.Files[State.SelectedIndex]

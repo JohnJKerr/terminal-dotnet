@@ -51,6 +51,11 @@ public abstract record ChangesetCommand
     public sealed record MoveDown : ChangesetCommand;
     public sealed record LoadSelectedDiff : ChangesetCommand;
     public sealed record RestoreSelected : ChangesetCommand;
+
+    /// <summary>Move the selection one file on and show that file's diff, so
+    /// the reader can walk the changeset without closing the diff they are
+    /// reading.</summary>
+    public sealed record StepDiff(int Step) : ChangesetCommand;
 }
 
 public interface IChangesetBackend
