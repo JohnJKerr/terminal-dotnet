@@ -54,6 +54,7 @@ internal sealed class TestRunnerApplication(
     private readonly PanelShell shell = new();
     private readonly BackgroundWork panelWork = new();
     private bool openSourceRequested;
+    private bool panelsWereEdited;
     private string? openPath;
     private int openLine = 1;
     private int openDialogs;
@@ -121,6 +122,7 @@ internal sealed class TestRunnerApplication(
         panels.SelectedItem = shell.State.ActiveIndex;
         tests.SetFocus();
         FillPanels(application, search, tests);
+        RefreshEditedPanels(application, search, tests);
 
         application.Run(window);
         ShutDown();
@@ -1591,6 +1593,10 @@ internal sealed class TestRunnerApplication(
         _ => "plaintext"
     };
 
+    /// <summary>The editor is handed the bare shell and nothing else, because
+    /// reloading here would hold the terminal down for as long as the panels
+    /// take. What the edit changed is refreshed once the terminal is back.
+    /// </summary>
     private void OpenRequestedFile()
     {
         if (editorLauncher is null || openPath is null)
@@ -1598,15 +1604,41 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var workflow = new ExplorerEditorWorkflow(
-            [fileSession, folderSession],
-            changesetSession,
-            editorLauncher,
-            target);
-        workflow.OpenAsync(openPath, openLine).GetAwaiter().GetResult();
-        flagSession.LoadAsync(target).GetAwaiter().GetResult();
-        issueSession.LoadAsync(target).GetAwaiter().GetResult();
+        EditorWorkflow().OpenAsync(openPath, openLine).GetAwaiter().GetResult();
+        panelsWereEdited = true;
     }
+
+    private ExplorerEditorWorkflow EditorWorkflow() => new(
+        [fileSession, folderSession],
+        changesetSession,
+        editorLauncher!,
+        target,
+        flagSession,
+        issueSession);
+
+    private void RefreshEditedPanels(IApplication application, TextField search, ListView tests)
+    {
+        if (!panelsWereEdited)
+        {
+            return;
+        }
+
+        panelsWereEdited = false;
+        panelWork.Track(RefreshEditedPanelsAsync(application, search, tests, loadCancellation!.Token));
+    }
+
+    private Task RefreshEditedPanelsAsync(
+        IApplication application,
+        TextField search,
+        ListView tests,
+        CancellationToken cancellationToken) =>
+        EditorWorkflow().RefreshAsync(
+            () =>
+            {
+                application.Invoke(() => Render(search, tests));
+                return Task.CompletedTask;
+            },
+            cancellationToken);
 
     private void Render(TextField search, ListView tests)
     {

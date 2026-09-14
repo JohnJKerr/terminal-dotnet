@@ -21,6 +21,7 @@ public sealed class WhenReturningFromTheEditor
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
+        await workflow.RefreshAsync(() => Task.CompletedTask);
 
         // Assert
         Assert.Equal(FileGitStatus.Modified, explorer.State.VisibleNodes.Last().Files[0].GitStatus);
@@ -40,6 +41,7 @@ public sealed class WhenReturningFromTheEditor
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
+        await workflow.RefreshAsync(() => Task.CompletedTask);
 
         // Assert
         Assert.Equal(["Order.cs"], changes.State.Files.Select(file => file.DisplayPath));
@@ -63,6 +65,7 @@ public sealed class WhenReturningFromTheEditor
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
+        await workflow.RefreshAsync(() => Task.CompletedTask);
 
         // Assert
         Assert.Equal(FileGitStatus.Modified, folder.State.VisibleNodes.Last().Files[0].GitStatus);
