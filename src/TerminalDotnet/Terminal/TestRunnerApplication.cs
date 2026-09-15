@@ -257,9 +257,7 @@ internal sealed class TestRunnerApplication(
         return panels;
     }
 
-    private static string? TerminalDriver() => TerminalDriverChoice.For(
-        Environment.GetEnvironmentVariable("TERMINAL_DOTNET_DRIVER"),
-        OperatingSystem.IsWindows());
+    private static string? TerminalDriver() => TerminalDriverChoice.FromEnvironment();
 
     private static Label TestStatus() => new()
     {

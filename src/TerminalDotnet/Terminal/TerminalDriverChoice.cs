@@ -12,6 +12,12 @@ public static class TerminalDriverChoice
 {
     private const string ConsoleDriver = "dotnet";
 
+    /// <returns>The driver for this machine, honouring
+    /// <c>TERMINAL_DOTNET_DRIVER</c>.</returns>
+    public static string? FromEnvironment() => For(
+        Environment.GetEnvironmentVariable("TERMINAL_DOTNET_DRIVER"),
+        OperatingSystem.IsWindows());
+
     /// <returns>The driver's name, or null to let the toolkit choose.</returns>
     public static string? For(string? requested, bool onWindows) => requested switch
     {
