@@ -38,6 +38,24 @@ public static class FileText
         return BytesWithin(stream, maxBytes) is { } bytes ? Decoded(bytes) : null;
     }
 
+    /// <returns>The file's lines, split where <see cref="File.ReadLines(string)"/>
+    /// splits them, or null when it holds more than <paramref name="maxBytes"/>.
+    /// </returns>
+    public static IReadOnlyList<string>? ReadLinesWithin(string path, long maxBytes = MaxBytes) =>
+        ReadWithin(path, maxBytes) is { } text ? LinesOf(text) : null;
+
+    private static IReadOnlyList<string> LinesOf(string text)
+    {
+        using var reader = new StringReader(text);
+        var lines = new List<string>();
+        while (reader.ReadLine() is { } line)
+        {
+            lines.Add(line);
+        }
+
+        return lines;
+    }
+
     /// <summary>The file can grow between being measured and being read, so
     /// the limit holds while reading too.</summary>
     private static MemoryStream? BytesWithin(Stream stream, long maxBytes)

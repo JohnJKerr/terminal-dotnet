@@ -15,9 +15,12 @@ public interface ITestSourceLocator
 
 public sealed class FileTestSourceLocator : ITestSourceLocator
 {
-    public async Task<SourceLocation?> LocateAsync(
+    public Task<SourceLocation?> LocateAsync(
         TestCase test,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(Located(test, cancellationToken));
+
+    private static SourceLocation? Located(TestCase test, CancellationToken cancellationToken)
     {
         var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(test.ProjectPath));
         if (projectDirectory is null || !Directory.Exists(projectDirectory))
@@ -35,7 +38,12 @@ public sealed class FileTestSourceLocator : ITestSourceLocator
         var methodName = parts[^1];
         foreach (var path in SourceFiles(projectDirectory))
         {
-            var lines = await File.ReadAllLinesAsync(path, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (FileText.ReadLinesWithin(path) is not { } lines)
+            {
+                continue;
+            }
+
             var classLine = LineMatching(lines, $@"\bclass\s+{Regex.Escape(className)}\b");
             if (classLine < 0)
             {
