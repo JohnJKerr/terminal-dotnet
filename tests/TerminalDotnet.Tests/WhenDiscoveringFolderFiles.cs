@@ -27,6 +27,21 @@ public sealed class WhenDiscoveringFolderFiles
     }
 
     [Fact]
+    public async Task It_turns_off_the_file_system_monitor_a_repository_configures()
+    {
+        // Arrange
+        using var folder = LaunchFolder.At("TerminalDotnet.slnx", "src/App/Order.cs");
+
+        // Act
+        await folder.DiscoverAsync();
+
+        // Assert
+        Assert.Equal(
+            ["-c core.fsmonitor=false"],
+            folder.Invocations.Select(arguments => string.Join(' ', arguments.Take(2))).Distinct());
+    }
+
+    [Fact]
     public async Task It_finds_the_dotnet_sources_alongside_them()
     {
         // Arrange
@@ -207,6 +222,9 @@ public sealed class WhenDiscoveringFolderFiles
             return this;
         }
 
+        /// <summary>Every command git was asked to run, settings included.</summary>
+        public List<IReadOnlyList<string>> Invocations { get; } = [];
+
         public LaunchFolder WithoutGit()
         {
             tracked = false;
@@ -225,10 +243,13 @@ public sealed class WhenDiscoveringFolderFiles
         {
             public Task<CommandResult> RunAsync(
                 CommandRequest request,
-                CancellationToken cancellationToken = default) =>
-                Task.FromResult(folder.tracked
+                CancellationToken cancellationToken = default)
+            {
+                folder.Invocations.Add(request.Arguments);
+                return Task.FromResult(folder.tracked
                     ? new CommandResult(0, OutputFor(request), "")
                     : new CommandResult(1, "", "not a git repository"));
+            }
 
             private string OutputFor(CommandRequest request)
             {
