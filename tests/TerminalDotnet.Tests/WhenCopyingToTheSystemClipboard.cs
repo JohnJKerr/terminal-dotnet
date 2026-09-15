@@ -81,6 +81,20 @@ public sealed class WhenCopyingToTheSystemClipboard
     }
 
     [Fact]
+    public async Task It_reaches_the_windows_clipboard_when_no_other_tool_is_installed()
+    {
+        // Arrange
+        var runner = new RecordingCommandRunner { Installed = ["clip"], Takes = "clip" };
+        var clipboard = new CommandClipboard(runner, "/repo");
+
+        // Act
+        var copied = await clipboard.TryCopyAsync("needs a guard");
+
+        // Assert
+        Assert.True(copied);
+    }
+
+    [Fact]
     public async Task It_stops_at_the_first_tool_that_takes_the_text()
     {
         // Arrange
