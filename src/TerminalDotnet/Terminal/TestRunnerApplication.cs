@@ -1369,7 +1369,13 @@ internal sealed class TestRunnerApplication(
     {
         try
         {
-            return File.ReadAllText(path);
+            if (FileText.ReadWithin(path) is { } text)
+            {
+                return text;
+            }
+
+            OverThePanels(() => MessageBox.ErrorQuery(application, "Preview", TooLargeToPreview(path), "Ok"));
+            return null;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -1377,6 +1383,10 @@ internal sealed class TestRunnerApplication(
             return null;
         }
     }
+
+    private static string TooLargeToPreview(string path) =>
+        $"{Path.GetFileName(path)} is larger than {FileText.MaxBytes / (1024 * 1024)} MB, " +
+        "too large to preview. Open it in your editor instead.";
 
     /// <summary>Closing the preview only leaves the nested loop, so the shell
     /// beneath it is asked to stop as well when the reader left for the
