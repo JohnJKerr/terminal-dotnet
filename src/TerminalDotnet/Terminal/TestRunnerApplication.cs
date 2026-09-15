@@ -41,7 +41,6 @@ internal sealed class TestRunnerApplication(
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int RowsBelowTheList = StatusRow + 1;
     private const int IssueDetailRows = 4;
-    private const string ConsoleDriver = "dotnet";
     private const int ClearChoice = 0;
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan EditPollInterval = TimeSpan.FromMilliseconds(250);
@@ -258,10 +257,9 @@ internal sealed class TestRunnerApplication(
         return panels;
     }
 
-    private static string TerminalDriver() =>
-        Environment.GetEnvironmentVariable("TERMINAL_DOTNET_DRIVER") is { Length: > 0 } driver
-            ? driver
-            : ConsoleDriver;
+    private static string? TerminalDriver() => TerminalDriverChoice.For(
+        Environment.GetEnvironmentVariable("TERMINAL_DOTNET_DRIVER"),
+        OperatingSystem.IsWindows());
 
     private static Label TestStatus() => new()
     {
