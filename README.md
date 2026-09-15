@@ -1,197 +1,408 @@
-# TerminalDotnet prototype
+# terminal-dotnet
 
-> Throwaway vertical slice: validate whether navigating a discovered test tree and running the selected subtree is useful.
+A keyboard-driven terminal workspace for .NET solutions. Browse the source, run
+tests and jump to failures, read compiler errors, review git changes, collect
+`TODO`s and leave notes, all from one screen beside your editor.
+
+<!-- Screenshot: the Tests panel mid-run, with the tree on the left and output on the right -->
+![terminal-dotnet](docs/images/overview.png)
+
+Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
+
+## Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Install](#install)
+- [Getting started](#getting-started)
+- [Panels](#panels)
+- [Keys](#keys)
+- [Configuration](#configuration)
+- [Troubleshooting](#troubleshooting)
+- [Security](#security)
+- [Development](#development)
+
+## Features
+
+- **Seven panels in one two-column shell.** Explorer, Files, Tests, Issues,
+  Changes, Comments and Flags share the same rail, search box, filters and
+  keys.
+- **Test explorer.** Discovers every test in the solution. Run a test, a class
+  or a whole project; rerun the last set or only the failures; step between
+  failures; and open the failing line in a preview or your editor.
+- **Compiler issues.** Collects errors and warnings from `dotnet build`, filters
+  them by severity, and opens or copies each one.
+- **Git changes.** Lists added, modified and deleted files, shows and steps
+  through their diffs, and restores deleted files.
+- **Change-aware filters.** One key narrows the Explorer to the files git
+  reports as changed, and the Tests panel to the suites whose source changed,
+  so `Enter` on the project runs only those.
+- **Flags.** Gathers `TODO`, `FIXME`, `HACK` and similar markers from every
+  tracked file, grouped into Tasks, Review, Warning and Improve.
+- **Comments.** Leave a note against any file while reading it, then copy every
+  note to the clipboard or save them to a Markdown file. Handy for handing
+  review feedback to a teammate or a coding agent.
+- **Preview with syntax highlighting.** Read any file in place, step to the
+  next or previous row of the panel without closing it, and hand off to your
+  editor at the same line.
+- **Stays current.** Panels reload when something outside the app edits the
+  working tree, whether an agent, another terminal or a `git checkout`.
+  `Ctrl+R` rebuilds and rediscovers the tests from anywhere, and a stale panel
+  rebuilds when you open it.
+- **Discoverable.** The bottom line lists the keys that apply to the current
+  selection, and `Ctrl+K` shows every command.
+
+## Requirements
+
+- **A .NET SDK** on `PATH`. The app runs `dotnet build` and `dotnet test`
+  against your solution, so use whichever SDK the solution builds with. The tool
+  itself runs on .NET 10 or later, which can be installed alongside an older
+  SDK.
+- **git** on `PATH`, for the Changes panel, the Updated filters and git-aware
+  file listings.
+- **A terminal** with 256 colours and Unicode, such as Windows Terminal,
+  iTerm2, Ghostty, kitty, Alacritty, foot or WezTerm.
+- **An editor** set in `VISUAL` or `EDITOR` (see [Configuration](#configuration)).
 
 ## Install
 
+terminal-dotnet is published to [nuget.org](https://www.nuget.org/packages/terminal-dotnet)
+as a .NET tool. The same package runs on Linux, macOS and Windows.
+
+### Globally
+
 ```bash
+dotnet tool install --global terminal-dotnet
+```
+
+This puts `terminal-dotnet` in `~/.dotnet/tools` (`%USERPROFILE%\.dotnet\tools`
+on Windows). Upgrade with `dotnet tool update --global terminal-dotnet`, and
+remove it with `dotnet tool uninstall --global terminal-dotnet`.
+
+### Per repository
+
+To pin a version for everyone working on a repository, install it as a local
+tool from the repository root:
+
+```bash
+dotnet new tool-manifest   # once, if the repository has no .config/dotnet-tools.json
+dotnet tool install terminal-dotnet
+dotnet tool run terminal-dotnet
+```
+
+Commit `.config/dotnet-tools.json`; teammates run `dotnet tool restore`.
+
+### Without installing
+
+The .NET 10 SDK can fetch and run the tool in one step:
+
+```bash
+dnx terminal-dotnet
+```
+
+> **Note:** the package is published with the first tagged release. Until
+> then, install from source.
+
+### From source (Linux, macOS)
+
+```bash
+git clone https://github.com/JohnJKerr/terminal-dotnet.git
+cd terminal-dotnet
 ./install.sh
 ```
 
-That publishes the app to `~/.local/libexec/terminal-dotnet` and puts a `terminal-dotnet`
-command in `~/.local/bin`. Run it from any directory containing one `.sln`, `.slnx`, or
-`.csproj` file:
+This publishes to `~/.local/libexec/terminal-dotnet` and puts a
+`terminal-dotnet` command in `~/.local/bin`. The installer takes these options:
 
-```bash
-cd /path/to/some/repository
-terminal-dotnet
-```
+- `--prefix DIR` installs somewhere other than `~/.local`.
+- `--self-contained` bundles the .NET runtime.
+- `--uninstall` removes the command and the published directory. Pass the same
+  `--prefix` you installed with.
 
-The install is framework-dependent, so it uses the .NET SDK already on your PATH — the same
-one it shells out to for `dotnet test`. Pass `--self-contained` to bundle the runtime instead,
-and `--prefix DIR` to install somewhere other than `~/.local`.
+To upgrade, `git pull` and run `./install.sh` again. It publishes to a staging
+directory and swaps it into place, so there is no need to uninstall first.
 
-### Upgrading
-
-Re-run the installer. It publishes to a staging directory and swaps it into place, so there is
-no need to uninstall first:
-
-```bash
-git pull
-./install.sh
-```
-
-### Uninstalling
-
-```bash
-./install.sh --uninstall
-```
-
-That removes the `terminal-dotnet` command and the published application directory, and prints
-both paths as it goes. It leaves `~/.local/bin` and `~/.local/libexec` in place, because other
-programs live there.
-
-Pass the same `--prefix DIR` you installed with, otherwise the uninstall looks in `~/.local`
-and finds nothing to remove:
-
-```bash
-./install.sh --prefix /opt/tools --uninstall
-```
-
-If you no longer have the repository, delete the two paths by hand:
-
-```bash
-rm -f ~/.local/bin/terminal-dotnet
-rm -rf ~/.local/libexec/terminal-dotnet
-```
-
-### Terminal driver
-
-Terminal.Gui offers `ansi`, `dotnet`, and `windows` drivers, and picks `ansi` on Linux by
-default. That driver negotiates terminal capabilities over escape sequences, and the
-negotiation does not complete under every terminal — inside the [herdr](https://herdr.dev)
-multiplexer it leaves a blank screen and never draws a frame. This app therefore asks for the
-`dotnet` driver, which renders through `System.Console` and needs no negotiation.
-
-Override it when you want a different driver:
-
-```bash
-TERMINAL_DOTNET_DRIVER=ansi terminal-dotnet
-```
-
-If a run ever does leave the terminal blank, `Ctrl-C` can drop you back to a shell where
-`Enter` types a literal `u`: the abandoned driver left the kitty keyboard protocol enabled.
-Run `reset` to restore the terminal.
-
-Without installing, run it straight from the source tree:
+You can also run it straight from the source tree:
 
 ```bash
 dotnet run --project /path/to/terminal-dotnet/src/TerminalDotnet
 ```
 
-Panels: `Explorer` lists the solution's source files, `Files` lists everything in the directory
-you started in, `Tests` lists the discovered tests, `Issues` lists compiler errors and warnings,
-`Changes` lists the files git reports as added, modified, or deleted beneath that directory,
-`Comments` lists the files you have left a note against, and `Flags` gathers task and warning
-comments from tracked files. A panel with nothing to list says so in place of its rows. `Shift`
-and the letter beside a panel in the rail reaches it: `E`, `F`, `T`, `I`, `G`, `C`, and `L`.
-`Changes` answers to `G` because `C` belongs to `Comments`; Flags answers to `L` because `F`
-belongs to Files.
+## Getting started
 
-The `Explorer` and `Tests` panels carry filters under the search box, numbered from `1`. The
-`Updated` filter keeps the files git reports as new or changed, and in the `Tests` panel keeps
-the suites whose source file changed, so `Enter` on the project runs only those suites. Search
-narrows whatever the filter left.
-
-Both panels colour what changed the same way: green for an added file or suite, blue for an
-edited one. A test keeps that colour until it runs, and then reports its outcome instead —
-green passed, red failed, yellow skipped, cyan running.
-
-The `Flags` panel groups comment markers under their headings. Its numbered filters are Tasks
-(`TODO`, `FIXME`), Review (`REVIEW`, `QUESTION`, `NOTE`), Warning (`WARNING`, `WARN`, `HACK`,
-`XXX`, `BUG`, `DEPRECATED`), and Improve (`REFACTOR`, `OPTIMIZE`). Search matches both the file
-path and comment text. `Enter` or `e` edits the file at the flagged line; `p` previews it there.
-The selected flag is repeated below the preview while you inspect its source.
-
-The `Issues` panel runs `dotnet build` without restoring and gathers its compiler errors and
-warnings. Errors are red and warnings yellow; the status line counts each severity. Search
-matches the full compiler message, while `1` and `2` filter to errors and warnings. `Enter` or
-`e` opens the source at the reported line, `p` previews and highlights that line, and `y` copies
-the selected issue to the clipboard. The selected issue remains below the preview for context.
-
-Keys:
-
-- `↑` / `k`: move up
-- `↓` / `j`: move down
-- `s`: search the active panel; `Enter` returns to the tree; `n` / `N` select matches; `Esc` clears the search
-- `1`: apply the `Updated` filter, and press it again to drop it; numbers reach the filters only while the search box is not focused
-- `←` / `→`: move directly between the panel rail and workspace
-- `Ctrl+K`: show the complete, context-aware command list
-- `Space`: collapse or expand the highlighted folder, project, or class
-- `z`: collapse or expand every folder or suite in the active panel
-- `Enter` / `d` (Changes): show the highlighted file's diff
-- `r` (Changes): restore the highlighted deleted file
-- `r` / `Enter`: run every test beneath the highlighted project, class, or test
-- `l`: rerun the previous test set
-- `u`: rerun failed tests
-- `f`: select the next failed test
-- `c`: cancel the active run
-- `o`: show the captured test output
-- `e`: edit the selected file or test
-- `p`: preview the current file, test, or failure location
-- `q`: quit; `Esc` closes what is open or clears the active search
-
-In the preview, `↑` / `k` and `↓` / `j` move a line, `PgUp` / `PgDn` move a screen, `Home` and
-`End` jump to the ends, `e` hands the same file to your editor, and `c` writes a comment
-against it.
-
-`n` and `N` move the preview to the next and previous row of the panel you opened it from,
-without closing it. They step through what the panel is showing, so a search or a filter
-decides what you move between, and rows with nothing to show — folders, deleted files, suites
-whose source cannot be found — are skipped. The panel's selection follows, so closing the
-preview leaves you on the file you stopped at.
-
-Comments live in memory for as long as the app is open, one note per file. The `Comments`
-panel lists every file carrying one, and search matches either the file or what the note says:
-
-- `Enter` / `v`: read the comment
-- `e`: rewrite it in the box it was written in
-- `d`: delete it
-- `p`: preview the file the note is against
-- `y`: copy every comment to the clipboard
-- `w`: save every comment to a file, suggesting `comments.md` beside the solution; saving onto
-  a file that already exists asks first
-- `x`: clear every comment, after confirming
-
-Comments are lost when the app closes, so quitting with notes you have not copied or saved
-asks before it goes.
-
-Run the prototype's tests with:
+Run it from a directory that holds a `.sln`, `.slnx` or `.csproj` file:
 
 ```bash
-dotnet test /path/to/terminal-dotnet/TerminalDotnet.slnx -m:1
+cd /path/to/your/solution
+terminal-dotnet
 ```
 
-The .NET command line is behind `ICommandRunner`. Tests use an in-memory implementation and do not launch live test runs.
+When a directory holds more than one, the first in ordinal path order is used.
+The window title shows the version.
 
-## Failure-to-source demo
+On launch the panels fill in the background:
+- The file listings and git status arrive first.
+- The build behind the Issues panel and the test discovery follow.
 
-The demo project is deliberately excluded from the solution because its test always fails. From the repository root, restore the demo project once:
+Each panel shows a spinner while it loads, and a panel with nothing to list
+says so in place of its rows.
+
+Move between panels with `Shift` plus the letter beside each one in the rail,
+or with `←` to focus the rail. `s` searches the active panel, and `Ctrl+K`
+lists every command.
+
+## Panels
+
+### Explorer
+
+<!-- Screenshot: Explorer panel with the Updated filter on -->
+![Explorer panel](docs/images/explorer.png)
+
+The solution's projects as a tree of folders and source files, mirroring the
+layout on disk. Build output (`bin`, `obj`) is left out. Files git reports as
+new are green and edited files are blue. `1` toggles the **Updated** filter,
+which keeps only those files. `Enter` or `e` edits the file, and `p` previews
+it.
+
+### Files
+
+Every file in the directory you launched from, whether or not a project claims
+it: scripts, docs, workflows and configuration. Launching further down the tree
+narrows the panel to that folder. It shares the Explorer's keys and colours.
+
+### Tests
+
+<!-- Screenshot: Tests panel with a failed test selected and its output below -->
+![Tests panel](docs/images/tests.png)
+
+The discovered tests, grouped by project, class and test, with the run's output
+beside them.
+
+- **Running.** `Enter` or `r` runs everything beneath the selection. `l` reruns
+  the previous set, `u` reruns the failures, and `c` cancels a run.
+- **Outcomes.** Green passed, red failed, yellow skipped, cyan running.
+  Before a test runs it takes the git colour of its source: green for a new
+  suite, blue for an edited one.
+- **Failures.** `f` selects the next failed test. The output pane shows the
+  failure message and a `Source:` excerpt. `p` previews the failing line and
+  `e` opens it in your editor.
+- **Output.** `o` shows the captured output of the run.
+- **Updated filter.** `1` keeps only the suites whose source file changed.
+
+### Issues
+
+<!-- Screenshot: Issues panel with an error selected and its preview open -->
+![Issues panel](docs/images/issues.png)
+
+Compiler errors (red) and warnings (yellow) from `dotnet build --no-restore`,
+with a count of each on the status line. Search matches the full compiler
+message.
+- `1` and `2` filter to errors and to warnings.
+- `Enter` or `e` opens the source at the reported line.
+- `p` previews it with the line highlighted, keeping the issue visible below.
+- `y` copies the issue to the clipboard.
+
+### Changes
+
+<!-- Screenshot: Changes panel with a diff open -->
+![Changes panel](docs/images/changes.png)
+
+The files git reports as added, modified or deleted beneath the launch
+directory.
+- `Enter` or `d` shows the diff. Inside it, `n` and `N` step to the next and
+  previous file.
+- `e` edits and `p` previews a file.
+- `r` restores a deleted file. Only the file you selected is restored, even
+  when its name looks like a glob.
+
+### Comments
+
+<!-- Screenshot: preview with the comment box open -->
+![Comments](docs/images/comments.png)
+
+Press `c` in a preview to leave a note against that file; each file carries one
+note. The Comments panel lists every file with a note, and search matches the
+file or the note's text.
+
+- `Enter` or `v` reads a note, `e` rewrites it, and `d` deletes it.
+- `p` previews the file the note is against.
+- `y` copies every note to the clipboard.
+- `w` saves every note to a file, suggesting `comments.md` beside the solution.
+  It asks before replacing an existing file.
+- `x` clears every note, after confirming.
+
+Comments live in memory while the app is open. Quitting with notes you have
+not copied or saved asks first.
+
+### Flags
+
+<!-- Screenshot: Flags panel filtered to Tasks -->
+![Flags panel](docs/images/flags.png)
+
+Comment markers from tracked files, grouped under their headings. Search
+matches both the path and the comment text. The numbered filters are:
+
+| Key | Filter | Markers |
+| --- | --- | --- |
+| `1` | Tasks | `TODO`, `FIXME` |
+| `2` | Review | `REVIEW`, `QUESTION`, `NOTE` |
+| `3` | Warning | `WARNING`, `WARN`, `HACK`, `XXX`, `BUG`, `DEPRECATED` |
+| `4` | Improve | `REFACTOR`, `OPTIMIZE` |
+
+`Enter` or `e` edits the file at the flagged line. `p` previews it there, with
+the flag repeated below the preview.
+
+### Preview
+
+<!-- Screenshot: syntax-highlighted preview -->
+![Preview](docs/images/preview.png)
+
+A full-screen, syntax-highlighted view of a file.
+- `↑`/`k`, `↓`/`j`, `PgUp`/`PgDn`, `Home` and `End` scroll through it.
+- `n` and `N` move to the next and previous row of the panel you came from,
+  without closing the preview. They follow the panel's search and filter, skip
+  rows with nothing to show, and move the panel's selection with them.
+- `e` hands the file to your editor at the same line.
+- `c` writes a comment against the file.
+
+### Staying current
+
+- **Edits from outside.** When something outside the app writes to the working
+  tree, the panels reload once the edits settle. A build flooding the watcher
+  triggers a full reload rather than a missed change.
+- **Returning from the editor.** Closing the editor brings the app back and
+  refreshes what the edit may have changed, including the build behind the
+  Issues panel.
+- **Rebuilding.** `Ctrl+R` rebuilds and rediscovers the tests from any panel,
+  even while the search box has focus. A toast reports progress and the
+  result. If files changed since the last build, opening the Tests or Issues
+  panel rebuilds on its own. A rebuild is not started while tests are running,
+  because the run is using the build output; the toast says so.
+
+## Keys
+
+`Ctrl+K` shows this list inside the app.
+
+### Anywhere
+
+| Key | Action |
+| --- | --- |
+| `Shift+E` / `F` / `T` / `I` / `G` / `C` / `L` | Go to Explorer, Files, Tests, Issues, Changes, Comments, Flags |
+| `Tab` | Move between search, panels and rows |
+| `←` / `→` | Focus the panel rail / the rows |
+| `s` | Search the active panel |
+| `Enter` (in search) | Leave the search, keeping it |
+| `Esc` | Close what is open, or clear the search |
+| `1`–`4` | Toggle the panel's numbered filters (while the search box is not focused) |
+| `Ctrl+R` | Rebuild and rediscover the tests |
+| `Ctrl+K` | Show every command |
+| `q` | Quit, asking first if comments would be lost |
+
+Changes answers to `G` because `C` belongs to Comments, and Flags answers to `L`
+because `F` belongs to Files.
+
+### Panels
+
+| Panel | Keys |
+| --- | --- |
+| All lists | `↑`/`k` up, `↓`/`j` down |
+| Explorer, Files | `Space`/`Enter` fold a folder, `z` fold all, `Enter`/`e` edit, `p` preview, `1` updated |
+| Tests | `Space` fold a suite, `z` fold all, `Enter`/`r` run, `l` rerun last, `u` rerun failures, `f` next failure, `c` cancel, `o` output, `e` edit, `p` preview, `1` updated |
+| Issues | `Enter`/`e` edit, `p` preview, `y` copy, `1` errors, `2` warnings |
+| Changes | `Enter`/`d` diff, `e` edit, `p` preview, `r` restore deleted |
+| Comments | `Enter`/`v` read, `e` edit, `p` preview, `d` delete, `y` copy all, `w` save all, `x` clear all |
+| Flags | `Enter`/`e` edit, `p` preview, `1`–`4` filter |
+| Preview | `PgUp`/`PgDn` page, `Home`/`End` ends, `n`/`N` next/previous row, `e` edit, `c` comment, `Esc` close |
+| Diff | `n`/`N` next/previous file, `Esc` close |
+
+## Configuration
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VISUAL`, `EDITOR` | `omarchy-launch-editor` | The editor to open files in. It is called as `<editor> [args] +<line> <path>`, which suits vi, Vim, Neovim, nano, micro, Emacs and Kakoune. |
+| `TERMINAL_DOTNET_DRIVER` | `dotnet` (Linux, macOS); toolkit default (Windows) | The Terminal.Gui driver: `ansi`, `dotnet` or `windows`. |
+| `DOTNET_CLI_UI_LANGUAGE` | system language | Set to `en` on a localised machine. Test and build output is read in English. |
+
+Copying uses `wl-copy`, `xclip` or `xsel` on Linux, `pbcopy` on macOS, and
+`clip` on Windows.
+
+## Troubleshooting
+
+**`terminal-dotnet: command not found` after installing.** Add the global tools
+folder to your `PATH`: `~/.dotnet/tools` on Linux and macOS, or
+`%USERPROFILE%\.dotnet\tools` on Windows. The SDK prints the exact line on
+first install.
+
+**`You must install .NET to run this application`.** The tool found no .NET 10
+runtime. Install one, or, if your SDK lives somewhere unusual (for example
+under mise or asdf), set `DOTNET_ROOT` to that folder.
+
+**Blank screen on launch.** Terminal.Gui's `ansi` driver negotiates terminal
+capabilities, and the negotiation never finishes under some multiplexers, such
+as [herdr](https://herdr.dev). That is why the app uses the `dotnet` driver on
+Linux and macOS. If you have set `TERMINAL_DOTNET_DRIVER=ansi` and see a blank
+screen, unset it.
+
+**`Enter` types a literal `u` after a crash.** An abandoned driver can leave
+the kitty keyboard protocol enabled. Run `reset`.
+
+**Opening a file does nothing or the app exits.** Set `EDITOR` to an editor on
+your `PATH`. On Windows, point it at the editor's `.exe` rather than a `.cmd`
+shim. See [platform support](docs/platforms.md#editor).
+
+**Tests or issues never appear.** The panels show what `dotnet test
+--list-tests` and `dotnet build` report. Run those in the same directory to
+see the underlying error.
+
+## Security
+
+**Launching terminal-dotnet in a repository builds it**, and building a .NET
+project runs code the project defines: MSBuild targets, analyzers, source
+generators and NuGet packages from its configured feeds. Treat opening a
+repository in terminal-dotnet the same as running `dotnet build` in it, and
+only do so for code you trust.
+
+The app makes no network requests of its own and collects no telemetry.
+Comments stay in memory unless you save them. The full audit is in
+[docs/security-audit.md](docs/security-audit.md). Please report
+vulnerabilities privately through a GitHub security advisory rather than in a
+public issue.
+
+## Development
+
+```bash
+dotnet build TerminalDotnet.slnx -m:1
+dotnet test TerminalDotnet.slnx -m:1
+```
+
+`-m:1` avoids MSBuild worker communication failures in restricted
+environments. The unit suite never launches a real `dotnet test`: every
+external command goes through `ICommandRunner`, which tests replace with an
+in-memory runner. Contributor guidance is in [CLAUDE.md](CLAUDE.md).
+
+### Failure-to-source demo
+
+`samples/TerminalDotnet.DemoTests` holds a test that always fails, and is kept
+out of the solution for that reason.
 
 ```bash
 dotnet restore samples/TerminalDotnet.DemoTests/TerminalDotnet.DemoTests.csproj
-```
-
-Then launch the prototype from the demo directory with an editor configured:
-
-```bash
 cd samples/TerminalDotnet.DemoTests
 EDITOR=nvim dotnet run --project ../../src/TerminalDotnet/TerminalDotnet.csproj
 ```
 
-Run `Opening a failure in the configured editor`, wait for the `Source:` excerpt, then press `p`. The preview should open `FailureDemoTests.cs` at the failing assertion.
+Run `Opening a failure in the configured editor`, wait for the `Source:`
+excerpt, then press `p`. The preview opens `FailureDemoTests.cs` at the failing
+assertion.
 
-To verify the fixture without the terminal UI, run this from the repository root. A failed test at `FailureDemoTests.cs:line 11` is the expected result:
+### Versioning and releases
 
-```bash
-dotnet test samples/TerminalDotnet.DemoTests/TerminalDotnet.DemoTests.csproj -m:1
-```
+The major and minor versions are set by hand in `Directory.Build.props`, and
+the patch counts commits since that version was cut. Move to a new version with
+`./bump-version.sh minor` or `./bump-version.sh major`. Pushing a `v<version>`
+tag publishes the tool to nuget.org; see
+[docs/distribution.md](docs/distribution.md).
 
-## Prototype limits
+## License
 
-- Parses the human-readable VSTest `--list-tests` output.
-- Infers test project paths from VSTest assembly output.
-- Uses exact VSTest `FullyQualifiedName` filters.
-- Reads structured results from TRX files.
-- Holds all state in memory.
-- Uses the built-in console as a replaceable terminal adapter.
+[MIT](LICENSE)
