@@ -4,8 +4,15 @@
        AssemblyVersion, FileVersion and InformationalVersion from Version, so
        setting Version ahead of it stamps all three. Passing BuildNumber
        explicitly overrides the commit count; a tree without git keeps the
-       fallback patch from Directory.Build.props. -->
-  <Target Name="StampVersionFromCommitCount" BeforeTargets="GetAssemblyVersion">
+       fallback patch from Directory.Build.props. Packing reads
+       PackageVersion, which evaluation already copied from the fallback
+       Version, so the target runs ahead of pack's version lookup as well and
+       stamps PackageVersion too. -->
+  <PropertyGroup>
+    <GetPackageVersionDependsOn>$(GetPackageVersionDependsOn);StampVersionFromCommitCount</GetPackageVersionDependsOn>
+  </PropertyGroup>
+
+  <Target Name="StampVersionFromCommitCount" BeforeTargets="GetAssemblyVersion;_GetOutputItemsFromPack">
     <Exec Command="git rev-list --count HEAD"
           WorkingDirectory="$(MSBuildThisFileDirectory)"
           Condition="'$(BuildNumber)' == '' And Exists('$(MSBuildThisFileDirectory).git')"
@@ -23,6 +30,7 @@
     <PropertyGroup Condition="'$(BuildNumber)' != ''">
       <VersionPatch>$([System.Math]::Max(0, $([MSBuild]::Subtract($(BuildNumber), $(VersionPatchOffset)))))</VersionPatch>
       <Version>$(VersionMajor).$(VersionMinor).$(VersionPatch)</Version>
+      <PackageVersion>$(Version)</PackageVersion>
     </PropertyGroup>
   </Target>
 </Project>
