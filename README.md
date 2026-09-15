@@ -140,6 +140,15 @@ terminal-dotnet
 When a directory holds more than one, the first in ordinal path order is used.
 The window title shows the version.
 
+<!-- Screenshot: the trust prompt -->
+![Trust prompt](docs/images/trust.png)
+
+The first time you open a repository, terminal-dotnet asks whether you trust
+it, because building a solution runs code the solution defines (see
+[Security](#security)). Choosing **Trust folder** is remembered for the whole
+repository. Choosing **Quit**, or pressing `Esc` or `Enter`, exits without
+building anything.
+
 On launch the panels fill in the background:
 - The file listings and git status arrive first.
 - The build behind the Issues panel and the test discovery follow.
@@ -326,6 +335,14 @@ because `F` belongs to Files.
 Copying uses `wl-copy`, `xclip` or `xsel` on Linux, `pbcopy` on macOS, and
 `clip` on Windows.
 
+Trusted repositories are listed one per line in a `trusted-folders` file:
+
+- Linux and macOS: `$XDG_CONFIG_HOME/terminal-dotnet/trusted-folders`, which
+  is usually `~/.config/terminal-dotnet/trusted-folders`.
+- Windows: `%APPDATA%\terminal-dotnet\trusted-folders`.
+
+Delete a line to be asked about that repository again.
+
 ## Troubleshooting
 
 **`terminal-dotnet: command not found` after installing.** Add the global tools
@@ -336,6 +353,10 @@ first install.
 **`You must install .NET to run this application`.** The tool found no .NET 10
 runtime. Install one, or, if your SDK lives somewhere unusual (for example
 under mise or asdf), set `DOTNET_ROOT` to that folder.
+
+**`Not trusted: <folder>`.** You chose **Quit** at the trust prompt, so nothing
+was built. Run terminal-dotnet again and choose **Trust folder** if you trust
+the repository's authors.
 
 **Blank screen on launch.** Terminal.Gui's `ansi` driver negotiates terminal
 capabilities, and the negotiation never finishes under some multiplexers, such
@@ -356,11 +377,21 @@ see the underlying error.
 
 ## Security
 
-**Launching terminal-dotnet in a repository builds it**, and building a .NET
-project runs code the project defines: MSBuild targets, analyzers, source
-generators and NuGet packages from its configured feeds. Treat opening a
-repository in terminal-dotnet the same as running `dotnet build` in it, and
-only do so for code you trust.
+**terminal-dotnet builds the repository it opens**, and building a .NET project
+runs code the project defines: MSBuild targets, analyzers, source generators
+and NuGet packages from its configured feeds. Before it builds a repository for
+the first time it asks whether you trust it, and it does not start until you
+say yes.
+- Trust is remembered per repository root, or per folder outside git.
+- Trust never extends to a separate repository nested inside a trusted one.
+- [Configuration](#configuration) shows how to revoke it.
+
+Other hardening:
+- Git runs with the repository's file-system monitor and external diff tools
+  turned off.
+- Previews and scans read at most 10 MB and never wait on a named pipe.
+- Test names are escaped before they reach `dotnet test --filter`.
+- Saving comments never writes through a symbolic link.
 
 The app makes no network requests of its own and collects no telemetry.
 Comments stay in memory unless you save them. The full audit is in
