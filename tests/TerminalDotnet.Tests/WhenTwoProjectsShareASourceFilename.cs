@@ -14,7 +14,7 @@ public sealed class WhenTwoProjectsShareASourceFilename
         var session = await LoadedSessionAsync();
 
         // Act
-        var suite = SuiteIn(session, "/repo/Shop.Tests/Shop.Tests.csproj");
+        var suite = SuiteIn(session, TestPaths.In("Shop.Tests", "Shop.Tests.csproj"));
 
         // Assert
         Assert.Equal(TestNodeUpdate.Edited, suite.Update);
@@ -27,7 +27,7 @@ public sealed class WhenTwoProjectsShareASourceFilename
         var session = await LoadedSessionAsync();
 
         // Act
-        var suite = SuiteIn(session, "/repo/Admin.Tests/Admin.Tests.csproj");
+        var suite = SuiteIn(session, TestPaths.In("Admin.Tests", "Admin.Tests.csproj"));
 
         // Assert
         Assert.Equal(TestNodeUpdate.Unchanged, suite.Update);
@@ -59,8 +59,8 @@ public sealed class WhenTwoProjectsShareASourceFilename
         var session = new TestExplorerSession(
             new InMemoryTestBackend(),
             updatedSourceProvider: new InMemoryUpdatedSource(
-                new UpdatedSource("/repo/Shop.Tests/CartTests.cs", ChangeKind.Modified)));
-        await session.LoadAsync("/repo/Shop.sln");
+                new UpdatedSource(TestPaths.In("Shop.Tests", "CartTests.cs"), ChangeKind.Modified)));
+        await session.LoadAsync(TestPaths.In("Shop.sln"));
         return session;
     }
 
@@ -79,8 +79,8 @@ public sealed class WhenTwoProjectsShareASourceFilename
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<TestCase>>(
             [
-                new("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.Tests/Shop.Tests.csproj"),
-                new("Admin.Tests.CartTests.Adds_item", "Adds item", "/repo/Admin.Tests/Admin.Tests.csproj")
+                new("Shop.Tests.CartTests.Adds_item", "Adds item", TestPaths.In("Shop.Tests", "Shop.Tests.csproj")),
+                new("Admin.Tests.CartTests.Adds_item", "Adds item", TestPaths.In("Admin.Tests", "Admin.Tests.csproj"))
             ]);
 
         public Task<TestRun> RunAsync(

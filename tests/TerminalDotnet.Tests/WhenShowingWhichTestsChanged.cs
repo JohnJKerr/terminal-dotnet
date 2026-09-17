@@ -12,7 +12,7 @@ public sealed class WhenShowingWhichTestsChanged
     {
         // Arrange
         var session = await LoadedSessionAsync(
-            new UpdatedSource("/repo/Shop.Tests/CartTests.cs", ChangeKind.Added));
+            new UpdatedSource(TestPaths.In("Shop.Tests", "CartTests.cs"), ChangeKind.Added));
 
         // Act
         var suite = SuiteNamed(session, "CartTests");
@@ -26,7 +26,7 @@ public sealed class WhenShowingWhichTestsChanged
     {
         // Arrange
         var session = await LoadedSessionAsync(
-            new UpdatedSource("/repo/Shop.Tests/CartTests.cs", ChangeKind.Modified));
+            new UpdatedSource(TestPaths.In("Shop.Tests", "CartTests.cs"), ChangeKind.Modified));
 
         // Act
         var suite = SuiteNamed(session, "CartTests");
@@ -40,7 +40,7 @@ public sealed class WhenShowingWhichTestsChanged
     {
         // Arrange
         var session = await LoadedSessionAsync(
-            new UpdatedSource("/repo/Shop.Tests/CartTests.cs", ChangeKind.Added));
+            new UpdatedSource(TestPaths.In("Shop.Tests", "CartTests.cs"), ChangeKind.Added));
 
         // Act
         var test = session.State.VisibleNodes.Single(node => node.Name == "Adds item");
@@ -54,7 +54,7 @@ public sealed class WhenShowingWhichTestsChanged
     {
         // Arrange
         var session = await LoadedSessionAsync(
-            new UpdatedSource("/repo/Shop.Tests/CartTests.cs", ChangeKind.Added));
+            new UpdatedSource(TestPaths.In("Shop.Tests", "CartTests.cs"), ChangeKind.Added));
 
         // Act
         var suite = SuiteNamed(session, "OrderTests");
@@ -68,7 +68,7 @@ public sealed class WhenShowingWhichTestsChanged
     {
         // Arrange
         var session = await LoadedSessionAsync(
-            new UpdatedSource("/repo/Shop.Tests/CartTests.cs", ChangeKind.Added));
+            new UpdatedSource(TestPaths.In("Shop.Tests", "CartTests.cs"), ChangeKind.Added));
 
         // Act
         var project = session.State.VisibleNodes.First(node => node.Kind == TestNodeKind.Project);
@@ -82,7 +82,7 @@ public sealed class WhenShowingWhichTestsChanged
     {
         // Arrange
         var session = await LoadedSessionAsync(
-            new UpdatedSource("/repo/Shop.Tests/CartTests.cs", ChangeKind.Added));
+            new UpdatedSource(TestPaths.In("Shop.Tests", "CartTests.cs"), ChangeKind.Added));
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
@@ -100,7 +100,7 @@ public sealed class WhenShowingWhichTestsChanged
         var session = new TestExplorerSession(
             new InMemoryTestBackend(),
             updatedSourceProvider: new InMemoryUpdatedSource(sources));
-        await session.LoadAsync("/repo/Shop.sln");
+        await session.LoadAsync(TestPaths.In("Shop.sln"));
         return session;
     }
 
@@ -118,8 +118,8 @@ public sealed class WhenShowingWhichTestsChanged
             CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<TestCase>>(
             [
-                new("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.Tests/Shop.Tests.csproj"),
-                new("Shop.Tests.OrderTests.Submits_order", "Submits order", "/repo/Shop.Tests/Shop.Tests.csproj")
+                new("Shop.Tests.CartTests.Adds_item", "Adds item", TestPaths.In("Shop.Tests", "Shop.Tests.csproj")),
+                new("Shop.Tests.OrderTests.Submits_order", "Submits order", TestPaths.In("Shop.Tests", "Shop.Tests.csproj"))
             ]);
 
         public Task<TestRun> RunAsync(

@@ -12,7 +12,7 @@ public sealed class WhenFilteringToUpdatedTests
     public async Task It_keeps_only_the_suites_whose_source_changed()
     {
         // Arrange
-        var session = await LoadedSessionAsync(new InMemoryUpdatedSource(["/repo/Shop.Tests/CartTests.cs"]));
+        var session = await LoadedSessionAsync(new InMemoryUpdatedSource([TestPaths.In("Shop.Tests", "CartTests.cs")]));
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.ToggleFilter(ExplorerFilter.Updated));
@@ -27,7 +27,7 @@ public sealed class WhenFilteringToUpdatedTests
     public async Task It_remembers_the_filter_it_is_using()
     {
         // Arrange
-        var session = await LoadedSessionAsync(new InMemoryUpdatedSource(["/repo/Shop.Tests/CartTests.cs"]));
+        var session = await LoadedSessionAsync(new InMemoryUpdatedSource([TestPaths.In("Shop.Tests", "CartTests.cs")]));
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.ToggleFilter(ExplorerFilter.Updated));
@@ -40,7 +40,7 @@ public sealed class WhenFilteringToUpdatedTests
     public async Task It_brings_every_suite_back_when_the_same_filter_is_pressed_again()
     {
         // Arrange
-        var session = await LoadedSessionAsync(new InMemoryUpdatedSource(["/repo/Shop.Tests/CartTests.cs"]));
+        var session = await LoadedSessionAsync(new InMemoryUpdatedSource([TestPaths.In("Shop.Tests", "CartTests.cs")]));
         await session.DispatchAsync(new ExplorerCommand.ToggleFilter(ExplorerFilter.Updated));
 
         // Act
@@ -59,8 +59,8 @@ public sealed class WhenFilteringToUpdatedTests
         var backend = new InMemoryTestBackend(CartAndOrderTests());
         var session = new TestExplorerSession(
             backend,
-            updatedSourceProvider: new InMemoryUpdatedSource(["/repo/Shop.Tests/CartTests.cs"]));
-        await session.LoadAsync("/repo/Shop.sln");
+            updatedSourceProvider: new InMemoryUpdatedSource([TestPaths.In("Shop.Tests", "CartTests.cs")]));
+        await session.LoadAsync(TestPaths.In("Shop.sln"));
         await session.DispatchAsync(new ExplorerCommand.ToggleFilter(ExplorerFilter.Updated));
 
         // Act
@@ -88,7 +88,7 @@ public sealed class WhenFilteringToUpdatedTests
     {
         // Arrange
         var session = await LoadedSessionAsync(
-            new InMemoryUpdatedSource(["/repo/Shop.Tests/CartTests.cs", "/repo/Shop.Tests/OrderTests.cs"]));
+            new InMemoryUpdatedSource([TestPaths.In("Shop.Tests", "CartTests.cs"), TestPaths.In("Shop.Tests", "OrderTests.cs")]));
         await session.DispatchAsync(new ExplorerCommand.ToggleFilter(ExplorerFilter.Updated));
 
         // Act
@@ -105,14 +105,14 @@ public sealed class WhenFilteringToUpdatedTests
         var session = new TestExplorerSession(
             new InMemoryTestBackend(CartAndOrderTests()),
             updatedSourceProvider: updatedSource);
-        await session.LoadAsync("/repo/Shop.sln");
+        await session.LoadAsync(TestPaths.In("Shop.sln"));
         return session;
     }
 
     private static IReadOnlyList<TestCase> CartAndOrderTests() =>
     [
-        new("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.Tests/Shop.Tests.csproj"),
-        new("Shop.Tests.OrderTests.Submits_order", "Submits order", "/repo/Shop.Tests/Shop.Tests.csproj")
+        new("Shop.Tests.CartTests.Adds_item", "Adds item", TestPaths.In("Shop.Tests", "Shop.Tests.csproj")),
+        new("Shop.Tests.OrderTests.Submits_order", "Submits order", TestPaths.In("Shop.Tests", "Shop.Tests.csproj"))
     ];
 
     private sealed class InMemoryUpdatedSource(IReadOnlyList<string> paths) : IUpdatedSourceProvider

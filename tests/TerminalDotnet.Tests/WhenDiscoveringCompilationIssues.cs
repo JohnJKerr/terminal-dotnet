@@ -45,7 +45,9 @@ public sealed class WhenDiscoveringCompilationIssues
         var issue = (await backend.DiscoverAsync("/repo/Shop.slnx")).First();
 
         // Assert
-        Assert.Equal("src/Cart.cs(12,9): error CS1002: ; expected", issue.Details);
+        Assert.Equal(
+            $"src{Path.DirectorySeparatorChar}Cart.cs(12,9): error CS1002: ; expected",
+            issue.Details);
     }
 
     private static InMemoryCommandRunner RunnerWithIssues() => new(new CommandResult(1, """
