@@ -21,7 +21,8 @@ public sealed class CommandClipboard(ICommandRunner commandRunner, string workin
         new("wl-copy", []),
         new("xclip", ["-selection", "clipboard"]),
         new("xsel", ["--clipboard", "--input"]),
-        new("pbcopy", [])
+        new("pbcopy", []),
+        new("clip", [])
     ];
 
     public async Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default)

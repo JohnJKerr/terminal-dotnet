@@ -6,6 +6,28 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <!-- Packed as a .NET tool, installed with `dotnet tool install -g terminal-dotnet`.
+       The app drives `dotnet build` and `dotnet test`, so everyone running it
+       already has an SDK, and rolling forward lets a newer runtime host it. -->
+  <PropertyGroup>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>terminal-dotnet</ToolCommandName>
+    <PackageId>terminal-dotnet</PackageId>
+    <RollForward>Major</RollForward>
+    <Authors>John Kerr</Authors>
+    <Description>A keyboard-driven terminal workspace for .NET solutions: browse files, run tests, read compiler issues, review git changes and leave notes without leaving the terminal.</Description>
+    <PackageTags>dotnet;tui;terminal;testing;test-runner;cli</PackageTags>
+    <PackageProjectUrl>https://github.com/JohnJKerr/terminal-dotnet</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/JohnJKerr/terminal-dotnet</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" Visible="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Terminal.Gui" Version="2.4.17" />
   </ItemGroup>

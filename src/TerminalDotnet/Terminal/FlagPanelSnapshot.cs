@@ -19,6 +19,9 @@ public sealed record FlagPanelSnapshot(
 
     public int SelectedRowIndex => RowsBefore(Flags, SelectedIndex);
 
+    public IReadOnlyList<FileStatusSegment> StatusSegments =>
+        [new(CountedNoun.Of(Flags.Count, "Flag"), FileRowTone.Neutral)];
+
     public static FlagPanelSnapshot From(FlagState state) => new(
         state.Flags,
         state.SelectedIndex,

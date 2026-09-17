@@ -1,0 +1,91 @@
+name: Release
+
+# Pushing a tag named after the stamped version publishes that commit to
+# nuget.org as the `terminal-dotnet` .NET tool:
+#
+#   git tag v0.2.10 && git push origin v0.2.10
+#
+# The version comes from the commit count (see Directory.Build.props), so the
+# tag is checked against it rather than trusted. Publishing uses nuget.org
+# trusted publishing, so no API key is stored; see docs/distribution.md.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      # The patch number counts commits, so the full history is needed.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Match the tag to the stamped version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(dotnet msbuild src/TerminalDotnet/TerminalDotnet.csproj \
+            -t:StampVersionFromCommitCount -getProperty:Version)"
+          if [ "v$version" != "$TAG" ]; then
+            echo "::error::Tag $TAG does not match the stamped version v$version"
+            exit 1
+          fi
+
+      - name: Restore from the lock files
+        run: dotnet restore TerminalDotnet.slnx -m:1 --locked-mode
+
+      - name: Test
+        run: dotnet test TerminalDotnet.slnx -m:1 --no-restore
+
+      - name: Pack
+        run: dotnet pack src/TerminalDotnet/TerminalDotnet.csproj -m:1 --no-restore --configuration Release --output dist
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: tool
+          path: dist/*.nupkg
+          if-no-files-found: error
+
+  publish:
+    needs: pack
+    runs-on: ubuntu-latest
+    environment: nuget
+    permissions:
+      contents: write # create the GitHub release
+      id-token: write # exchange a GitHub token for a short-lived nuget.org key
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: tool
+          path: dist
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Log in to nuget.org
+        id: login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+
+      - name: Push to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.login.outputs.NUGET_API_KEY }}
+        run: dotnet nuget push "dist/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with:
+          files: dist/*.nupkg
+          generate_release_notes: true
+          fail_on_unmatched_files: true

@@ -6,6 +6,7 @@ using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Trust;
 
 var target = FindTarget(Environment.CurrentDirectory);
 if (target is null)
@@ -15,6 +16,23 @@ if (target is null)
 }
 
 var commandRunner = new ProcessCommandRunner();
+
+// The panels build the solution as soon as they start, and building runs code
+// the solution defines, so nothing starts until the folder is trusted.
+var trust = new WorkspaceTrust(WorkspaceTrust.DefaultStorePath(), commandRunner);
+var decision = await trust.CheckAsync(Path.GetDirectoryName(Path.GetFullPath(target))!);
+var remembered = true;
+if (!decision.Trusted)
+{
+    if (!TrustPrompt.Ask(TrustQuestion.For(decision.Folder)))
+    {
+        Console.Error.WriteLine(TrustQuestion.Declined(decision.Folder));
+        return 1;
+    }
+
+    remembered = await trust.TryTrustAsync(decision.Folder);
+}
+
 var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandRunner));
 var folderBackend = new LaunchFolderBackend(commandRunner);
 var folderSession = new FileExplorerSession(folderBackend, FileGrouping.Folder);
@@ -46,6 +64,11 @@ new TestRunnerApplication(
     target,
     editorLauncher,
     workspaceWatcher).Run();
+if (!remembered)
+{
+    Console.Error.WriteLine(TrustQuestion.NotRemembered(decision.Folder, trust.StorePath));
+}
+
 return 0;
 
 static string? FindTarget(string directory)

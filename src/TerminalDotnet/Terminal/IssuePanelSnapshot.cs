@@ -48,8 +48,8 @@ public sealed record IssuePanelSnapshot(
 
     public static IssuePanelSnapshot From(IssueState state) => new(
         state.Issues, state.SelectedIndex, state.SearchQuery,
-        [new($"{state.Issues.Count(x => x.Severity == IssueSeverity.Error)} Errors", FileRowTone.Deleted),
-         new($"{state.Issues.Count(x => x.Severity == IssueSeverity.Warning)} Warnings", FileRowTone.Warning),
+        [new(CountedNoun.Of(state.Issues.Count(x => x.Severity == IssueSeverity.Error), "Error"), FileRowTone.Deleted),
+         new(CountedNoun.Of(state.Issues.Count(x => x.Severity == IssueSeverity.Warning), "Warning"), FileRowTone.Warning),
          .. state.Notice.Length == 0 ? [] : new[] { new FileStatusSegment(state.Notice, FileRowTone.Neutral) }],
         [new("1. Errors", state.ActiveFilter == IssueFilter.Errors),
          new("2. Warnings", state.ActiveFilter == IssueFilter.Warnings)],

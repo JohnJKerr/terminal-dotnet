@@ -40,7 +40,7 @@ public static class RebuildToast
     {
         var errors = issues.Issues.Count(issue => issue.Severity == IssueSeverity.Error);
         var warnings = issues.Issues.Count(issue => issue.Severity == IssueSeverity.Warning);
-        var found = $"{Counted(errors, "error")}, {Counted(warnings, "warning")}";
+        var found = $"{CountedNoun.Of(errors, "error")}, {CountedNoun.Of(warnings, "warning")}";
 
         if (errors > 0)
         {
@@ -51,7 +51,4 @@ public static class RebuildToast
             ? new($"Built — {found} · test discovery failed", ToastTone.Failed)
             : new($"Built — {found} · tests rediscovered", ToastTone.Succeeded);
     }
-
-    private static string Counted(int count, string noun) =>
-        count == 1 ? $"1 {noun}" : $"{count} {noun}s";
 }

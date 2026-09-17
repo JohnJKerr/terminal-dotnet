@@ -37,6 +37,22 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_escapes_filter_syntax_in_a_test_name()
+    {
+        // Arrange
+        var runner = new InMemoryCommandRunner(new CommandResult(0, "", ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+
+        // Act
+        await backend.RunAsync([new TestCase(@"Shop.Box<A,B>.Odd|Name=(x)&!~\y", "Odd", "/repo/Shop.sln")]);
+
+        // Assert
+        Assert.Equal(
+            @"FullyQualifiedName=Shop.Box<A%2CB>.Odd\|Name\=\(x\)\&\!\~\\y",
+            runner.LastRequest!.Arguments[3]);
+    }
+
+    [Fact]
     public async Task It_issues_one_exact_filter_command_when_running_tests()
     {
         // Arrange

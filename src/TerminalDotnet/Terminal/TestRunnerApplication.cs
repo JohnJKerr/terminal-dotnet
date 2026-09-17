@@ -41,7 +41,6 @@ internal sealed class TestRunnerApplication(
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int RowsBelowTheList = StatusRow + 1;
     private const int IssueDetailRows = 4;
-    private const string ConsoleDriver = "dotnet";
     private const int ClearChoice = 0;
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan EditPollInterval = TimeSpan.FromMilliseconds(250);
@@ -258,10 +257,7 @@ internal sealed class TestRunnerApplication(
         return panels;
     }
 
-    private static string TerminalDriver() =>
-        Environment.GetEnvironmentVariable("TERMINAL_DOTNET_DRIVER") is { Length: > 0 } driver
-            ? driver
-            : ConsoleDriver;
+    private static string? TerminalDriver() => TerminalDriverChoice.FromEnvironment();
 
     private static Label TestStatus() => new()
     {
@@ -1371,7 +1367,13 @@ internal sealed class TestRunnerApplication(
     {
         try
         {
-            return File.ReadAllText(path);
+            if (FileText.ReadWithin(path) is { } text)
+            {
+                return text;
+            }
+
+            OverThePanels(() => MessageBox.ErrorQuery(application, "Preview", TooLargeToPreview(path), "Ok"));
+            return null;
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -1379,6 +1381,10 @@ internal sealed class TestRunnerApplication(
             return null;
         }
     }
+
+    private static string TooLargeToPreview(string path) =>
+        $"{Path.GetFileName(path)} is larger than {FileText.MaxBytes / (1024 * 1024)} MB, " +
+        "too large to preview. Open it in your editor instead.";
 
     /// <summary>Closing the preview only leaves the nested loop, so the shell
     /// beneath it is asked to stop as well when the reader left for the
@@ -2138,7 +2144,7 @@ internal sealed class TestRunnerApplication(
             snapshot.Flags,
             () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
             snapshot.SelectedRowIndex,
-            [new($"{snapshot.Flags.Count} Flags", FileRowTone.Neutral)],
+            snapshot.StatusSegments,
             snapshot.Filters,
             snapshot.EmptyMessage);
     }

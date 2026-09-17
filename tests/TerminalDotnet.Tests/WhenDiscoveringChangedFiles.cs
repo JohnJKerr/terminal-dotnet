@@ -226,6 +226,41 @@ public sealed class WhenDiscoveringChangedFiles
     }
 
     [Fact]
+    public async Task It_turns_off_the_file_system_monitor_a_repository_configures()
+    {
+        // Arrange
+        var runner = new GitCommandRunner("/repo", " D src/Gone.cs\0") { Diff = "@@ -1 +0,0 @@" };
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync("/repo/App.slnx");
+
+        // Act
+        await backend.DiffAsync(files[0]);
+        await backend.RestoreAsync(files[0]);
+
+        // Assert
+        Assert.Equal(
+            ["-c core.fsmonitor=false"],
+            runner.Invocations.Select(arguments => string.Join(' ', arguments.Take(2))).Distinct());
+    }
+
+    [Fact]
+    public async Task It_shows_a_diff_without_the_repository_configured_diff_tools()
+    {
+        // Arrange
+        var runner = new GitCommandRunner("/repo", " M src/Changed.cs\0") { Diff = "@@ -1 +1 @@" };
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync("/repo/App.slnx");
+
+        // Act
+        await backend.DiffAsync(files[0]);
+
+        // Assert
+        Assert.Equal(
+            ["diff", "--no-ext-diff", "--no-textconv", "HEAD", "--", ":(literal)/repo/src/Changed.cs"],
+            runner.Requests.Last());
+    }
+
+    [Fact]
     public async Task It_reports_a_restore_git_refused()
     {
         // Arrange
@@ -248,14 +283,20 @@ public sealed class WhenDiscoveringChangedFiles
 
         public string Diff { get; init; } = "";
 
+        /// <summary>Each command as git is asked to run it, settings included.</summary>
+        public List<IReadOnlyList<string>> Invocations { get; } = [];
+
+        /// <summary>Each command's own arguments, after any `-c` settings.</summary>
         public List<IReadOnlyList<string>> Requests { get; } = [];
 
         public Task<CommandResult> RunAsync(
             CommandRequest request,
             CancellationToken cancellationToken = default)
         {
-            Requests.Add(request.Arguments);
-            return Task.FromResult(request.Arguments[0] switch
+            Invocations.Add(request.Arguments);
+            var command = WithoutSettings(request.Arguments);
+            Requests.Add(command);
+            return Task.FromResult(command[0] switch
             {
                 "rev-parse" => new CommandResult(RootExitCode, root, ""),
                 "status" => new CommandResult(0, status, ""),
@@ -263,5 +304,10 @@ public sealed class WhenDiscoveringChangedFiles
                 _ => new CommandResult(0, Diff, "")
             });
         }
+
+        private static IReadOnlyList<string> WithoutSettings(IReadOnlyList<string> arguments) =>
+            arguments.Count > 2 && arguments[0] == "-c"
+                ? WithoutSettings([.. arguments.Skip(2)])
+                : arguments;
     }
 }

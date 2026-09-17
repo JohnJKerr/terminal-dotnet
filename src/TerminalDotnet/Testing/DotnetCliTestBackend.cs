@@ -119,7 +119,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
 
         var filter = string.Join(
             '|',
-            tests.Select(test => $"FullyQualifiedName={test.FullyQualifiedName}"));
+            tests.Select(test => $"FullyQualifiedName={FilterValue(test.FullyQualifiedName)}"));
         var resultPath = resultStore.CreatePath();
         var result = await commandRunner.RunAsync(
             new CommandRequest(
@@ -146,6 +146,21 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             Diagnostic = recorded.Diagnostic
         };
     }
+
+    /// <summary>A test's name comes from the project being read, and the filter
+    /// language gives meaning to some of its characters, so a name holding them
+    /// would widen or break the filter. They are escaped as the filter syntax
+    /// asks, and a generic type's comma is written the way VSTest expects.
+    /// </summary>
+    private static string FilterValue(string fullyQualifiedName) =>
+        string.Concat(fullyQualifiedName.Select(EscapedFilterCharacter));
+
+    private static string EscapedFilterCharacter(char character) => character switch
+    {
+        '\\' or '(' or ')' or '&' or '|' or '=' or '!' or '~' => $"\\{character}",
+        ',' => "%2C",
+        _ => character.ToString()
+    };
 
     private sealed record RecordedResults(IReadOnlyList<TestResult> Results, string? Diagnostic);
 

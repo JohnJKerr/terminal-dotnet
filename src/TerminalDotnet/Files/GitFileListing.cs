@@ -15,7 +15,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
         CancellationToken cancellationToken)
     {
         var result = await commandRunner.RunAsync(
-            new CommandRequest("git", ["rev-parse", "--show-toplevel"], workingDirectory),
+            GitRequest.For(["rev-parse", "--show-toplevel"], workingDirectory),
             cancellationToken);
 
         return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
@@ -33,10 +33,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
         }
 
         var result = await commandRunner.RunAsync(
-            new CommandRequest(
-                "git",
-                ["status", "--porcelain=v1", "-z", "--untracked-files=all"],
-                repositoryRoot),
+            GitRequest.For(["status", "--porcelain=v1", "-z", "--untracked-files=all"], repositoryRoot),
             cancellationToken);
 
         return result.ExitCode == 0
@@ -51,10 +48,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
         CancellationToken cancellationToken)
     {
         var listing = await commandRunner.RunAsync(
-            new CommandRequest(
-                "git",
-                ["ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-                directory),
+            GitRequest.For(["ls-files", "-z", "--cached", "--others", "--exclude-standard"], directory),
             cancellationToken);
 
         return listing.ExitCode == 0

@@ -42,17 +42,24 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             return "";
         }
 
-        var tracked = await GitAsync(["diff", "HEAD", "--", Pathspec(file)], cancellationToken);
+        var tracked = await GitAsync(
+            ["diff", .. WithoutConfiguredTools, "HEAD", "--", Pathspec(file)],
+            cancellationToken);
         if (tracked.StandardOutput.Length > 0)
         {
             return tracked.StandardOutput;
         }
 
         var untracked = await GitAsync(
-            ["diff", "--no-index", "--", "/dev/null", file.Path],
+            ["diff", .. WithoutConfiguredTools, "--no-index", "--", "/dev/null", file.Path],
             cancellationToken);
         return untracked.StandardOutput;
     }
+
+    /// <summary>A repository's configuration can hand diffs to an external
+    /// program or convert files through a textconv driver before comparing
+    /// them; the panel shows git's own diff instead.</summary>
+    private static readonly IReadOnlyList<string> WithoutConfiguredTools = ["--no-ext-diff", "--no-textconv"];
 
     public async Task<bool> RestoreAsync(
         ChangedFile file,
@@ -117,7 +124,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
     private async Task<string?> RepositoryRootAsync(CancellationToken cancellationToken)
     {
         var result = await commandRunner.RunAsync(
-            new CommandRequest("git", ["rev-parse", "--show-toplevel"], scopeDirectory),
+            GitRequest.For(["rev-parse", "--show-toplevel"], scopeDirectory),
             cancellationToken);
         return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
     }
@@ -126,7 +133,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken) =>
         commandRunner.RunAsync(
-            new CommandRequest("git", arguments, repositoryRoot!),
+            GitRequest.For(arguments, repositoryRoot!),
             cancellationToken);
 
     private static ChangedFile ChangedFileFrom(

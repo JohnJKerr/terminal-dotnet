@@ -22,7 +22,7 @@ public sealed partial class FileFlagBackend(IFileExplorerBackend files) : IFlagB
     {
         try
         {
-            return File.ReadLines(path)
+            return (FileText.ReadLinesWithin(path) ?? [])
                 .Select((line, index) => FlagIn(path, root, index + 1, line))
                 .Where(flag => flag is not null)
                 .Cast<Flag>()

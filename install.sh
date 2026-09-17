@@ -53,8 +53,13 @@ command -v dotnet >/dev/null 2>&1 || {
 
 publish_args=(--configuration Release --output "$install_dir.staging")
 if [ "$self_contained" = "true" ]; then
+    # A restore for one runtime rewrites packages.lock.json, which the locked
+    # restore in CI would then reject, so this one records its lock elsewhere.
+    runtime_lock_dir="$(mktemp -d)"
+    trap 'rm -rf -- "$runtime_lock_dir"' EXIT
     publish_args+=(--self-contained true --runtime "$(dotnet --info |
-        sed -n 's/^ *RID: *//p' | head -n 1)")
+        sed -n 's/^ *RID: *//p' | head -n 1)"
+        "-p:NuGetLockFilePath=$runtime_lock_dir/packages.lock.json")
 fi
 
 echo "Publishing $COMMAND_NAME..."

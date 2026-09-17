@@ -63,6 +63,21 @@ public sealed class WhenCreatingAFilePanelSnapshot
     }
 
     [Fact]
+    public void It_counts_a_single_file_in_the_singular()
+    {
+        // Arrange
+        var state = new FileExplorerState([]) { Changes = new FileChangeSummary(1, 1, 1, 1) };
+
+        // Act
+        var snapshot = FilePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(
+            ["1 File", "1 Added", "1 Edited", "1 Deleted"],
+            snapshot.StatusSegments.Select(segment => segment.Text));
+    }
+
+    [Fact]
     public void It_tones_the_status_line_counts_by_the_change_they_report()
     {
         // Arrange

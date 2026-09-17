@@ -42,6 +42,33 @@ public sealed class WhenBrowsingTheFlags
             session.State.Flags.Select(flag => (flag.Kind, flag.Comment)));
     }
 
+    [Fact(Timeout = 10_000)]
+    public async Task It_skips_a_named_pipe_rather_than_waiting_for_a_writer()
+    {
+        // Arrange
+        var folder = Directory.CreateTempSubdirectory("terminal-dotnet-flags-");
+        try
+        {
+            var path = Path.Combine(folder.FullName, "Pipe.cs");
+            if (!NamedPipe.TryCreate(path))
+            {
+                return;
+            }
+
+            var session = new FlagSession(new FileFlagBackend(new StubFileBackend(path)));
+
+            // Act
+            await Task.Run(() => session.LoadAsync(Path.Combine(folder.FullName, "App.slnx")));
+
+            // Assert
+            Assert.Empty(session.State.Flags);
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
+        }
+    }
+
     [Fact]
     public async Task It_filters_flags_by_the_four_categories()
     {

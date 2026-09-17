@@ -404,7 +404,7 @@ public sealed class TestExplorerSession(
         {
             Status = ExplorerStatus.Running,
             VisibleNodes = CurrentNodes(),
-            Message = $"Running {tests.Count} tests...",
+            Message = $"Running {CountedNoun.Of(tests.Count, "test")}...",
             Diagnostic = null
         };
         TestRun run;
