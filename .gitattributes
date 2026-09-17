@@ -1,0 +1,9 @@
+# Source is stored and checked out with LF on every platform. Without this,
+# Windows checks out CRLF, and anything comparing file text against a literal
+# in the source reads a stray carriage return that Linux and macOS never see.
+* text=auto eol=lf
+
+*.png binary
+*.sh text eol=lf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
