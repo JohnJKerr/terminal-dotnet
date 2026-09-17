@@ -71,7 +71,7 @@ public sealed class WhenDiscoveringProjectFiles
         }
     }
 
-    [Fact]
+    [PosixFact]
     public async Task It_lists_a_tracked_file_whose_name_holds_a_newline()
     {
         // Arrange
