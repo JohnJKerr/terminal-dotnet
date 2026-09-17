@@ -34,7 +34,7 @@ tree is treated as untrusted. The user's own environment (`VISUAL`, `EDITOR`,
 | 7 | Discovered test names are put into the `--filter` expression unescaped | Low | **Fixed** |
 | 8 | Terminal escape sequences in untrusted text | Low | **Pass**, pinned by tests |
 | 9 | NuGet restores are not locked | Low | **Fixed** |
-| 10 | Symbolic link loops while walking source folders | Info | Regression test added |
+| 10 | Symbolic link loops while walking source folders | Low | **Fixed**: confirmed on Windows once CI ran there |
 | 11 | XML parsing (`.slnx`, TRX) | Info | Pass |
 | 12 | Command construction and shell injection | Info | Pass |
 | 13 | Dependency vulnerabilities | Info | Pass, none known |
@@ -203,14 +203,28 @@ Fix:
   rewrite the lock file. It records that restore's lock file in a temporary
   folder instead.
 
-### 10. Symbolic link loops (info)
+### 10. Symbolic link loops (fixed)
 
-A folder linking back to its parent could in principle trap the recursive walk
-used for test source lookup and the non-git file listing. On Linux, .NET's
-directory enumeration does not descend through the loop, and a regression test
-now pins that down:
-`WhenLocatingTestSource.It_gives_up_on_a_missing_test_when_a_folder_links_back_to_its_parent`.
-The Windows and macOS CI legs will show whether junctions behave the same way.
+A folder linking back to its parent trapped the recursive walk used for test
+source lookup and the non-git file listing. Once CI ran on every platform the
+behaviour proved to differ:
+
+- **Windows:** the walk descended `sub\loop\sub\loop…` until the path could no
+  longer be resolved, and threw `IOException`. A repository holding a junction
+  or directory symlink would break the Flags panel, the file listing outside
+  git, and the jump from a failing test to its source.
+- **Linux and macOS:** the walk did not loop, but it did follow the link, so
+  every file under the linked folder was listed twice.
+
+Fix: `SourceTree` no longer descends a directory carrying
+`FileAttributes.ReparsePoint`, and a folder whose attributes cannot be read is
+left alone rather than walked. Files are listed where they really live.
+
+Covered by
+`WhenDiscoveringFolderFiles.It_lists_a_file_once_when_a_folder_links_to_the_folder_holding_it`,
+which failed on Linux before the fix, and
+`WhenLocatingTestSource.It_gives_up_on_a_missing_test_when_a_folder_links_back_to_its_parent`,
+which failed on Windows.
 
 ### 11. XML parsing (pass)
 

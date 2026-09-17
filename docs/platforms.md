@@ -14,8 +14,11 @@ Status as of DEV-188 (September 2026):
 | Platform | Builds | Unit suite | Used interactively |
 | --- | --- | --- | --- |
 | Linux (x64, arm64) | Yes | Passing in CI | Yes, daily on Arch/Omarchy |
-| macOS (arm64, x64) | Yes | Added to the CI matrix; first results pending | No |
-| Windows (x64, arm64) | Yes | Added to the CI matrix; first results pending | No |
+| macOS (arm64, x64) | Yes | Passing in CI | No |
+| Windows (x64, arm64) | Yes | Passing in CI, with one test skipped | No |
+
+The skipped test asks for a file whose name holds a newline, which Windows
+file systems reject outright. It runs on Linux and macOS.
 
 ## Runtime requirements on every platform
 
@@ -101,16 +104,15 @@ suite; the interactive check is follow-up 5 below.
 
 ## Open follow-ups
 
-1. Confirm the macOS and Windows CI legs pass. Many unit tests use POSIX-style
-   literals such as `/repo/Shop.sln`, and `Path.GetFullPath` turns those into
-   `C:\repo\Shop.sln` on Windows, so expect failures there to fix first.
-2. Report a missing editor in the UI instead of letting the exception end the
+1. Report a missing editor in the UI instead of letting the exception end the
    app, and choose a platform default editor.
-3. Give the editor launcher per-editor line arguments: `+N` for vi-family and
+2. Give the editor launcher per-editor line arguments: `+N` for vi-family and
    nano, `-g path:N` for VS Code, `path:N` for Helix, nothing for Notepad.
    Resolve `.cmd` shims on Windows at the same time.
-4. Compare paths case-insensitively on Windows and resolve symlinks before
+3. Compare paths case-insensitively on Windows and resolve symlinks before
    comparing git output with the launch directory.
-5. Try the app by hand in Windows Terminal and in macOS Terminal.app or
+4. Try the app by hand in Windows Terminal and in macOS Terminal.app or
    iTerm2: drawing, key handling (`Shift`+letter panel keys, `Ctrl+K`,
-   `Ctrl+R`), the editor handoff and return, and the clipboard.
+   `Ctrl+R`), the editor handoff and return, and the clipboard. CI runs the
+   unit suite on every platform, but nothing has driven the interface on
+   Windows or macOS.
