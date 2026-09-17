@@ -2144,7 +2144,7 @@ internal sealed class TestRunnerApplication(
             snapshot.Flags,
             () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
             snapshot.SelectedRowIndex,
-            [new($"{snapshot.Flags.Count} Flags", FileRowTone.Neutral)],
+            snapshot.StatusSegments,
             snapshot.Filters,
             snapshot.EmptyMessage);
     }

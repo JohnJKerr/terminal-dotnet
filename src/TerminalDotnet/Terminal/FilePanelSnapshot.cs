@@ -102,7 +102,7 @@ public sealed record FilePanelSnapshot(
 
     private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(FileChangeSummary changes) =>
     [
-        new($"{changes.Total} Files", FileRowTone.Neutral),
+        new(CountedNoun.Of(changes.Total, "File"), FileRowTone.Neutral),
         new($"{changes.Added} Added", FileRowTone.New),
         new($"{changes.Edited} Edited", FileRowTone.Modified),
         new($"{changes.Deleted} Deleted", FileRowTone.Deleted)
