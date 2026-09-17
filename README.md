@@ -79,6 +79,18 @@ This puts `terminal-dotnet` in `~/.dotnet/tools` (`%USERPROFILE%\.dotnet\tools`
 on Windows). Upgrade with `dotnet tool update --global terminal-dotnet`, and
 remove it with `dotnet tool uninstall --global terminal-dotnet`.
 
+If that folder is not already on your `PATH`, the SDK says so when it installs
+the tool. On Linux and macOS:
+
+```bash
+echo 'export PATH="$PATH:$HOME/.dotnet/tools"' >> ~/.bashrc
+export PATH="$PATH:$HOME/.dotnet/tools"
+```
+
+The first line makes it stick, the second fixes the shell you are in. Use the
+profile your shell actually reads: `~/.bashrc` for bash, `~/.zshrc` for zsh.
+The SDK suggests `~/.bash_profile`, which bash only reads for login shells.
+
 ### Per repository
 
 To pin a version for everyone working on a repository, install it as a local
@@ -350,10 +362,13 @@ Delete a line to be asked about that repository again.
 
 ## Troubleshooting
 
-**`terminal-dotnet: command not found` after installing.** Add the global tools
-folder to your `PATH`: `~/.dotnet/tools` on Linux and macOS, or
-`%USERPROFILE%\.dotnet\tools` on Windows. The SDK prints the exact line on
-first install.
+**`terminal-dotnet: command not found` after installing.** The global tools
+folder is not on your `PATH`; see [Install](#globally). It is `~/.dotnet/tools`
+on Linux and macOS, and `%USERPROFILE%\.dotnet\tools` on Windows.
+
+**An older build runs instead of the one you installed.** A copy installed from
+source with `./install.sh` lives in `~/.local/bin`, and whichever folder comes
+first on `PATH` wins. Remove it with `./install.sh --uninstall`.
 
 **`You must install .NET to run this application`.** The tool found no .NET 10
 runtime. Install one, or, if your SDK lives somewhere unusual (for example
