@@ -270,14 +270,14 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new QueuedCommandRunner(
-            new CommandResult(0, """
-                Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+            new CommandResult(0, $"""
+                Test run for {TestPaths.In("Cart.Tests", "bin", "Debug", "net10.0", "Cart.Tests.dll")} (.NETCoreApp,Version=v10.0)
                 The following Tests are available:
                     Shop.Cart.Tests.CartTests.Adds_item
                 """, ""),
             new CommandResult(0, "1 test passed", ""));
         var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
-        var test = (await backend.DiscoverAsync("/repo/Shop.sln")).Single();
+        var test = (await backend.DiscoverAsync(TestPaths.In("Shop.sln"))).Single();
 
         // Act
         await backend.RunAsync([test]);

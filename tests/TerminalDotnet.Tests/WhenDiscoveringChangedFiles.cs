@@ -18,9 +18,9 @@ public sealed class WhenDiscoveringChangedFiles
         // Assert
         Assert.Equal(
             [
-                ("src/Added.cs", ChangeKind.Added),
-                ("src/Changed.cs", ChangeKind.Modified),
-                ("src/Gone.cs", ChangeKind.Deleted)
+                (Path.Combine("src", "Added.cs"), ChangeKind.Added),
+                (Path.Combine("src", "Changed.cs"), ChangeKind.Modified),
+                (Path.Combine("src", "Gone.cs"), ChangeKind.Deleted)
             ],
             files.Select(file => (file.DisplayPath, file.Kind)));
     }
@@ -76,7 +76,7 @@ public sealed class WhenDiscoveringChangedFiles
         var files = await new GitChangesetBackend(runner).DiscoverAsync(TestPaths.In("App.slnx"));
 
         // Assert
-        Assert.Equal("src/New.cs", files[0].DisplayPath);
+        Assert.Equal(Path.Combine("src", "New.cs"), files[0].DisplayPath);
     }
 
     [Fact]
