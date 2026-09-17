@@ -230,8 +230,13 @@ directory.
 ![Comments](docs/images/comments.png)
 
 Press `c` in a preview to leave a note against that file; each file carries one
-note. The Comments panel lists every file with a note, and search matches the
-file or the note's text.
+note.
+
+<!-- Screenshot: writing a note against a file from the preview -->
+![Leaving a comment](docs/images/add-comment.png)
+
+The Comments panel lists every file with a note, and search matches the file or
+the note's text.
 
 - `Enter` or `v` reads a note, `e` rewrites it, and `d` deletes it.
 - `p` previews the file the note is against.
