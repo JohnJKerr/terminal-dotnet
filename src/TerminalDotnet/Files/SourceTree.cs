@@ -27,12 +27,29 @@ internal static class SourceTree
 
     private static void PushSourceDirectory(Stack<string> pending, string directory)
     {
-        if (IsSkipped(directory))
+        if (IsSkipped(directory) || LinksElsewhere(directory))
         {
             return;
         }
 
         pending.Push(directory);
+    }
+
+    /// <summary>A folder that links to another is left to the walk of wherever
+    /// it really lives: following the link would list those files a second
+    /// time, and a link pointing back at a folder above it would walk until
+    /// the path itself became too long to resolve. A folder that cannot be
+    /// asked is treated the same way rather than walked.</summary>
+    private static bool LinksElsewhere(string directory)
+    {
+        try
+        {
+            return new DirectoryInfo(directory).Attributes.HasFlag(FileAttributes.ReparsePoint);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            return true;
+        }
     }
 
     private static bool IsSkipped(string directory) =>

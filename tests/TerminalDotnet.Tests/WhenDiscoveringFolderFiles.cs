@@ -166,6 +166,22 @@ public sealed class WhenDiscoveringFolderFiles
     }
 
     [Fact]
+    public async Task It_lists_a_file_once_when_a_folder_links_to_the_folder_holding_it()
+    {
+        // Arrange
+        using var folder = LaunchFolder.At("TerminalDotnet.slnx", "real/Order.cs");
+        Directory.CreateSymbolicLink(
+            Path.Combine(folder.Root, "link"),
+            Path.Combine(folder.Root, "real"));
+
+        // Act
+        var files = await folder.WithoutGit().DiscoverAsync();
+
+        // Assert
+        Assert.Single(files, file => Path.GetFileName(file.Path) == "Order.cs");
+    }
+
+    [Fact]
     public async Task It_leaves_build_output_out_of_the_listing()
     {
         // Arrange
