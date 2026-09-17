@@ -18,7 +18,7 @@ public sealed class WhenOpeningSource
 
         // Assert
         Assert.Equal(
-            "code|+42|/repo/CartTests.cs|/repo|capture:False",
+            $"code|+42|/repo/CartTests.cs|{TestPaths.Repo}|capture:False",
             runner.LastRequest is null
                 ? null
                 : string.Join('|',

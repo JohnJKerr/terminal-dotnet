@@ -166,6 +166,22 @@ public sealed class WhenDiscoveringFolderFiles
     }
 
     [Fact]
+    public async Task It_lists_a_file_once_when_a_folder_links_to_the_folder_holding_it()
+    {
+        // Arrange
+        using var folder = LaunchFolder.At("TerminalDotnet.slnx", "real/Order.cs");
+        Directory.CreateSymbolicLink(
+            Path.Combine(folder.Root, "link"),
+            Path.Combine(folder.Root, "real"));
+
+        // Act
+        var files = await folder.WithoutGit().DiscoverAsync();
+
+        // Assert
+        Assert.Single(files, file => Path.GetFileName(file.Path) == "Order.cs");
+    }
+
+    [Fact]
     public async Task It_leaves_build_output_out_of_the_listing()
     {
         // Arrange
@@ -206,15 +222,21 @@ public sealed class WhenDiscoveringFolderFiles
         public static LaunchFolder At(string targetPath, params string[] trackedPaths)
         {
             var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-            foreach (var relativePath in (string[])[targetPath, .. trackedPaths])
+            // The paths are written the way a reader says them, with forward
+            // slashes, and laid out with the separator the platform uses.
+            var laidOut = trackedPaths.Select(OnThisPlatform).ToArray();
+            foreach (var relativePath in (string[])[OnThisPlatform(targetPath), .. laidOut])
             {
                 var path = Path.Combine(root, relativePath);
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 File.WriteAllText(path, "");
             }
 
-            return new LaunchFolder(root, Path.Combine(root, targetPath), trackedPaths);
+            return new LaunchFolder(root, Path.Combine(root, OnThisPlatform(targetPath)), laidOut);
         }
+
+        private static string OnThisPlatform(string relativePath) =>
+            relativePath.Replace('/', Path.DirectorySeparatorChar);
 
         public LaunchFolder Changed(string porcelainStatus)
         {

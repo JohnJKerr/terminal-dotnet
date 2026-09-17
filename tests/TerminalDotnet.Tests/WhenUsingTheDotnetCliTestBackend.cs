@@ -197,26 +197,26 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_retains_the_module_each_test_belongs_to_when_discovering()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, """
-            Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+        var runner = new InMemoryCommandRunner(new CommandResult(0, $"""
+            Test run for {TestPaths.In("Cart.Tests", "bin", "Debug", "net10.0", "Cart.Tests.dll")} (.NETCoreApp,Version=v10.0)
             The following Tests are available:
                 Shop.Cart.Tests.CartTests.Adds_item(value: 1)
                 Shop.Cart.Tests.CartTests.Adds_item(value: 2)
-            Test run for /repo/Order.Tests/bin/Debug/net10.0/Order.Tests.dll (.NETCoreApp,Version=v10.0)
+            Test run for {TestPaths.In("Order.Tests", "bin", "Debug", "net10.0", "Order.Tests.dll")} (.NETCoreApp,Version=v10.0)
             The following Tests are available:
                 Shop.Order.Tests.OrderTests.Submits_order
             """, ""));
         var backend = new DotnetCliTestBackend(runner);
 
         // Act
-        var tests = await backend.DiscoverAsync("/repo/Shop.sln");
+        var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
 
         // Assert
         Assert.Equal(
         [
-            "/repo/Cart.Tests/Cart.Tests.csproj",
-            "/repo/Cart.Tests/Cart.Tests.csproj",
-            "/repo/Order.Tests/Order.Tests.csproj"
+            TestPaths.In("Cart.Tests", "Cart.Tests.csproj"),
+            TestPaths.In("Cart.Tests", "Cart.Tests.csproj"),
+            TestPaths.In("Order.Tests", "Order.Tests.csproj")
         ], tests.Select(test => test.ProjectPath));
     }
 
@@ -283,7 +283,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         await backend.RunAsync([test]);
 
         // Assert
-        Assert.Equal("/repo/Cart.Tests/Cart.Tests.csproj", runner.Requests[1].Arguments[1]);
+        Assert.Equal(TestPaths.In("Cart.Tests", "Cart.Tests.csproj"), runner.Requests[1].Arguments[1]);
     }
 
     [Fact]
