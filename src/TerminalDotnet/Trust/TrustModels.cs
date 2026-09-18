@@ -23,6 +23,19 @@ public sealed record TrustQuestion(string Title, string Message, string TrustCho
         "Trust folder",
         "Quit");
 
+    /// <returns>The question written out for a console with no room to draw
+    /// it. Enter alone answers with the safe choice, as the box's default
+    /// button does.</returns>
+    public string AsText() =>
+        $"{Title}{Environment.NewLine}{Environment.NewLine}" +
+        $"{Message}{Environment.NewLine}{Environment.NewLine}" +
+        $"{TrustChoice}? [y/N] ({QuitChoice} on Enter): ";
+
+    /// <returns>Whether a written answer trusts the folder. Anything that is
+    /// not a yes quits, so a stray Enter is as safe as it is in the box.</returns>
+    public static bool Trusts(string? answer) =>
+        answer?.Trim().ToLowerInvariant() is "y" or "yes";
+
     public static string Declined(string folder) =>
         $"Not trusted: {folder}{Environment.NewLine}" +
         "terminal-dotnet only opens folders whose solution you trust it to build.";
