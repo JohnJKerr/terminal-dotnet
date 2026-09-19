@@ -7,7 +7,7 @@ namespace TerminalDotnet.Tests.Issues;
 public sealed class WhenDiscoveringCompilationIssues
 {
     [Fact]
-    public async Task It_builds_the_target_without_restoring_or_using_incremental_outputs()
+    public async Task It_builds_the_target_with_restoring_and_without_using_incremental_outputs()
     {
         // Arrange
         var runner = RunnerWithIssues();
@@ -18,7 +18,7 @@ public sealed class WhenDiscoveringCompilationIssues
 
         // Assert
         Assert.Equal(
-            ["build", "/repo/Shop.slnx", "--nologo", "--tl:off", "--no-restore", "--no-incremental"],
+            ["build", "/repo/Shop.slnx", "--nologo", "--tl:off", "--no-incremental"],
             runner.LastRequest!.Arguments);
     }
 

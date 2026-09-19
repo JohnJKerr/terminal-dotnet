@@ -12,7 +12,7 @@ public sealed partial class DotnetBuildIssueBackend(ICommandRunner runner) : IIs
         var directory = Path.GetDirectoryName(Path.GetFullPath(target))!;
         var result = await runner.RunAsync(new CommandRequest(
             "dotnet",
-            ["build", target, "--nologo", "--tl:off", "--no-restore", "--no-incremental"],
+            ["build", target, "--nologo", "--tl:off", "--no-incremental"],
             directory), cancellationToken);
         return [.. Lines(result.StandardOutput, result.StandardError)
             .Select(line => Parsed(line, directory))
