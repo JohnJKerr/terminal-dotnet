@@ -34,7 +34,7 @@ public sealed record TestPanelSnapshot(
         StatusLineFrom(state),
         SelectedOutputTitleFrom(state),
         SelectedOutputFrom(state),
-        PanelFilters.Chips(state.ActiveFilter),
+        PanelFilters.TestChips(state.ActiveFilter),
         EmptyMessageFrom(state, elapsed));
 
     // Discovery builds the solution before it can list anything, so the panel

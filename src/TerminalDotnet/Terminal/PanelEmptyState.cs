@@ -24,5 +24,5 @@ public static class PanelEmptyState
     private static string Described(string subject, ExplorerFilter? activeFilter) =>
         activeFilter is null
             ? subject
-            : $"{activeFilter.Value.ToString().ToLowerInvariant()} {subject}";
+            : $"{activeFilter.Value.DisplayName().ToLowerInvariant()} {subject}";
 }

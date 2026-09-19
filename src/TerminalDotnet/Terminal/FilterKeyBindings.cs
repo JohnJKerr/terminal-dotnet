@@ -7,6 +7,14 @@ namespace TerminalDotnet.Terminal;
 public static class FilterKeyBindings
 {
     public static ExplorerFilter? FilterFor(Key key)
+        => FilterFor(key, PanelFilters.Numbered);
+
+    public static ExplorerFilter? TestFilterFor(Key key)
+        => FilterFor(key, PanelFilters.NumberedTest);
+
+    private static ExplorerFilter? FilterFor(
+        Key key,
+        Func<int, ExplorerFilter?> numbered)
     {
         if (key.IsShift)
         {
@@ -15,7 +23,7 @@ public static class FilterKeyBindings
 
         var code = (int)key.NoShift.KeyCode;
         return code >= (int)KeyCode.D1 && code <= (int)KeyCode.D9
-            ? PanelFilters.Numbered(code - (int)KeyCode.D1 + 1)
+            ? numbered(code - (int)KeyCode.D1 + 1)
             : null;
     }
 }

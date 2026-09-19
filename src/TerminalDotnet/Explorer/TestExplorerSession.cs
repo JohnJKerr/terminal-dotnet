@@ -358,8 +358,18 @@ public sealed class TestExplorerSession(
             .Where(test => MatchesSearch(test, query))
             .Where(test => PassesFilter(test, filter)));
 
-    private bool PassesFilter(TestCase test, ExplorerFilter? filter) =>
-        filter != ExplorerFilter.Updated || updatedSuites.ContainsKey(SuiteKeyOf(test));
+    private bool PassesFilter(TestCase test, ExplorerFilter? filter) => filter switch
+    {
+        ExplorerFilter.Updated => updatedSuites.ContainsKey(SuiteKeyOf(test)),
+        ExplorerFilter.Failing => OutcomeOf(test) == TestNodeOutcome.Failed,
+        ExplorerFilter.Passing => OutcomeOf(test) == TestNodeOutcome.Passed,
+        ExplorerFilter.LastRun => lastRunTests.Contains(test),
+        ExplorerFilter.NotRun => !completedOutcomes.ContainsKey(test),
+        _ => true
+    };
+
+    private TestNodeOutcome? OutcomeOf(TestCase test) =>
+        completedOutcomes.GetValueOrDefault(test);
 
     private static string NodeId(VisibleTestNode node) => NodeId(
         node.Tests[0].ProjectPath,

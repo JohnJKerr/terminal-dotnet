@@ -35,7 +35,7 @@ public sealed class WhenShowingPanelFilters
     }
 
     [Fact]
-    public void The_test_panel_offers_the_updated_filter_under_the_search()
+    public void The_test_panel_offers_its_filters_under_the_search()
     {
         // Arrange
         var state = new ExplorerState(ExplorerStatus.Ready, [], 0, "Ready");
@@ -44,7 +44,9 @@ public sealed class WhenShowingPanelFilters
         var snapshot = TestPanelSnapshot.From(state, "App.slnx");
 
         // Assert
-        Assert.Equal(["1. Updated"], snapshot.Filters.Select(chip => chip.Text));
+        Assert.Equal(
+            ["1. Updated", "2. Failing", "3. Passing", "4. Last run", "5. Not run"],
+            snapshot.Filters.Select(chip => chip.Text));
     }
 
     [Fact]
@@ -62,7 +64,7 @@ public sealed class WhenShowingPanelFilters
         var snapshot = TestPanelSnapshot.From(state, "App.slnx");
 
         // Assert
-        Assert.True(snapshot.Filters.Single().IsActive);
+        Assert.True(snapshot.Filters.Single(chip => chip.IsActive).Text == "1. Updated");
     }
 
     [Fact]

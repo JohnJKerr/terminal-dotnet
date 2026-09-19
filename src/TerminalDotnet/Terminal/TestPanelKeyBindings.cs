@@ -20,7 +20,7 @@ public static class TestPanelKeyBindings
         string searchQuery,
         bool hasFocus)
     {
-        if (hasFocus && FilterKeyBindings.FilterFor(key) is { } filter)
+        if (hasFocus && FilterKeyBindings.TestFilterFor(key) is { } filter)
         {
             return Dispatched(new ExplorerCommand.ToggleFilter(filter));
         }

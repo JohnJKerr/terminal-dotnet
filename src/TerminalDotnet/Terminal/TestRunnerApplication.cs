@@ -37,7 +37,7 @@ internal sealed class TestRunnerApplication(
     private const int FilterRowHeight = 1;
     private const int FilterGap = 1;
     private const int MaxStatusSegments = 4;
-    private const int MaxFilterChips = 4;
+    private const int MaxFilterChips = 5;
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int RowsBelowTheList = StatusRow + 1;
     private const int IssueDetailRows = 4;

@@ -172,6 +172,18 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
+    public void Pressing_5_toggles_the_not_run_filter()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D5));
+
+        // Assert
+        Assert.Equal(
+            new TestPanelAction.Dispatch(new ExplorerCommand.ToggleFilter(ExplorerFilter.NotRun)),
+            action);
+    }
+
+    [Fact]
     public void Pressing_1_without_focus_does_nothing()
     {
         // Act
