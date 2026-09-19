@@ -114,6 +114,36 @@ public sealed class WhenUsingThePanelShell
     }
 
     [Fact]
+    public void It_shows_the_item_counts_beside_the_content_panels_that_need_them()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var panels = shell.State.KeyedPanelsWith(new PanelCounts(3, 2, 5));
+
+        // Assert
+        Assert.Equal(
+            ["Explorer", "Files", "Tests", "Issues (3)", "Changes", "Comments (2)", "Flags (5)"],
+            panels.Select(panel => panel.Name));
+    }
+
+    [Fact]
+    public void It_shows_a_dash_when_a_panel_count_is_not_known_yet()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var panels = shell.State.KeyedPanelsWith(new PanelCounts(null, 0, null));
+
+        // Assert
+        Assert.Equal(
+            ["Explorer", "Files", "Tests", "Issues (-)", "Changes", "Comments (0)", "Flags (-)"],
+            panels.Select(panel => panel.Name));
+    }
+
+    [Fact]
     public void It_changes_the_active_panel_when_the_comments_are_selected()
     {
         // Arrange

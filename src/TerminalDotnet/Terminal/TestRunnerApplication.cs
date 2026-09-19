@@ -81,6 +81,7 @@ internal sealed class TestRunnerApplication(
     private Label? emptyState;
     private Label? shortcuts;
     private IReadOnlyList<string> shortcutSegments = [];
+    private PanelListSource? panelSource;
 
     public void Run()
     {
@@ -252,7 +253,8 @@ internal sealed class TestRunnerApplication(
             ShowMarks = false,
             KeystrokeNavigator = null
         };
-        panels.Source = new PanelListSource(shell.State.KeyedPanels);
+        panelSource = new PanelListSource(PanelLabels());
+        panels.Source = panelSource;
         panels.SelectedItem = shell.State.ActiveIndex;
         return panels;
     }
@@ -1976,6 +1978,7 @@ internal sealed class TestRunnerApplication(
 
     private void Render(TextField search, ListView tests)
     {
+        panelSource?.Update(PanelLabels());
         var fileExplorer = ActiveFileSession();
         shortcutSegments = PanelShortcuts.For(
             shell.State.ActivePanel,
@@ -2036,6 +2039,13 @@ internal sealed class TestRunnerApplication(
             tests.SelectedItem = snapshot.SelectedIndex;
         }
     }
+
+    private IReadOnlyList<PanelLabel> PanelLabels() => shell.State.KeyedPanelsWith(new PanelCounts(
+        KnownCount(issueSession.State.Issues.Count, issueSession.State.Loading),
+        commentSession.State.Comments.Count,
+        KnownCount(flagSession.State.Flags.Count, flagSession.State.Loading)));
+
+    private static int? KnownCount(int count, bool loading) => loading && count == 0 ? null : count;
 
     /// <summary>Wraps to the width the label has now, which is why it is also
     /// called as the width changes rather than only as the shortcuts change.</summary>

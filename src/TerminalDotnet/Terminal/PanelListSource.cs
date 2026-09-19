@@ -6,20 +6,26 @@ using TextStyle = Terminal.Gui.Drawing.TextStyle;
 
 namespace TerminalDotnet.Terminal;
 
-internal sealed class PanelListSource(IReadOnlyList<PanelLabel> panels) : IListDataSource
+internal sealed class PanelListSource(IReadOnlyList<PanelLabel> initialPanels) : IListDataSource
 {
-    /// <summary>The panels never change, so nothing ever raises this.</summary>
-    public event NotifyCollectionChangedEventHandler? CollectionChanged
-    {
-        add { }
-        remove { }
-    }
+    private IReadOnlyList<PanelLabel> panels = initialPanels;
+
+    public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
     public int Count => panels.Count;
 
     public int MaxItemLength => panels.Max(panel => TextFor(panel).Length);
 
     public bool SuspendCollectionChangedEvent { get; set; }
+
+    public void Update(IReadOnlyList<PanelLabel> updatedPanels)
+    {
+        panels = updatedPanels;
+        if (!SuspendCollectionChangedEvent)
+        {
+            CollectionChanged?.Invoke(this, new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        }
+    }
 
     public void Render(
         ListView listView,
