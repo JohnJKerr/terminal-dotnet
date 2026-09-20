@@ -482,7 +482,8 @@ internal sealed class TestRunnerApplication(
             case ShellAction.ShowCommands:
                 ShowCommands(application);
                 return;
-            case ShellAction.Rebuild:
+            case ShellAction.Refresh:
+                ReloadWhatIsOnDisk(application, search, tests);
                 Rebuild(application, search, tests, askedFor: true);
                 return;
             case ShellAction.Dismiss:
@@ -1954,6 +1955,11 @@ internal sealed class TestRunnerApplication(
     /// build per burst would never finish one before the next began.</summary>
     private void ReloadWhatIsOnDisk(IApplication application, TextField search, ListView tests)
     {
+        if (reloadingWhatIsOnDisk)
+        {
+            return;
+        }
+
         reloadingWhatIsOnDisk = true;
         panelWork.Track(ReloadWhatIsOnDiskAsync(application, search, tests, loadCancellation!.Token));
     }

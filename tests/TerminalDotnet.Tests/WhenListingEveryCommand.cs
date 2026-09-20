@@ -142,6 +142,18 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_says_the_global_refresh_also_rebuilds()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(
+            anywhere.Entries,
+            entry => entry.Keys == "Ctrl+R" && entry.Description == "refresh and rebuild the workspace");
+    }
+
+    [Fact]
     public void It_lists_the_run_commands_under_tests()
     {
         // Act

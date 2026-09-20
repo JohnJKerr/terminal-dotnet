@@ -47,8 +47,8 @@ Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
   editor at the same line.
 - **Stays current.** Panels reload when something outside the app edits the
   working tree, whether an agent, another terminal or a `git checkout`.
-  `Ctrl+R` rebuilds and rediscovers the tests from anywhere, and a stale panel
-  rebuilds when you open it.
+  `Ctrl+R` refreshes every panel and rebuilds the project from anywhere, and a
+  stale panel rebuilds when you open it.
 - **Discoverable.** The bottom line lists the keys that apply to the current
   selection, and `?` shows every command.
 
@@ -299,7 +299,8 @@ A full-screen, syntax-highlighted view of a file.
 - **Returning from the editor.** Closing the editor brings the app back and
   refreshes what the edit may have changed, including the build behind the
   Issues panel.
-- **Rebuilding.** `Ctrl+R` rebuilds and rediscovers the tests from any panel,
+- **Refreshing.** `Ctrl+R` reloads the Git-backed panels, rebuilds and
+  rediscovers the tests from any panel,
   even while the search box has focus. A toast reports progress and the
   result. If files changed since the last build, opening the Tests or Issues
   panel rebuilds on its own. A rebuild is not started while tests are running,
@@ -320,7 +321,7 @@ A full-screen, syntax-highlighted view of a file.
 | `Enter` (in search) | Leave the search, keeping it |
 | `Esc` | Close what is open, or clear the search |
 | `1`–`4` | Toggle the panel's numbered filters (while the search box is not focused) |
-| `Ctrl+R` | Rebuild and rediscover the tests |
+| `Ctrl+R` | Refresh every panel and rebuild the project |
 | `?` | Show every command |
 | `q` | Quit, asking first if comments would be lost |
 

@@ -118,6 +118,16 @@ public sealed class WhenPressingAKeyInTheShell
     }
 
     [Fact]
+    public void Pressing_ctrl_r_refreshes_the_workspace()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.R).WithCtrl);
+
+        // Assert
+        Assert.Equal(new ShellAction.Refresh(), action);
+    }
+
+    [Fact]
     public void Pressing_ctrl_k_no_longer_opens_the_command_list()
     {
         // Act

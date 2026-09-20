@@ -21,7 +21,7 @@ public sealed class WhenRebuildingTheIssues
             new Key(KeyCode.R).WithCtrl, searchFocused: false, panelsFocused: false);
 
         // Assert
-        Assert.Equal(new ShellAction.Rebuild(), action);
+        Assert.Equal(new ShellAction.Refresh(), action);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public sealed class WhenRebuildingTheIssues
             new Key(KeyCode.R).WithCtrl, searchFocused: true, panelsFocused: false);
 
         // Assert
-        Assert.Equal(new ShellAction.Rebuild(), action);
+        Assert.Equal(new ShellAction.Refresh(), action);
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public sealed class WhenRebuildingTheIssues
             PanelKind.Files, Files(), Changes(), Tests(), Comments());
 
         // Assert
-        Assert.Contains("^R rebuild", shortcuts);
+        Assert.Contains("^R refresh", shortcuts);
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public sealed class WhenRebuildingTheIssues
             PanelKind.Files, Files(), Changes(), Tests(), Comments(), searchFocused: true);
 
         // Assert
-        Assert.Contains("^R rebuild", shortcuts);
+        Assert.Contains("^R refresh", shortcuts);
     }
 
     [Fact]
