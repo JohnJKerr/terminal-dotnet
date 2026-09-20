@@ -3,7 +3,7 @@ namespace TerminalDotnet.Terminal;
 /// <summary>
 /// The shortcuts packed into the rows the status line keeps for them. A break
 /// falls between two shortcuts rather than through one, and the shortcuts that
-/// neither row can hold are left to the command list on ^K.
+/// neither row can hold are left to the command list on ?.
 /// </summary>
 public static class ShortcutLines
 {

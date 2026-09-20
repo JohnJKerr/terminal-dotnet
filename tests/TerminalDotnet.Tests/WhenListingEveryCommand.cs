@@ -138,7 +138,7 @@ public sealed class WhenListingEveryCommand
         var entries = CommandMenu.Sections().SelectMany(section => section.Entries);
 
         // Assert
-        Assert.Contains(entries, entry => entry.Keys == "Ctrl+K");
+        Assert.Contains(entries, entry => entry.Keys == "?");
     }
 
     [Fact]

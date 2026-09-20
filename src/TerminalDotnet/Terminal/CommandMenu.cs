@@ -69,7 +69,7 @@ public static class CommandMenu
         new("Enter", "leave the search, keeping it"),
         new("Esc", "close what is open, or clear the search"),
         new("Ctrl+R", "rebuild and rediscover the tests"),
-        new("Ctrl+K", "show this list"),
+        new("?", "show this list"),
         new("q", "quit, asking first if comments would be lost")
     ];
 

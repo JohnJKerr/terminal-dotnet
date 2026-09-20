@@ -30,7 +30,7 @@ public static class ShellKeyBindings
         bool panelsFocused,
         bool searchActive = false)
     {
-        if (IsCtrl(key, KeyCode.K))
+        if (Is(key, (KeyCode)'?'))
         {
             return new ShellAction.ShowCommands();
         }

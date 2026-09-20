@@ -112,7 +112,7 @@ suite; the interactive check is follow-up 5 below.
 3. Compare paths case-insensitively on Windows and resolve symlinks before
    comparing git output with the launch directory.
 4. Try the app by hand in Windows Terminal and in macOS Terminal.app or
-   iTerm2: drawing, key handling (`Shift`+letter panel keys, `Ctrl+K`,
+   iTerm2: drawing, key handling (`Shift`+letter panel keys, `?`,
    `Ctrl+R`), the editor handoff and return, and the clipboard. CI runs the
    unit suite on every platform, but nothing has driven the interface on
    Windows or macOS.

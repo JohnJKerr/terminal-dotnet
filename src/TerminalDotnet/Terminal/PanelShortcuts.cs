@@ -25,14 +25,14 @@ public static class PanelShortcuts
             "s search",
             .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, flagState, issueState),
             "^R rebuild",
-            "^K commands",
+            "? commands",
             "q quit"
         ];
 
     /// <summary>Every letter types into the search box, so the line offers only
     /// the two ways out of it and the commands that still answer.</summary>
     private static readonly IReadOnlyList<string> SearchingShortcuts =
-        ["Enter keep search", "Esc clear search", "^R rebuild", "^K commands"];
+        ["Enter keep search", "Esc clear search", "^R rebuild", "? commands"];
 
     private static IReadOnlyList<string> PanelShortcutsFor(
         PanelKind panel,

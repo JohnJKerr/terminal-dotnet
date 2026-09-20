@@ -50,7 +50,7 @@ Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
   `Ctrl+R` rebuilds and rediscovers the tests from anywhere, and a stale panel
   rebuilds when you open it.
 - **Discoverable.** The bottom line lists the keys that apply to the current
-  selection, and `Ctrl+K` shows every command.
+  selection, and `?` shows every command.
 
 ## Requirements
 
@@ -169,7 +169,7 @@ Each panel shows a spinner while it loads, and a panel with nothing to list
 says so in place of its rows.
 
 Move between panels with `Shift` plus the letter beside each one in the rail,
-or with `←` to focus the rail. `s` searches the active panel, and `Ctrl+K`
+or with `←` to focus the rail. `s` searches the active panel, and `?`
 lists every command.
 
 ## Panels
@@ -307,7 +307,7 @@ A full-screen, syntax-highlighted view of a file.
 
 ## Keys
 
-`Ctrl+K` shows this list inside the app.
+`?` shows this list inside the app.
 
 ### Anywhere
 
@@ -321,7 +321,7 @@ A full-screen, syntax-highlighted view of a file.
 | `Esc` | Close what is open, or clear the search |
 | `1`–`4` | Toggle the panel's numbered filters (while the search box is not focused) |
 | `Ctrl+R` | Rebuild and rediscover the tests |
-| `Ctrl+K` | Show every command |
+| `?` | Show every command |
 | `q` | Quit, asking first if comments would be lost |
 
 Changes answers to `G` because `C` belongs to Comments, and Flags answers to `L`

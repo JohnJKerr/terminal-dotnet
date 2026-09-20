@@ -98,23 +98,33 @@ public sealed class WhenPressingAKeyInTheShell
     }
 
     [Fact]
-    public void Pressing_ctrl_k_shows_every_command()
+    public void Pressing_question_mark_shows_every_command()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.K).WithCtrl);
+        var action = ActionFor(new Key((KeyCode)'?'));
 
         // Assert
         Assert.Equal(new ShellAction.ShowCommands(), action);
     }
 
     [Fact]
-    public void Pressing_ctrl_k_in_the_search_shows_every_command()
+    public void Pressing_question_mark_in_the_search_shows_every_command()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.K).WithCtrl, searchFocused: true);
+        var action = ActionFor(new Key((KeyCode)'?'), searchFocused: true);
 
         // Assert
         Assert.Equal(new ShellAction.ShowCommands(), action);
+    }
+
+    [Fact]
+    public void Pressing_ctrl_k_no_longer_opens_the_command_list()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.K).WithCtrl);
+
+        // Assert
+        Assert.Null(action);
     }
 
     [Fact]
