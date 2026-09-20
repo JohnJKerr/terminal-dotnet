@@ -1144,6 +1144,12 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
+        if (action is DiffAction.Comment)
+        {
+            CommentOnSelectedChange(application);
+            return;
+        }
+
         if (action is DiffAction.Scroll scroll)
         {
             diff.ScrollVertical(scroll.Rows);
@@ -1178,7 +1184,16 @@ internal sealed class TestRunnerApplication(
 
     private string DiffTitle() =>
         $"Diff — {ChangesetPanelSnapshot.From(changesetSession.State).DiffTitle} — " +
-        "↑/k up  ↓/j down  n/N file  Esc close";
+        "↑/k up  ↓/j down  n/N file  c comment  Esc close";
+
+    private void CommentOnSelectedChange(IApplication application)
+    {
+        var state = changesetSession.State;
+        if (state.SelectedIndex < state.Files.Count)
+        {
+            CommentOn(application, state.Files[state.SelectedIndex].Path);
+        }
+    }
 
     private List<List<Cell>> DiffContent() =>
         DiffCells(ChangesetPanelSnapshot.From(changesetSession.State).DiffLines);

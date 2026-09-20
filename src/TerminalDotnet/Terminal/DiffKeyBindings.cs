@@ -10,6 +10,8 @@ public abstract record DiffAction
     public sealed record StepFile(int Step) : DiffAction;
 
     public sealed record Scroll(int Rows) : DiffAction;
+
+    public sealed record Comment : DiffAction;
 }
 
 /// <summary>
@@ -25,6 +27,7 @@ public static class DiffKeyBindings
         KeyCode.N => new DiffAction.StepFile(key.IsShift ? -1 : 1),
         KeyCode.J => new DiffAction.Scroll(1),
         KeyCode.K => new DiffAction.Scroll(-1),
+        KeyCode.C => new DiffAction.Comment(),
         _ => null
     };
 }

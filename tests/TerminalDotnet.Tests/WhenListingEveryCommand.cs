@@ -120,6 +120,18 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_lists_commenting_under_the_diff()
+    {
+        // Act
+        var diff = CommandMenu.Sections().Single(section => section.Title == "Diff");
+
+        // Assert
+        Assert.Contains(
+            diff.Entries,
+            entry => entry.Keys == "c" && entry.Description == "comment on the file");
+    }
+
+    [Fact]
     public void It_names_the_key_that_opens_it()
     {
         // Act

@@ -157,6 +157,7 @@ public static class CommandMenu
         .. Navigation,
         new("n", "show the next file's diff"),
         new("N", "show the previous file's diff"),
+        new("c", "comment on the file"),
         new("Esc", "close the diff")
     ];
 

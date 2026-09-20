@@ -48,6 +48,16 @@ public sealed class WhenActingOnAViewedDiff
     }
 
     [Fact]
+    public void Pressing_c_comments_on_the_file()
+    {
+        // Act
+        var action = DiffKeyBindings.ActionFor(new Key(KeyCode.C));
+
+        // Assert
+        Assert.Equal(new DiffAction.Comment(), action);
+    }
+
+    [Fact]
     public void Pressing_a_key_the_diff_has_nothing_for_leaves_it_to_the_view()
     {
         // Act

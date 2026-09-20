@@ -339,7 +339,7 @@ because `F` belongs to Files.
 | Comments | `Enter`/`v` read, `e` edit, `p` preview, `d` delete, `y` copy all, `w` save all, `x` clear all |
 | Flags | `Enter`/`e` edit, `p` preview, `1`–`4` filter |
 | Preview | `PgUp`/`PgDn` page, `Home`/`End` ends, `n`/`N` next/previous row, `e` edit, `c` comment, `Esc` close |
-| Diff | `n`/`N` next/previous file, `Esc` close |
+| Diff | `n`/`N` next/previous file, `c` comment, `Esc` close |
 
 ## Configuration
 
