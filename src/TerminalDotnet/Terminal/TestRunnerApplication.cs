@@ -1114,12 +1114,13 @@ internal sealed class TestRunnerApplication(
             X = 0,
             Y = 0,
             Width = Dim.Fill(),
-            Height = Dim.Fill()
+            Height = Dim.Fill(),
+            CanFocus = false
         };
         diff.Load(DiffContent());
         SetBlackBackground(dialog);
         SetBlackBackground(diff);
-        diff.KeyDown += (_, key) => HandleDiffKey(application, dialog, diff, key);
+        dialog.KeyDown += (_, key) => HandleDiffKey(application, dialog, diff, key);
         dialog.Add(diff);
         OverThePanels(() => application.Run(dialog));
         Render(search, files);
@@ -1131,7 +1132,7 @@ internal sealed class TestRunnerApplication(
         ColoredTextView diff,
         Key key)
     {
-        var action = DiffKeyBindings.ActionFor(key);
+        var action = DiffKeyBindings.ActionFor(key, diff.Viewport.Height);
         if (action is null)
         {
             return;
@@ -1153,6 +1154,18 @@ internal sealed class TestRunnerApplication(
         if (action is DiffAction.Scroll scroll)
         {
             diff.ScrollVertical(scroll.Rows);
+            return;
+        }
+
+        if (action is DiffAction.ScrollToStart)
+        {
+            diff.ScrollVertical(-diff.GetContentSize().Height);
+            return;
+        }
+
+        if (action is DiffAction.ScrollToEnd)
+        {
+            diff.ScrollVertical(diff.GetContentSize().Height);
         }
     }
 
@@ -1184,7 +1197,7 @@ internal sealed class TestRunnerApplication(
 
     private string DiffTitle() =>
         $"Diff — {ChangesetPanelSnapshot.From(changesetSession.State).DiffTitle} — " +
-        "↑/k up  ↓/j down  n/N file  c comment  Esc close";
+        "↑/k up  ↓/j down  PgUp/PgDn page  n/N file  c comment  Esc close";
 
     private void CommentOnSelectedChange(IApplication application)
     {
@@ -1293,6 +1306,7 @@ internal sealed class TestRunnerApplication(
             Y = 0,
             Width = Dim.Fill(),
             Height = Dim.Fill(PreviewDetails().Length > 0 ? IssueDetailRows : 0),
+            CanFocus = false,
             Text = text,
             Language = LanguageFrom(path),
             SyntaxHighlighter = new TextMateSyntaxHighlighter(ThemeName.DarkPlus)
@@ -1308,7 +1322,7 @@ internal sealed class TestRunnerApplication(
             args.Handled = true;
         };
         code.ViewportChanged += (_, _) => ShowSourceHighlight(code, sourceHighlight);
-        code.KeyDown += (_, key) =>
+        preview.KeyDown += (_, key) =>
             HandlePreviewKey(application, preview, code, sourceHighlight, diagnostic, key);
         preview.Add(code, sourceHighlight, diagnostic);
         ScrollToHighlightedLine(code, line);
@@ -1415,7 +1429,8 @@ internal sealed class TestRunnerApplication(
     }
 
     private static string PreviewTitle(string path, int line) =>
-        $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  n/N file  e edit  c comment  Esc close";
+        $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  PgUp/PgDn page  " +
+        "n/N file  e edit  c comment  Esc close";
 
     private void CommentOn(IApplication application, string path)
     {
