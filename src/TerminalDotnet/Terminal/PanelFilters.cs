@@ -10,7 +10,9 @@ public static class PanelFilters
     private static readonly ExplorerFilter[] FileFilters = [ExplorerFilter.Updated];
     private static readonly ExplorerFilter[] TestFilters = Enum.GetValues<ExplorerFilter>();
 
-    public static IReadOnlyList<FilterChip> Chips(ExplorerFilter? active) => Chips(active, FileFilters);
+    public static IReadOnlyList<FilterChip> Chips(ExplorerFilter? active) => FileFilters
+        .Select(filter => new FilterChip($"{filter.Key()} {filter.DisplayName()}", filter == active))
+        .ToArray();
 
     public static IReadOnlyList<FilterChip> TestChips(ExplorerFilter? active) =>
         Chips(active, TestFilters);
@@ -23,7 +25,8 @@ public static class PanelFilters
             filter == active))
         .ToArray();
 
-    public static ExplorerFilter? Numbered(int number) => Numbered(number, FileFilters);
+    public static ExplorerFilter? Lettered(string letter) =>
+        FileFilters.Cast<ExplorerFilter?>().FirstOrDefault(filter => filter!.Value.Key() == letter);
 
     public static ExplorerFilter? NumberedTest(int number) => Numbered(number, TestFilters);
 

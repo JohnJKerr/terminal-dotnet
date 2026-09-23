@@ -17,4 +17,14 @@ public static class ExplorerFilterText
         ExplorerFilter.NotRun => "Not run",
         _ => filter.ToString()
     };
+
+    /// <summary>The capital letter that toggles the filter.</summary>
+    public static string Key(this ExplorerFilter filter) => filter switch
+    {
+        ExplorerFilter.Updated => "U",
+        ExplorerFilter.Failing => "F",
+        ExplorerFilter.Passing => "P",
+        ExplorerFilter.LastRun => "L",
+        _ => "N"
+    };
 }

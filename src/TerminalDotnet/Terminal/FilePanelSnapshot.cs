@@ -89,7 +89,7 @@ public sealed record FilePanelSnapshot(
         state.SearchQuery,
         state.VisibleFileCount,
         StatusSegmentsFrom(state.Changes),
-        [.. PanelFilters.Chips(state.ActiveFilter), new FilterChip("2. All files", showsAllFiles)],
+        [new FilterChip("A All files", showsAllFiles), .. PanelFilters.Chips(state.ActiveFilter)],
         EmptyMessageFrom(state));
 
     private static string EmptyMessageFrom(FileExplorerState state) => state.Loading

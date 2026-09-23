@@ -76,8 +76,8 @@ public static class CommandMenu
         new("z", "fold or unfold every folder"),
         new("Enter/e", "edit the file"),
         new("p", "preview the file"),
-        new("1", "show only updated files"),
-        new("2", "show every file")
+        new("A", "show every file"),
+        new("U", "show only updated files")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Tests =

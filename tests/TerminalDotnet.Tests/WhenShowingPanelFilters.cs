@@ -18,7 +18,7 @@ public sealed class WhenShowingPanelFilters
         var snapshot = FilePanelSnapshot.From(state);
 
         // Assert
-        Assert.Equal(["1. Updated", "2. All files"], snapshot.Filters.Select(chip => chip.Text));
+        Assert.Equal(["A All files", "U Updated"], snapshot.Filters.Select(chip => chip.Text));
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public sealed class WhenShowingPanelFilters
         var snapshot = FilePanelSnapshot.From(state);
 
         // Assert
-        Assert.True(snapshot.Filters[0].IsActive);
+        Assert.True(snapshot.Filters[1].IsActive);
     }
 
     [Fact]
@@ -44,7 +44,7 @@ public sealed class WhenShowingPanelFilters
         var snapshot = FilePanelSnapshot.From(state, showsAllFiles: true);
 
         // Assert
-        Assert.True(snapshot.Filters[1].IsActive);
+        Assert.True(snapshot.Filters[0].IsActive);
     }
 
     [Fact]

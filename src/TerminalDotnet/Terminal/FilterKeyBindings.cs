@@ -6,8 +6,9 @@ namespace TerminalDotnet.Terminal;
 
 public static class FilterKeyBindings
 {
-    public static ExplorerFilter? FilterFor(Key key)
-        => FilterFor(key, PanelFilters.Numbered);
+    public static ExplorerFilter? FilterFor(Key key) => key.IsShift
+        ? PanelFilters.Lettered(((char)key.NoShift.KeyCode).ToString())
+        : null;
 
     public static ExplorerFilter? TestFilterFor(Key key)
         => FilterFor(key, PanelFilters.NumberedTest);

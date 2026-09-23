@@ -190,7 +190,7 @@ public sealed class WhenListingEveryCommand
         var explorer = CommandMenu.Sections().Single(section => section.Title == "Explorer");
 
         // Assert
-        Assert.Contains(explorer.Entries, entry => entry.Keys == "2" && entry.Description == "show every file");
+        Assert.Contains(explorer.Entries, entry => entry.Keys == "A" && entry.Description == "show every file");
     }
 
     [Fact]

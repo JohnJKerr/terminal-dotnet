@@ -30,7 +30,7 @@ public static class FilePanelKeyBindings
             return new FilePanelAction.ToggleFilter(filter);
         }
 
-        if (Is(key, KeyCode.D2))
+        if (key.IsShift && key.NoShift.KeyCode == KeyCode.A)
         {
             return new FilePanelAction.ToggleAllFiles();
         }
