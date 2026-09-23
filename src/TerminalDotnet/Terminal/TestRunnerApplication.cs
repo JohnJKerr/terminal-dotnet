@@ -13,7 +13,6 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Filters;
 using TerminalDotnet.Search;
-using TextMateSharp.Grammars;
 
 namespace TerminalDotnet.Terminal;
 
@@ -33,7 +32,6 @@ internal sealed class TestRunnerApplication(
     private const int MaxStatusSegments = 4;
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int SearchRow = StatusRow + 1;
-    private const int IssueDetailRows = 4;
     private const int ClearChoice = 0;
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan EditPollInterval = TimeSpan.FromMilliseconds(250);
@@ -61,9 +59,6 @@ internal sealed class TestRunnerApplication(
     private int openLine = 1;
     private int openDialogs;
 
-    /// <summary>The file the preview is showing. Stepping to another of the
-    /// panel's rows replaces it without closing the preview.</summary>
-    private SourceLocation previewing = new("", 1);
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
     private IReadOnlyList<FileStatusSegment> statusSegments = [];
@@ -532,10 +527,10 @@ internal sealed class TestRunnerApplication(
         switch (action)
         {
             case TestPanelAction.OpenSource:
-                RequestTestSource(application, preview: false);
+                RequestTestSource(application);
                 return;
             case TestPanelAction.PreviewSource:
-                RequestTestSource(application, preview: true);
+                OpenPanel(application, PanelKind.Preview);
                 return;
             case TestPanelAction.ShowOutput:
                 ShowTestOutput(application);
@@ -637,10 +632,10 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (action is FilePanelAction.PreviewFile preview)
+        if (action is FilePanelAction.PreviewFile)
         {
             key.Handled = true;
-            ShowPreview(application, preview.Path, 1);
+            OpenPanel(application, PanelKind.Preview);
             return;
         }
 
@@ -703,7 +698,7 @@ internal sealed class TestRunnerApplication(
         if (action is ChangesetAction.ShowDiff)
         {
             key.Handled = true;
-            ShowDiff(application);
+            OpenPanel(application, PanelKind.Preview);
             return;
         }
 
@@ -714,10 +709,10 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (action is ChangesetAction.PreviewFile preview)
+        if (action is ChangesetAction.PreviewFile)
         {
             key.Handled = true;
-            ShowPreview(application, preview.Path, 1);
+            OpenPanel(application, PanelKind.Preview);
             return;
         }
 
@@ -751,10 +746,10 @@ internal sealed class TestRunnerApplication(
             RequestOpen(application, edit.Path, edit.Line);
             return;
         }
-        if (action is IssuePanelAction.Preview preview)
+        if (action is IssuePanelAction.Preview)
         {
             key.Handled = true;
-            ShowPreview(application, preview.Path, preview.Line);
+            OpenPanel(application, PanelKind.Preview);
             return;
         }
         var command = action switch
@@ -826,9 +821,9 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (action is CommentAction.PreviewFile preview)
+        if (action is CommentAction.PreviewFile)
         {
-            ShowPreview(application, preview.Path, 1);
+            OpenPanel(application, PanelKind.Preview);
             return;
         }
 
@@ -982,131 +977,6 @@ internal sealed class TestRunnerApplication(
         application.Invoke(() => Render());
     }
 
-    private void ShowDiff(IApplication application) =>
-        panelWork.Track(ShowDiffAsync(application));
-
-    private async Task ShowDiffAsync(IApplication application)
-    {
-        await changesetSession.DispatchAsync(new ChangesetCommand.LoadSelectedDiff());
-        application.Invoke(() => ShowDiffDialog(application));
-    }
-
-    /// <summary>The diff is read in its own window rather than the shared cell
-    /// dialog, because it answers to keys of its own: the reader steps through
-    /// the changeset without closing what they are reading.</summary>
-    private void ShowDiffDialog(IApplication application)
-    {
-        using var dialog = FullScreenDialog(DiffTitle());
-        var diff = new ColoredTextView(wordWrap: false)
-        {
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            CanFocus = false
-        };
-        diff.Load(DiffContent());
-        SetBlackBackground(dialog);
-        SetBlackBackground(diff);
-        dialog.KeyDown += (_, key) => HandleDiffKey(application, dialog, diff, key);
-        dialog.Add(diff);
-        OverThePanels(() => application.Run(dialog));
-        Render();
-    }
-
-    private void HandleDiffKey(
-        IApplication application,
-        Window dialog,
-        ColoredTextView diff,
-        Key key)
-    {
-        var action = DiffKeyBindings.ActionFor(key, diff.Viewport.Height);
-        if (action is null)
-        {
-            return;
-        }
-
-        key.Handled = true;
-        if (action is DiffAction.StepFile step)
-        {
-            StepDiff(application, dialog, diff, step.Step);
-            return;
-        }
-
-        if (action is DiffAction.Comment)
-        {
-            CommentOnSelectedChange(application);
-            return;
-        }
-
-        if (action is DiffAction.Scroll scroll)
-        {
-            diff.ScrollVertical(scroll.Rows);
-            return;
-        }
-
-        if (action is DiffAction.ScrollToStart)
-        {
-            diff.ScrollVertical(-diff.GetContentSize().Height);
-            return;
-        }
-
-        if (action is DiffAction.ScrollToEnd)
-        {
-            diff.ScrollVertical(diff.GetContentSize().Height);
-        }
-    }
-
-    /// <summary>
-    /// Moves the diff to another of the panel's files. The panel's selection
-    /// goes with it, so the files it steps through are the ones the search left,
-    /// and closing the diff leaves the reader on the file they stopped at.
-    ///
-    /// The load is waited out here for the same reason the preview waits out
-    /// its own: the diff runs a loop that only turns when a key arrives, so a
-    /// result posted back to it would sit unread until the reader pressed
-    /// something else.
-    /// </summary>
-    private void StepDiff(
-        IApplication application,
-        Window dialog,
-        ColoredTextView diff,
-        int step)
-    {
-        changesetSession
-            .DispatchAsync(new ChangesetCommand.StepDiff(step))
-            .GetAwaiter()
-            .GetResult();
-        dialog.Title = DiffTitle();
-        diff.Load(DiffContent());
-        dialog.SetNeedsDraw();
-        application.LayoutAndDraw(true);
-    }
-
-    private string DiffTitle() =>
-        $"Diff — {ChangesetPanelSnapshot.From(changesetSession.State).DiffTitle} — " +
-        "↑/k up  ↓/j down  PgUp/PgDn page  n/N file  c comment  Esc close";
-
-    private void CommentOnSelectedChange(IApplication application)
-    {
-        var state = changesetSession.State;
-        if (state.SelectedIndex < state.Files.Count)
-        {
-            CommentOn(application, state.Files[state.SelectedIndex].Path);
-        }
-    }
-
-    private List<List<Cell>> DiffContent() =>
-        DiffCells(ChangesetPanelSnapshot.From(changesetSession.State).DiffLines);
-
-    private static List<List<Cell>> DiffCells(IReadOnlyList<DiffLine> lines) => lines
-        .Select(line => Cell.ToCellList(
-            line.Text,
-            new global::Terminal.Gui.Drawing.Attribute(
-                DiffAppearance.ForegroundFor(line.Tone),
-                Color.Black)))
-        .ToList();
-
     private async Task DispatchAsync(
         IApplication application,
         ExplorerCommand command)
@@ -1139,16 +1009,10 @@ internal sealed class TestRunnerApplication(
         application.Invoke(() => Render());
     }
 
-    private void RequestTestSource(
-        IApplication application,
-        bool preview)
-    {
-        panelWork.Track(RequestTestSourceAsync(application, preview));
-    }
+    private void RequestTestSource(IApplication application) =>
+        panelWork.Track(RequestTestSourceAsync(application));
 
-    private async Task RequestTestSourceAsync(
-        IApplication application,
-        bool preview)
+    private async Task RequestTestSourceAsync(IApplication application)
     {
         await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
         if (session.State.SourceLocation is not { } source)
@@ -1156,154 +1020,12 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        application.Invoke(() =>
-        {
-            if (preview)
-            {
-                ShowPreview(application, source.Path, source.HighlightLine);
-                return;
-            }
-
-            RequestOpen(application, source.Path, source.HighlightLine);
-        });
-    }
-
-    private void ShowPreview(
-        IApplication application,
-        string path,
-        int line)
-    {
-        if (ReadForPreview(application, path) is not { } text)
-        {
-            return;
-        }
-
-        previewing = new SourceLocation(path, line);
-        using var preview = FullScreenDialog(PreviewTitle(path, line));
-        var code = new Code
-        {
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(PreviewDetails().Length > 0 ? IssueDetailRows : 0),
-            CanFocus = false,
-            Text = text,
-            Language = LanguageFrom(path),
-            SyntaxHighlighter = new TextMateSyntaxHighlighter(ThemeName.DarkPlus)
-        };
-        var diagnostic = PreviewDiagnostic();
-        var sourceHighlight = PreviewHighlight();
-        code.GettingAttributeForRole += (_, args) =>
-        {
-            var background = args.Result?.Background ?? Color.Black;
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(
-                PreviewCodeAppearance.ForegroundFor(args.Role),
-                background);
-            args.Handled = true;
-        };
-        code.ViewportChanged += (_, _) => ShowSourceHighlight(code, sourceHighlight);
-        preview.KeyDown += (_, key) =>
-            HandlePreviewKey(application, preview, code, sourceHighlight, diagnostic, key);
-        preview.Add(code, sourceHighlight, diagnostic);
-        ScrollToHighlightedLine(code, line);
-        ShowSourceHighlight(code, sourceHighlight);
-        OverThePanels(() => application.Run(preview));
-        Render();
-        LeaveForTheEditor(application);
-    }
-
-    private Label PreviewDiagnostic()
-    {
-        var text = PreviewDetails();
-        var diagnostic = new Label
-        {
-            X = 0,
-            Y = Pos.AnchorEnd(IssueDetailRows),
-            Width = Dim.Fill(),
-            Height = IssueDetailRows,
-            Text = text,
-            Visible = text.Length > 0
-        };
-        diagnostic.TextFormatter.MultiLine = true;
-        diagnostic.TextFormatter.WordWrap = true;
-        diagnostic.GettingAttributeForRole += (_, args) =>
-        {
-            var background = args.Result?.Background ?? Color.Black;
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(
-                FileRowAppearance.ForegroundFor(PreviewDetailTone(), Color.White),
-                background);
-            args.Handled = true;
-        };
-        return diagnostic;
-    }
-
-    private string PreviewDetails() => shell.State.ActivePanel == PanelKind.Issues
-        ? IssuePanelSnapshot.From(issueSession.State).SelectedDetails
-        : "";
-
-    private FileRowTone PreviewDetailTone() =>
-        shell.State.ActivePanel == PanelKind.Issues &&
-        issueSession.State.SelectedIndex < issueSession.State.Issues.Count
-            ? IssuePanelSnapshot.ToneFor(issueSession.State.Issues[issueSession.State.SelectedIndex])
-            : FileRowTone.Neutral;
-
-    private bool PreviewHighlightsSource() => shell.State.ActivePanel == PanelKind.Issues;
-
-    private static Label PreviewHighlight()
-    {
-        var highlight = new Label
-        {
-            X = 0,
-            Width = Dim.Fill(),
-            Height = 1,
-            Visible = false
-        };
-        highlight.GettingAttributeForRole += (_, args) =>
-        {
-            var foreground = args.Result?.Foreground ?? Color.White;
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(foreground, Color.BrightBlue);
-            args.Handled = true;
-        };
-        return highlight;
-    }
-
-    private string? ReadForPreview(IApplication application, string path)
-    {
-        try
-        {
-            if (FileText.ReadWithin(path) is { } text)
-            {
-                return text;
-            }
-
-            OverThePanels(() => MessageBox.ErrorQuery(application, "Preview", TooLargeToPreview(path), "Ok"));
-            return null;
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            OverThePanels(() => MessageBox.ErrorQuery(application, "Preview", exception.Message, "Ok"));
-            return null;
-        }
+        application.Invoke(() => RequestOpen(application, source.Path, source.HighlightLine));
     }
 
     private static string TooLargeToPreview(string path) =>
         $"{Path.GetFileName(path)} is larger than {FileText.MaxBytes / (1024 * 1024)} MB, " +
         "too large to preview. Open it in your editor instead.";
-
-    /// <summary>Closing the preview only leaves the nested loop, so the shell
-    /// beneath it is asked to stop as well when the reader left for the
-    /// editor.</summary>
-    private void LeaveForTheEditor(IApplication application)
-    {
-        if (openSourceRequested)
-        {
-            application.RequestStop();
-        }
-    }
-
-    private static string PreviewTitle(string path, int line) =>
-        $"Preview — {Path.GetFileName(path)}:{line} — ↑/k up  ↓/j down  PgUp/PgDn page  " +
-        "n/N file  e edit  c comment  Esc close";
 
     private void CommentOn(IApplication application, string path)
     {
@@ -1411,205 +1133,6 @@ internal sealed class TestRunnerApplication(
             args.Result = new global::Terminal.Gui.Drawing.Attribute(foreground, Color.Black);
             args.Handled = true;
         };
-    }
-
-    private void HandlePreviewKey(
-        IApplication application,
-        Window preview,
-        Code code,
-        Label sourceHighlight,
-        Label diagnostic,
-        Key key)
-    {
-        var action = PreviewKeyBindings.ActionFor(key, code.Viewport.Height);
-        if (action is null)
-        {
-            return;
-        }
-
-        key.Handled = true;
-        if (action is PreviewAction.Edit)
-        {
-            RequestOpen(application, previewing.Path, previewing.HighlightLine);
-            return;
-        }
-
-        if (action is PreviewAction.Comment)
-        {
-            CommentOn(application, previewing.Path);
-            return;
-        }
-
-        if (action is PreviewAction.StepFile step)
-        {
-            StepPreview(application, preview, code, sourceHighlight, diagnostic, step.Step);
-            return;
-        }
-
-        ScrollPreview(code, action);
-        ShowSourceHighlight(code, sourceHighlight);
-    }
-
-    /// <summary>
-    /// Moves the preview to another of the panel's rows. The panel's selection
-    /// goes with it, so the rows it steps through are the ones the search and
-    /// the filter left, and closing the preview leaves the reader on the file
-    /// they stopped at.
-    ///
-    /// The work is waited out here rather than handed to the background: the
-    /// preview runs a loop of its own that only turns when a key arrives, so a
-    /// result posted back to it would not be picked up until the reader pressed
-    /// something else.
-    /// </summary>
-    private void StepPreview(
-        IApplication application,
-        Window preview,
-        Code code,
-        Label sourceHighlight,
-        Label diagnostic,
-        int step)
-    {
-        var target = NextPreviewAsync(step).GetAwaiter().GetResult();
-        if (target is null || target == previewing)
-        {
-            return;
-        }
-
-        ShowInPreview(application, preview, code, sourceHighlight, diagnostic, target);
-    }
-
-    private void ShowInPreview(
-        IApplication application,
-        Window preview,
-        Code code,
-        Label sourceHighlight,
-        Label diagnostic,
-        SourceLocation target)
-    {
-        if (ReadForPreview(application, target.Path) is not { } text)
-        {
-            return;
-        }
-
-        previewing = target;
-        preview.Title = PreviewTitle(target.Path, target.HighlightLine);
-        code.Language = LanguageFrom(target.Path);
-        code.Text = text;
-        diagnostic.Text = PreviewDetails();
-        diagnostic.Visible = diagnostic.Text.Length > 0;
-        code.Height = Dim.Fill(diagnostic.Visible ? IssueDetailRows : 0);
-        ScrollToHighlightedLine(code, target.HighlightLine);
-        ShowSourceHighlight(code, sourceHighlight);
-        preview.SetNeedsDraw();
-        application.LayoutAndDraw(true);
-    }
-
-    private static void ScrollToHighlightedLine(Code code, int line)
-    {
-        code.ScrollVertical(-code.GetContentSize().Height);
-        code.ScrollVertical(Math.Max(0, line - 1));
-    }
-
-    private void ShowSourceHighlight(Code code, Label label)
-    {
-        var highlight = PreviewSourceHighlight.From(
-            code.Text,
-            previewing.HighlightLine,
-            code.Viewport.Y,
-            code.Viewport.Height,
-            PreviewHighlightsSource());
-        label.Text = highlight.Text;
-        label.Y = highlight.Row;
-        label.Visible = highlight.Visible;
-    }
-
-    /// <summary>The rows are tried in turn from where the panel stands, because
-    /// a row can have nothing to show: a folder, a suite whose source cannot be
-    /// found, or a file that has been deleted.</summary>
-    private async Task<SourceLocation?> NextPreviewAsync(int step)
-    {
-        foreach (var index in RowRing.From(ActiveRowCount(), ActiveSelectedIndex(), step))
-        {
-            if (await PreviewAtAsync(index) is { } target)
-            {
-                return target;
-            }
-        }
-
-        return null;
-    }
-
-    private int ActiveRowCount() => ActiveFileSession() is { } files
-        ? files.State.VisibleNodes.Count
-        : shell.State.ActivePanel switch
-        {
-            PanelKind.Changes => changesetSession.State.Files.Count,
-            PanelKind.Issues => issueSession.State.Issues.Count,
-            PanelKind.Comments => commentSession.State.Comments.Count,
-            _ => session.State.VisibleNodes.Count
-        };
-
-    private int ActiveSelectedIndex() => ActiveFileSession() is { } files
-        ? files.State.SelectedIndex
-        : shell.State.ActivePanel switch
-        {
-            PanelKind.Changes => changesetSession.State.SelectedIndex,
-            PanelKind.Issues => issueSession.State.SelectedIndex,
-            PanelKind.Comments => commentSession.State.SelectedIndex,
-            _ => session.State.SelectedIndex
-        };
-
-    private async Task<SourceLocation?> PreviewAtAsync(int index)
-    {
-        if (ActiveFileSession() is { } files)
-        {
-            await files.DispatchAsync(new FileExplorerCommand.SelectIndex(index));
-            var node = files.State.VisibleNodes[files.State.SelectedIndex];
-            return node.Kind == FileNodeKind.File
-                ? new SourceLocation(node.Files[0].Path, 1)
-                : null;
-        }
-
-        if (shell.State.ActivePanel == PanelKind.Changes)
-        {
-            await changesetSession.DispatchAsync(new ChangesetCommand.SelectIndex(index));
-            var file = changesetSession.State.Files[changesetSession.State.SelectedIndex];
-            return file.Kind == ChangeKind.Deleted ? null : new SourceLocation(file.Path, 1);
-        }
-
-        if (shell.State.ActivePanel == PanelKind.Issues)
-        {
-            await issueSession.DispatchAsync(new IssueCommand.SelectIndex(index));
-            var issue = issueSession.State.Issues[issueSession.State.SelectedIndex];
-            return new SourceLocation(issue.Path, issue.Line);
-        }
-
-        if (shell.State.ActivePanel == PanelKind.Comments)
-        {
-            await commentSession.DispatchAsync(new CommentCommand.SelectIndex(index));
-            var comment = commentSession.State.Comments[commentSession.State.SelectedIndex];
-            return new SourceLocation(comment.Path, 1);
-        }
-
-        await session.DispatchAsync(new ExplorerCommand.SelectIndex(index));
-        await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
-        return session.State.SourceLocation;
-    }
-
-    private static void ScrollPreview(Code code, PreviewAction action)
-    {
-        switch (action)
-        {
-            case PreviewAction.Scroll scroll:
-                code.ScrollVertical(scroll.Rows);
-                return;
-            case PreviewAction.ScrollToStart:
-                code.ScrollVertical(-code.GetContentSize().Height);
-                return;
-            case PreviewAction.ScrollToEnd:
-                code.ScrollVertical(code.GetContentSize().Height);
-                return;
-        }
     }
 
     private static string LanguageFrom(string path) => Path.GetExtension(path).ToLowerInvariant() switch
