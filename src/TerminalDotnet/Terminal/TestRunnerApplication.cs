@@ -296,7 +296,7 @@ internal sealed class TestRunnerApplication(
         foreach (var panel in Enum.GetValues<PanelKind>().Where(panel => panel != PanelKind.Preview))
         {
             lists[panel] = new ListPanel();
-            shown.Add(lists[panel].View);
+            shown.Add(lists[panel].View, lists[panel].Footer);
         }
 
         preview = new PreviewPanel();
@@ -1589,7 +1589,8 @@ internal sealed class TestRunnerApplication(
             snapshot.Nodes,
             () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
             snapshot.SelectedIndex,
-            snapshot.EmptyMessage);
+            snapshot.EmptyMessage,
+            new PanelPosition(snapshot.SelectedIndex, snapshot.Nodes.Count));
         ShowSegmentsWhenActive(PanelKind.Explorer, snapshot.StatusSegments);
     }
 
@@ -1605,7 +1606,8 @@ internal sealed class TestRunnerApplication(
             snapshot.Tests,
             () => [.. snapshot.TestRows.Zip(snapshot.Tests, TestRow)],
             snapshot.SelectedIndex,
-            snapshot.EmptyMessage);
+            snapshot.EmptyMessage,
+            new PanelPosition(snapshot.SelectedIndex, snapshot.Tests.Count));
         if (shell.State.ActivePanel != PanelKind.Tests)
         {
             testStatus!.Visible = false;
@@ -1631,7 +1633,8 @@ internal sealed class TestRunnerApplication(
             snapshot.Files,
             () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
             snapshot.SelectedIndex,
-            snapshot.EmptyMessage);
+            snapshot.EmptyMessage,
+            new PanelPosition(snapshot.SelectedIndex, snapshot.Files.Count));
         ShowSegmentsWhenActive(PanelKind.Changes, snapshot.StatusSegments);
     }
 
@@ -1647,7 +1650,8 @@ internal sealed class TestRunnerApplication(
             layout,
             () => [.. layout.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
             layout.SelectedRowIndex,
-            snapshot.EmptyMessage);
+            snapshot.EmptyMessage,
+            new PanelPosition(snapshot.SelectedIndex, snapshot.Issues.Count));
         ShowSegmentsWhenActive(PanelKind.Issues, snapshot.StatusSegments);
     }
 
@@ -1662,7 +1666,8 @@ internal sealed class TestRunnerApplication(
             snapshot.Comments,
             () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
             snapshot.SelectedIndex,
-            snapshot.EmptyMessage);
+            snapshot.EmptyMessage,
+            new PanelPosition(snapshot.SelectedIndex, snapshot.Comments.Count));
         ShowSegmentsWhenActive(PanelKind.Comments, snapshot.StatusSegments);
     }
 
@@ -1676,11 +1681,13 @@ internal sealed class TestRunnerApplication(
         object content,
         Func<IReadOnlyList<ListRow>> rows,
         int selectedIndex,
-        string emptyMessage)
+        string emptyMessage,
+        PanelPosition position)
     {
         var active = shell.State.ActivePanel == panel;
         lists[panel].Show(
             PanelTitle.For(panel, filters, searchQuery, active),
+            PanelTitle.Footer(position.Selected, position.Count),
             content,
             rows,
             selectedIndex,
@@ -1693,6 +1700,11 @@ internal sealed class TestRunnerApplication(
         search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
         search.Text = searchQuery;
     }
+
+    /// <summary>Where the selection stands among what the panel lists. The
+    /// issues wrap across several rows each, so they count issues, not rows.
+    /// </summary>
+    private sealed record PanelPosition(int Selected, int Count);
 
     private void ShowSegmentsWhenActive(PanelKind panel, IReadOnlyList<FileStatusSegment> segments)
     {

@@ -24,6 +24,7 @@ internal sealed class ListPanel
     private object? listed;
     private string listedMessage = "";
     private IReadOnlyList<Color?> foregrounds = [];
+    private PanelArea area = new(0, 0, 0, 0);
 
     public ListPanel()
     {
@@ -34,9 +35,15 @@ internal sealed class ListPanel
             KeystrokeNavigator = null
         };
         View.RowRender += (_, args) => ColorRow(args);
+        Footer = new Label { Height = 1, HotKeySpecifier = new System.Text.Rune(0xFFFF) };
     }
 
     public ListView View { get; }
+
+    /// <summary>Where the selection stands, drawn over the bottom edge of the
+    /// frame. It sits beside the list rather than in it, because a list draws
+    /// nothing on its own border.</summary>
+    public Label Footer { get; }
 
     /// <summary>A panel with nothing to list says why in place of its rows,
     /// and has no row to select. A message such as the discovery marker moves
@@ -44,12 +51,15 @@ internal sealed class ListPanel
     /// </summary>
     public void Show(
         string title,
+        string footer,
         object content,
         Func<IReadOnlyList<ListRow>> rows,
         int selectedIndex,
         string emptyMessage)
     {
         View.Title = title;
+        Footer.Text = footer;
+        PlaceFooter();
         if (!ReferenceEquals(listed, content) || listedMessage != emptyMessage)
         {
             listed = content;
@@ -63,12 +73,22 @@ internal sealed class ListPanel
         }
     }
 
-    public void Place(PanelArea area)
+    public void Place(PanelArea placed)
     {
+        area = placed;
         View.X = area.X;
         View.Y = area.Y;
         View.Width = area.Width;
         View.Height = area.Height;
+        PlaceFooter();
+    }
+
+    private void PlaceFooter()
+    {
+        var width = Footer.Text.Length;
+        Footer.Width = width;
+        Footer.X = Math.Max(area.X, area.X + area.Width - width - 2);
+        Footer.Y = area.Y + area.Height - 1;
     }
 
     private static IReadOnlyList<ListRow> Shown(IReadOnlyList<ListRow> rows, string emptyMessage) =>
