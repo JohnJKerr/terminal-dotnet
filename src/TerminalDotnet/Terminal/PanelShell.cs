@@ -16,6 +16,10 @@ public sealed record PanelCounts(int? Issues, int? Comments);
 
 public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind ActivePanel)
 {
+    /// <summary>The Explorer lists the projects' files until the reader asks
+    /// for every file beneath the launch folder.</summary>
+    public bool ShowsAllFiles { get; init; }
+
     public int ActiveIndex => (int)ActivePanel;
 
     public IReadOnlyList<PanelLabel> KeyedPanels =>
@@ -46,6 +50,8 @@ public sealed class PanelShell
             ActivePanel = (PanelKind)Math.Clamp(index, 0, State.Panels.Count - 1)
         };
     }
+
+    public void ToggleAllFiles() => State = State with { ShowsAllFiles = !State.ShowsAllFiles };
 
     public void SelectPrevious() => Select(Wrapped(State.ActiveIndex - 1));
 

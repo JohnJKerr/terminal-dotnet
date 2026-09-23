@@ -155,4 +155,44 @@ public sealed class WhenUsingThePanelShell
         // Assert
         Assert.Equal(PanelKind.Comments, shell.State.ActivePanel);
     }
+
+    [Fact]
+    public void It_starts_the_explorer_on_the_project_files()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.False(state.ShowsAllFiles);
+    }
+
+    [Fact]
+    public void It_shows_every_file_in_the_explorer_once_asked_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.ToggleAllFiles();
+
+        // Assert
+        Assert.True(shell.State.ShowsAllFiles);
+    }
+
+    [Fact]
+    public void It_returns_the_explorer_to_the_project_files_when_asked_again()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.ToggleAllFiles();
+
+        // Act
+        shell.ToggleAllFiles();
+
+        // Assert
+        Assert.False(shell.State.ShowsAllFiles);
+    }
 }
