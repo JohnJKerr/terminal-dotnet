@@ -470,6 +470,12 @@ internal sealed class TestRunnerApplication(
             case ShellAction.SelectPanel selected:
                 OpenPanel(application, (int)selected.Panel, panels, search, tests);
                 return;
+            case ShellAction.SelectNextPanel:
+                OpenPanel(application, SteppedPanel(1), panels, search, tests);
+                return;
+            case ShellAction.SelectPreviousPanel:
+                OpenPanel(application, SteppedPanel(-1), panels, search, tests);
+                return;
             case ShellAction.ShowCommands:
                 ShowCommands(application);
                 return;
@@ -529,6 +535,9 @@ internal sealed class TestRunnerApplication(
             Rebuild(application, search, tests, askedFor: false);
         }
     }
+
+    private int SteppedPanel(int step) =>
+        (shell.State.ActiveIndex + step + shell.State.Panels.Count) % shell.State.Panels.Count;
 
     private void ShowActivePanel(ListView panels, TextField search, ListView tests)
     {

@@ -112,6 +112,26 @@ public sealed class WhenMovingBetweenPanels
     }
 
     [Fact]
+    public void Pressing_tab_goes_to_the_next_panel()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Tab));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectNextPanel(), action);
+    }
+
+    [Fact]
+    public void Pressing_shift_tab_goes_to_the_previous_panel()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Tab | KeyCode.ShiftMask));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectPreviousPanel(), action);
+    }
+
+    [Fact]
     public void Pressing_capital_E_goes_to_no_panel()
     {
         // Act

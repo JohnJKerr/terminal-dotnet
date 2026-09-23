@@ -13,6 +13,8 @@ public abstract record ShellAction
     public sealed record FocusRows : ShellAction;
     public sealed record SelectPanel(PanelKind Panel) : ShellAction;
     public sealed record SelectFocusedPanel : ShellAction;
+    public sealed record SelectNextPanel : ShellAction;
+    public sealed record SelectPreviousPanel : ShellAction;
     public sealed record ShowCommands : ShellAction;
     public sealed record Refresh : ShellAction;
     public sealed record Quit : ShellAction;
@@ -51,6 +53,11 @@ public static class ShellKeyBindings
         if (PanelFor(key) is { } panel)
         {
             return new ShellAction.SelectPanel(panel);
+        }
+
+        if (key.NoShift.KeyCode == KeyCode.Tab)
+        {
+            return key.IsShift ? new ShellAction.SelectPreviousPanel() : new ShellAction.SelectNextPanel();
         }
 
         if (Is(key, KeyCode.Esc))

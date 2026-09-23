@@ -84,6 +84,18 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_names_the_keys_that_step_between_the_panels()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(
+            anywhere.Entries,
+            entry => entry.Keys == "Tab/Shift+Tab" && entry.Description == "go to the next or previous panel");
+    }
+
+    [Fact]
     public void It_names_the_key_that_reaches_the_issues()
     {
         // Act
