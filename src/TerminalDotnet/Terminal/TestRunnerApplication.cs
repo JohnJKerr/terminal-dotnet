@@ -396,7 +396,6 @@ internal sealed class TestRunnerApplication(
         var shellAction = ShellKeyBindings.ActionFor(
             key,
             search.HasFocus,
-            panels.HasFocus,
             ActiveSearchQuery().Length > 0);
         if (shellAction is not null)
         {
@@ -451,20 +450,12 @@ internal sealed class TestRunnerApplication(
                 list.SetFocus();
                 return;
             case ShellAction.LeaveSearch:
-            case ShellAction.FocusRows:
                 list.SetFocus();
                 Render();
                 return;
             case ShellAction.FocusSearch:
                 search.SetFocus();
                 Render();
-                return;
-            case ShellAction.FocusPanels:
-                panels.SetFocus();
-                Render();
-                return;
-            case ShellAction.SelectFocusedPanel:
-                OpenPanel(application, panels.SelectedItem ?? 0, panels);
                 return;
             case ShellAction.SelectPanel selected:
                 OpenPanel(application, (int)selected.Panel, panels);

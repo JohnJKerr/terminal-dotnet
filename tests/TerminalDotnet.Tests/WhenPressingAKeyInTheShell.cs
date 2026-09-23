@@ -28,33 +28,13 @@ public sealed class WhenPressingAKeyInTheShell
     }
 
     [Fact]
-    public void Pressing_the_left_arrow_moves_to_the_panels()
+    public void Pressing_the_left_arrow_leaves_the_key_to_the_panel()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.CursorLeft));
 
         // Assert
-        Assert.Equal(new ShellAction.FocusPanels(), action);
-    }
-
-    [Fact]
-    public void Pressing_the_right_arrow_in_the_panels_moves_to_the_rows()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.CursorRight), panelsFocused: true);
-
-        // Assert
-        Assert.Equal(new ShellAction.FocusRows(), action);
-    }
-
-    [Fact]
-    public void Pressing_enter_in_the_panels_selects_the_panel()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.Enter), panelsFocused: true);
-
-        // Assert
-        Assert.Equal(new ShellAction.SelectFocusedPanel(), action);
+        Assert.Null(action);
     }
 
     [Fact]
@@ -180,7 +160,6 @@ public sealed class WhenPressingAKeyInTheShell
     private static ShellAction? ActionFor(
         Key key,
         bool searchFocused = false,
-        bool panelsFocused = false,
         bool searchActive = false) =>
-        ShellKeyBindings.ActionFor(key, searchFocused, panelsFocused, searchActive);
+        ShellKeyBindings.ActionFor(key, searchFocused, searchActive);
 }

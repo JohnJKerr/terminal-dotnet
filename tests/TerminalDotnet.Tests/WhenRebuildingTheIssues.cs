@@ -18,7 +18,7 @@ public sealed class WhenRebuildingTheIssues
     {
         // Act
         var action = ShellKeyBindings.ActionFor(
-            new Key(KeyCode.R).WithCtrl, searchFocused: false, panelsFocused: false);
+            new Key(KeyCode.R).WithCtrl, searchFocused: false);
 
         // Assert
         Assert.Equal(new ShellAction.Refresh(), action);
@@ -29,7 +29,7 @@ public sealed class WhenRebuildingTheIssues
     {
         // Act
         var action = ShellKeyBindings.ActionFor(
-            new Key(KeyCode.R).WithCtrl, searchFocused: true, panelsFocused: false);
+            new Key(KeyCode.R).WithCtrl, searchFocused: true);
 
         // Assert
         Assert.Equal(new ShellAction.Refresh(), action);
@@ -40,7 +40,7 @@ public sealed class WhenRebuildingTheIssues
     {
         // Act
         var action = ShellKeyBindings.ActionFor(
-            new Key(KeyCode.R), searchFocused: false, panelsFocused: false);
+            new Key(KeyCode.R), searchFocused: false);
 
         // Assert
         Assert.Null(action);

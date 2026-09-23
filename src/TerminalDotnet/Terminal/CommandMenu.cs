@@ -59,8 +59,6 @@ public static class CommandMenu
         new("4", "go to the Issues"),
         new("5", "go to the Comments"),
         new("Tab/Shift+Tab", "go to the next or previous panel"),
-        new("←", "focus the panel list"),
-        new("→", "focus the rows"),
         new("s", "search the active panel"),
         new("Enter", "leave the search, keeping it"),
         new("Esc", "close what is open, or clear the search"),

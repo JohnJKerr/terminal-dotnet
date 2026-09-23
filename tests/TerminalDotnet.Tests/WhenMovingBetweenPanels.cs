@@ -213,7 +213,6 @@ public sealed class WhenMovingBetweenPanels
 
     private static ShellAction? ActionFor(
         Key key,
-        bool searchFocused = false,
-        bool panelsFocused = false) =>
-        ShellKeyBindings.ActionFor(key, searchFocused, panelsFocused);
+        bool searchFocused = false) =>
+        ShellKeyBindings.ActionFor(key, searchFocused);
 }

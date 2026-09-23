@@ -9,10 +9,7 @@ public abstract record ShellAction
     public sealed record ClearSearch : ShellAction;
     public sealed record LeaveSearch : ShellAction;
     public sealed record FocusSearch : ShellAction;
-    public sealed record FocusPanels : ShellAction;
-    public sealed record FocusRows : ShellAction;
     public sealed record SelectPanel(PanelKind Panel) : ShellAction;
-    public sealed record SelectFocusedPanel : ShellAction;
     public sealed record SelectNextPanel : ShellAction;
     public sealed record SelectPreviousPanel : ShellAction;
     public sealed record ShowCommands : ShellAction;
@@ -29,7 +26,6 @@ public static class ShellKeyBindings
     public static ShellAction? ActionFor(
         Key key,
         bool searchFocused,
-        bool panelsFocused,
         bool searchActive = false)
     {
         if (Is(key, (KeyCode)'?'))
@@ -70,27 +66,7 @@ public static class ShellKeyBindings
             return new ShellAction.Quit();
         }
 
-        if (Is(key, KeyCode.S))
-        {
-            return new ShellAction.FocusSearch();
-        }
-
-        if (Is(key, KeyCode.CursorLeft))
-        {
-            return panelsFocused ? null : new ShellAction.FocusPanels();
-        }
-
-        if (!panelsFocused)
-        {
-            return null;
-        }
-
-        if (Is(key, KeyCode.CursorRight))
-        {
-            return new ShellAction.FocusRows();
-        }
-
-        return Is(key, KeyCode.Enter) ? new ShellAction.SelectFocusedPanel() : null;
+        return Is(key, KeyCode.S) ? new ShellAction.FocusSearch() : null;
     }
 
     private static PanelKind? PanelFor(Key key) =>
