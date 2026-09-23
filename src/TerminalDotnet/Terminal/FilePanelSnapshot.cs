@@ -83,13 +83,13 @@ public sealed record FilePanelSnapshot(
 {
     public IReadOnlyList<FilePanelRow> Rows => Snapshot.Of(Nodes.Select(RowFrom));
 
-    public static FilePanelSnapshot From(FileExplorerState state) => new(
+    public static FilePanelSnapshot From(FileExplorerState state, bool showsAllFiles = false) => new(
         state.VisibleNodes,
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleFileCount,
         StatusSegmentsFrom(state.Changes),
-        PanelFilters.Chips(state.ActiveFilter),
+        [.. PanelFilters.Chips(state.ActiveFilter), new FilterChip("2. All files", showsAllFiles)],
         EmptyMessageFrom(state));
 
     private static string EmptyMessageFrom(FileExplorerState state) => state.Loading

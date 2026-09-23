@@ -18,7 +18,7 @@ public sealed class WhenShowingPanelFilters
         var snapshot = FilePanelSnapshot.From(state);
 
         // Assert
-        Assert.Equal(["1. Updated"], snapshot.Filters.Select(chip => chip.Text));
+        Assert.Equal(["1. Updated", "2. All files"], snapshot.Filters.Select(chip => chip.Text));
     }
 
     [Fact]
@@ -31,7 +31,20 @@ public sealed class WhenShowingPanelFilters
         var snapshot = FilePanelSnapshot.From(state);
 
         // Assert
-        Assert.True(snapshot.Filters.Single().IsActive);
+        Assert.True(snapshot.Filters[0].IsActive);
+    }
+
+    [Fact]
+    public void The_explorer_marks_every_file_while_it_shows_them()
+    {
+        // Arrange
+        var state = new FileExplorerState([]);
+
+        // Act
+        var snapshot = FilePanelSnapshot.From(state, showsAllFiles: true);
+
+        // Assert
+        Assert.True(snapshot.Filters[1].IsActive);
     }
 
     [Fact]
