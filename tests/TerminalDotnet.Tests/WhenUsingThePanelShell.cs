@@ -16,7 +16,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Tests", "Issues", "Changes", "Comments"],
+            ["Explorer", "Tests", "Changes", "Issues", "Comments"],
             state.Panels);
     }
 
@@ -53,7 +53,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(2);
+        shell.Select(3);
 
         // Assert
         Assert.Equal(PanelKind.Issues, shell.State.ActivePanel);
@@ -66,7 +66,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(3);
+        shell.Select(2);
 
         // Assert
         Assert.Equal(PanelKind.Changes, shell.State.ActivePanel);
@@ -82,7 +82,7 @@ public sealed class WhenUsingThePanelShell
         var panels = shell.State.KeyedPanels;
 
         // Assert
-        Assert.Equal(["E", "T", "I", "G", "C"], panels.Select(panel => panel.Key));
+        Assert.Equal(["1", "2", "3", "4", "5"], panels.Select(panel => panel.Key));
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Tests", "Issues", "Changes", "Comments"],
+            ["Explorer", "Tests", "Changes", "Issues", "Comments"],
             panels.Select(panel => panel.Name));
     }
 
@@ -111,7 +111,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Tests", "Issues (3)", "Changes", "Comments (2)"],
+            ["Explorer", "Tests", "Changes", "Issues (3)", "Comments (2)"],
             panels.Select(panel => panel.Name));
     }
 
@@ -126,7 +126,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Tests", "Issues (-)", "Changes", "Comments (0)"],
+            ["Explorer", "Tests", "Changes", "Issues (-)", "Comments (0)"],
             panels.Select(panel => panel.Name));
     }
 

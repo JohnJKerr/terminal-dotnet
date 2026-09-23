@@ -23,7 +23,7 @@ public sealed class WhenListingEveryCommand
 
         // Assert
         Assert.Equal(
-            ["Anywhere", "Explorer", "Tests", "Issues", "Changes", "Comments", "Preview", "Diff"],
+            ["Anywhere", "Explorer", "Tests", "Changes", "Issues", "Comments", "Preview", "Diff"],
             titles);
     }
 
@@ -68,7 +68,7 @@ public sealed class WhenListingEveryCommand
         // Assert
         Assert.Contains(
             anywhere.Entries,
-            entry => entry.Keys == "C" && entry.Description == "go to the Comments");
+            entry => entry.Keys == "5" && entry.Description == "go to the Comments");
     }
 
     [Fact]
@@ -80,7 +80,7 @@ public sealed class WhenListingEveryCommand
         // Assert
         Assert.Contains(
             anywhere.Entries,
-            entry => entry.Keys == "G" && entry.Description == "go to the Changes");
+            entry => entry.Keys == "3" && entry.Description == "go to the Changes");
     }
 
     [Fact]
@@ -92,7 +92,7 @@ public sealed class WhenListingEveryCommand
         // Assert
         Assert.Contains(
             anywhere.Entries,
-            entry => entry.Keys == "I" && entry.Description == "go to the Issues");
+            entry => entry.Keys == "4" && entry.Description == "go to the Issues");
     }
 
     [Fact]

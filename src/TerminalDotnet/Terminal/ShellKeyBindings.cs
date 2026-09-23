@@ -87,9 +87,7 @@ public static class ShellKeyBindings
     }
 
     private static PanelKind? PanelFor(Key key) =>
-        key.IsShift ? PanelKeys.For(LetterOf(key)) : null;
-
-    private static string LetterOf(Key key) => ((char)key.NoShift.KeyCode).ToString();
+        key.IsShift || key.IsCtrl || key.IsAlt ? null : PanelKeys.For(((char)key.KeyCode).ToString());
 
     private static ShellAction SearchActionFor(Key key)
     {

@@ -62,63 +62,73 @@ public sealed class WhenMovingBetweenPanels
     }
 
     [Fact]
-    public void Pressing_capital_E_goes_to_the_explorer()
+    public void Pressing_1_goes_to_the_explorer()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.E | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.D1));
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Explorer), action);
     }
 
     [Fact]
-    public void Pressing_capital_F_goes_to_no_panel()
+    public void Pressing_2_goes_to_the_tests()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.F | KeyCode.ShiftMask));
-
-        // Assert
-        Assert.Null(action);
-    }
-
-    [Fact]
-    public void Pressing_capital_T_goes_to_the_tests()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.T | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.D2));
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Tests), action);
     }
 
     [Fact]
-    public void Pressing_capital_I_goes_to_the_issues()
+    public void Pressing_3_goes_to_the_changes()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.I | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.D3));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Changes), action);
+    }
+
+    [Fact]
+    public void Pressing_4_goes_to_the_issues()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D4));
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Issues), action);
     }
 
     [Fact]
-    public void Pressing_capital_C_goes_to_the_comments()
+    public void Pressing_5_goes_to_the_comments()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.C | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.D5));
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Comments), action);
     }
 
     [Fact]
-    public void Pressing_capital_G_goes_to_the_changes()
+    public void Pressing_capital_E_goes_to_no_panel()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.G | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.E | KeyCode.ShiftMask));
 
         // Assert
-        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Changes), action);
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_6_goes_to_no_panel()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D6));
+
+        // Assert
+        Assert.Null(action);
     }
 
     [Fact]
@@ -152,10 +162,10 @@ public sealed class WhenMovingBetweenPanels
     }
 
     [Fact]
-    public void Pressing_capital_T_in_the_search_types_it()
+    public void Pressing_2_in_the_search_types_it()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.T | KeyCode.ShiftMask), searchFocused: true);
+        var action = ActionFor(new Key(KeyCode.D2), searchFocused: true);
 
         // Assert
         Assert.Equal(new ShellAction.TypeIntoSearch(), action);
@@ -166,16 +176,6 @@ public sealed class WhenMovingBetweenPanels
     {
         // Act
         var action = ActionFor(new Key(KeyCode.Q | KeyCode.ShiftMask));
-
-        // Assert
-        Assert.Null(action);
-    }
-
-    [Fact]
-    public void Pressing_a_number_still_reaches_the_panel_filters()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.D1));
 
         // Assert
         Assert.Null(action);

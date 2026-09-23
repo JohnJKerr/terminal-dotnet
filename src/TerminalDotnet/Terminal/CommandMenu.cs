@@ -21,8 +21,8 @@ public static class CommandMenu
         new("Anywhere", Anywhere),
         new("Explorer", FileTree),
         new("Tests", Tests),
-        new("Issues", Issues),
         new("Changes", Changes),
+        new("Issues", Issues),
         new("Comments", Comments),
         new("Preview", Preview),
         new("Diff", Diff)
@@ -53,11 +53,11 @@ public static class CommandMenu
 
     private static readonly IReadOnlyList<CommandMenuEntry> Anywhere =
     [
-        new("E", "go to the Explorer"),
-        new("T", "go to the Tests"),
-        new("I", "go to the Issues"),
-        new("G", "go to the Changes"),
-        new("C", "go to the Comments"),
+        new("1", "go to the Explorer"),
+        new("2", "go to the Tests"),
+        new("3", "go to the Changes"),
+        new("4", "go to the Issues"),
+        new("5", "go to the Comments"),
         new("Tab", "move between search, panels and rows"),
         new("←", "focus the panel list"),
         new("→", "focus the rows"),
