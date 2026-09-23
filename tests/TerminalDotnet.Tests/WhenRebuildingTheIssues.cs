@@ -51,7 +51,7 @@ public sealed class WhenRebuildingTheIssues
     {
         // Act
         var shortcuts = PanelShortcuts.For(
-            PanelKind.Files, Files(), Changes(), Tests(), Comments());
+            PanelKind.Explorer, Files(), Changes(), Tests(), Comments());
 
         // Assert
         Assert.Contains("^R refresh", shortcuts);
@@ -62,7 +62,7 @@ public sealed class WhenRebuildingTheIssues
     {
         // Act
         var shortcuts = PanelShortcuts.For(
-            PanelKind.Files, Files(), Changes(), Tests(), Comments(), searchFocused: true);
+            PanelKind.Explorer, Files(), Changes(), Tests(), Comments(), searchFocused: true);
 
         // Assert
         Assert.Contains("^R refresh", shortcuts);
