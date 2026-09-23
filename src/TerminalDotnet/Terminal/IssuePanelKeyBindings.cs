@@ -17,9 +17,7 @@ public static class IssuePanelKeyBindings
     public static IssuePanelAction? ActionFor(Key key, CompilationIssue? issue, bool searchActive)
     {
         if (searchActive) return null;
-        if (!key.IsShift && key.NoShift.KeyCode == KeyCode.D1) return new IssuePanelAction.Dispatch(new IssueCommand.ToggleErrors());
-        if (!key.IsShift && key.NoShift.KeyCode == KeyCode.D2) return new IssuePanelAction.Dispatch(new IssueCommand.ToggleWarnings());
-        if (!key.IsShift && key.NoShift.KeyCode == KeyCode.D3) return new IssuePanelAction.Dispatch(new IssueCommand.ToggleFlags());
+        if (FilterFor(key) is { } filter) return new IssuePanelAction.Dispatch(filter);
         if (issue is null) return null;
         return key.NoShift.KeyCode switch
         {
@@ -29,4 +27,12 @@ public static class IssuePanelKeyBindings
             _ => null
         };
     }
+
+    private static IssueCommand? FilterFor(Key key) => !key.IsShift ? null : key.NoShift.KeyCode switch
+    {
+        KeyCode.X => new IssueCommand.ToggleErrors(),
+        KeyCode.W => new IssueCommand.ToggleWarnings(),
+        KeyCode.F => new IssueCommand.ToggleFlags(),
+        _ => null
+    };
 }
