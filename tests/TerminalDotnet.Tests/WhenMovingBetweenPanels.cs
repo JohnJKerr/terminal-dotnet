@@ -25,7 +25,7 @@ public sealed class WhenMovingBetweenPanels
     {
         // Arrange
         var shell = new PanelShell();
-        shell.Select(2);
+        shell.Select(PanelKind.Changes);
 
         // Act
         shell.SelectPrevious();
@@ -39,7 +39,7 @@ public sealed class WhenMovingBetweenPanels
     {
         // Arrange
         var shell = new PanelShell();
-        shell.Select(4);
+        shell.Select(PanelKind.Comments);
 
         // Act
         shell.SelectNext();

@@ -410,7 +410,7 @@ internal sealed class TestRunnerApplication(
                 Render();
                 return;
             case ShellAction.SelectPanel selected:
-                OpenPanel(application, (int)selected.Panel);
+                OpenPanel(application, selected.Panel);
                 return;
             case ShellAction.SelectNextPanel:
                 OpenPanel(application, SteppedPanel(1));
@@ -462,10 +462,10 @@ internal sealed class TestRunnerApplication(
     /// <summary>The tests and the issues describe the last build, so opening
     /// either after the tree has been edited sets a rebuild off rather than
     /// showing the reader what the project used to be.</summary>
-    private void OpenPanel(IApplication application, int index)
+    private void OpenPanel(IApplication application, PanelKind panel)
     {
         var from = shell.State.ActivePanel;
-        shell.Select(index);
+        shell.Select(panel);
         ShowActivePanel();
         if (editsSinceTheBuild.WorthRebuildingOnOpening(from, shell.State.ActivePanel))
         {
@@ -473,8 +473,8 @@ internal sealed class TestRunnerApplication(
         }
     }
 
-    private int SteppedPanel(int step) =>
-        (shell.State.ActiveIndex + step + shell.State.Panels.Count) % shell.State.Panels.Count;
+    private PanelKind SteppedPanel(int step) =>
+        (PanelKind)((shell.State.ActiveIndex + step + shell.State.Panels.Count) % shell.State.Panels.Count);
 
     /// <summary>Moving to a list on the left stretches it, so the panels are
     /// laid out again before the new one takes the keys.</summary>

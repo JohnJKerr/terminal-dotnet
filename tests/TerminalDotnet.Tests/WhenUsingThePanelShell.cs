@@ -40,7 +40,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(1);
+        shell.Select(PanelKind.Tests);
 
         // Assert
         Assert.Equal(PanelKind.Tests, shell.State.ActivePanel);
@@ -53,7 +53,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(3);
+        shell.Select(PanelKind.Issues);
 
         // Assert
         Assert.Equal(PanelKind.Issues, shell.State.ActivePanel);
@@ -66,7 +66,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(2);
+        shell.Select(PanelKind.Changes);
 
         // Assert
         Assert.Equal(PanelKind.Changes, shell.State.ActivePanel);
@@ -79,7 +79,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(4);
+        shell.Select(PanelKind.Comments);
 
         // Assert
         Assert.Equal(PanelKind.Comments, shell.State.ActivePanel);
@@ -145,7 +145,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select((int)PanelKind.Tests);
+        shell.Select(PanelKind.Tests);
 
         // Assert
         Assert.Equal(PanelKind.Tests, shell.State.ExpandedList);
@@ -156,10 +156,10 @@ public sealed class WhenUsingThePanelShell
     {
         // Arrange
         var shell = new PanelShell();
-        shell.Select((int)PanelKind.Changes);
+        shell.Select(PanelKind.Changes);
 
         // Act
-        shell.Select((int)PanelKind.Issues);
+        shell.Select(PanelKind.Issues);
 
         // Assert
         Assert.Equal(PanelKind.Changes, shell.State.ExpandedList);

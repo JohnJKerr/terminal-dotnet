@@ -27,9 +27,8 @@ public sealed class PanelShell
     public PanelShellState State { get; private set; } =
         new(["Explorer", "Tests", "Changes", "Issues", "Comments"], PanelKind.Explorer);
 
-    public void Select(int index)
+    public void Select(PanelKind panel)
     {
-        var panel = (PanelKind)Math.Clamp(index, 0, State.Panels.Count - 1);
         State = State with
         {
             ActivePanel = panel,
@@ -45,5 +44,5 @@ public sealed class PanelShell
 
     public void SelectNext() => Select(Wrapped(State.ActiveIndex + 1));
 
-    private int Wrapped(int index) => (index + State.Panels.Count) % State.Panels.Count;
+    private PanelKind Wrapped(int index) => (PanelKind)((index + State.Panels.Count) % State.Panels.Count);
 }
