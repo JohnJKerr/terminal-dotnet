@@ -35,7 +35,7 @@ public sealed class WhenListingEveryCommand
 
         // Assert
         Assert.Equal(
-            ["↑/k", "↓/j", "Enter/e", "p", "y", "1", "2"],
+            ["↑/k", "↓/j", "Enter/e", "p", "y", "1", "2", "3"],
             issues.Entries.Select(entry => entry.Keys));
     }
 

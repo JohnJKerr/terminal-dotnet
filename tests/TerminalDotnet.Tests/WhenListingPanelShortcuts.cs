@@ -2,6 +2,7 @@ using TerminalDotnet.Changes;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using Xunit;
@@ -311,6 +312,22 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(["Tab pane", "s search", "^R refresh", "? commands", "q quit"], shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_the_flags_filter_in_the_issues()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Issues,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments(),
+            issueState: new IssueState([]));
+
+        // Assert
+        Assert.Contains("3 flags", shortcuts);
     }
 
     private static CommentsState EmptyComments() => new([]);

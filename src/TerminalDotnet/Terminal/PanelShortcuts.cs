@@ -46,8 +46,8 @@ public static class PanelShortcuts
         PanelKind.Explorer or PanelKind.Files => ExplorerShortcuts(fileState),
         PanelKind.Changes => ChangesetShortcuts(changesetState),
         PanelKind.Issues => issueState is { Issues.Count: > 0 }
-            ? [.. Navigation(), "Enter/e edit", "p preview", "y copy", "1 errors", "2 warnings"]
-            : ["1 errors", "2 warnings"],
+            ? [.. Navigation(), "Enter/e edit", "p preview", "y copy", "1 errors", "2 warnings", "3 flags"]
+            : ["1 errors", "2 warnings", "3 flags"],
         PanelKind.Comments => CommentShortcuts(commentState),
         PanelKind.Flags => flagState is { Flags.Count: > 0 }
             ? [.. Navigation(), "Enter/e edit", "p preview"]
