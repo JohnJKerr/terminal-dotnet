@@ -24,9 +24,10 @@ Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
 
 ## Features
 
-- **Seven panels in one two-column shell.** Explorer, Files, Tests, Issues,
-  Changes, Comments and Flags share the same rail, search box, filters and
-  keys.
+- **Six panels on one screen.** The Explorer, Tests and Changes are stacked on
+  the left, with the Preview beside them over the Issues and Comments. Every
+  panel is on show at once, and the list you are working in stretches to show
+  more of its rows.
 - **Test explorer.** Discovers every test in the solution. Run a test, a class
   or a whole project; rerun the last set or only the failures; step between
   failures; and open the failing line in a preview or your editor.
@@ -38,19 +39,20 @@ Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
   reports as changed, and the Tests panel to the suites whose source changed,
   so `Enter` on the project runs only those.
 - **Flags.** Gathers `TODO`, `FIXME`, `HACK` and similar markers from every
-  tracked file, grouped into Tasks, Review, Warning and Improve.
+  tracked file and lists them among the compiler's issues.
 - **Comments.** Leave a note against any file while reading it, then copy every
   note to the clipboard or save them to a Markdown file. Handy for handing
   review feedback to a teammate or a coding agent.
-- **Preview with syntax highlighting.** Read any file in place, step to the
-  next or previous row of the panel without closing it, and hand off to your
+- **Live preview with syntax highlighting.** The Preview follows the selection
+  of the last list you were in: a file, a test's source, an issue's line or a
+  change's diff. Step through the list from inside it and hand off to your
   editor at the same line.
 - **Stays current.** Panels reload when something outside the app edits the
   working tree, whether an agent, another terminal or a `git checkout`.
   `Ctrl+R` refreshes every panel and rebuilds the project from anywhere, and a
   stale panel rebuilds when you open it.
-- **Discoverable.** The bottom line lists the keys that apply to the current
-  selection, and `?` shows every command.
+- **Discoverable.** The bottom line lists the keys that apply to the focused
+  panel and its selection, and `?` shows every command.
 
 ## Requirements
 
@@ -168,9 +170,10 @@ On launch the panels fill in the background:
 Each panel shows a spinner while it loads, and a panel with nothing to list
 says so in place of its rows.
 
-Move between panels with `Shift` plus the letter beside each one in the rail,
-or with `←` to focus the rail. `s` searches the active panel, and `?`
-lists every command.
+Move between panels with the number in each panel's title, `0` to `5`, or step
+through them with `Tab` and `Shift+Tab`. Capital letters toggle the focused
+panel's filters, which are named in its title. `/` searches the focused panel,
+and `?` lists every command.
 
 ## Panels
 
@@ -179,79 +182,77 @@ lists every command.
 <!-- Screenshot: Explorer panel with the Updated filter on -->
 ![Explorer panel](docs/images/explorer.png)
 
-The solution's projects as a tree of folders and source files, mirroring the
-layout on disk. Build output (`bin`, `obj`) is left out. Files git reports as
-new are green and edited files are blue. `1` toggles the **Updated** filter,
-which keeps only those files. `Enter` or `e` edits the file, and `p` previews
-it.
-
-### Files
-
-Every file in the directory you launched from, whether or not a project claims
-it: scripts, docs, workflows and configuration. Launching further down the tree
-narrows the panel to that folder. It shares the Explorer's keys and colours.
+Panel `1`. The solution's projects as a tree of folders and source files,
+mirroring the layout on disk. Build output (`bin`, `obj`) is left out. Files git
+reports as new are green and edited files are blue.
+- `A` (**All files**) shows every file beneath the directory you launched
+  from, whether or not a project claims it: scripts, docs, workflows and
+  configuration.
+- `U` (**Updated**) keeps only the files git reports as changed.
+- `Enter` or `e` edits the file, and `p` moves into the preview.
 
 ### Tests
 
 <!-- Screenshot: Tests panel with a failed test selected and its output below -->
 ![Tests panel](docs/images/tests.png)
 
-The discovered tests, grouped by project, class and test, with the run's output
-beside them.
+Panel `2`. The discovered tests, grouped by project, class and test.
 
 - **Running.** `Enter` or `r` runs everything beneath the selection. `l` reruns
   the previous set, `u` reruns the failures, and `c` cancels a run.
 - **Outcomes.** Green passed, red failed, yellow skipped, cyan running.
   Before a test runs it takes the git colour of its source: green for a new
   suite, blue for an edited one.
-- **Failures.** `f` selects the next failed test. The output pane shows the
-  failure message and a `Source:` excerpt. `p` previews the failing line and
-  `e` opens it in your editor.
+- **Failures.** `f` selects the next failed test, and the preview shows its
+  source. `e` opens it in your editor.
 - **Output.** `o` shows the captured output of the run.
-- **Updated filter.** `1` keeps only the suites whose source file changed.
-
-### Issues
-
-<!-- Screenshot: Issues panel with an error selected and its preview open -->
-![Issues panel](docs/images/issues.png)
-
-Compiler errors (red) and warnings (yellow) from `dotnet build --no-restore`,
-with a count of each on the status line. Search matches the full compiler
-message.
-- `1` and `2` filter to errors and to warnings.
-- `Enter` or `e` opens the source at the reported line.
-- `p` previews it with the line highlighted, keeping the issue visible below.
-- `y` copies the issue to the clipboard.
+- **Filters.** `U` updated, `F` failing, `P` passing, `L` last run and `N` not
+  run.
 
 ### Changes
 
 <!-- Screenshot: Changes panel with a diff open -->
 ![Changes panel](docs/images/changes.png)
 
-The files git reports as added, modified or deleted beneath the launch
-directory.
-- `Enter` or `d` shows the diff. Inside it, `n` and `N` step to the next and
-  previous file.
-- `e` edits and `p` previews a file.
+Panel `3`. The files git reports as added, modified or deleted beneath the
+launch directory. The preview shows the selected file's diff.
+- `Enter`, `d` or `p` moves into the preview to read the diff.
+- `e` edits the file.
 - `r` restores a deleted file. Only the file you selected is restored, even
   when its name looks like a glob.
+
+### Issues
+
+<!-- Screenshot: Issues panel with an error selected and its preview open -->
+![Issues panel](docs/images/issues.png)
+
+Panel `4`. Compiler errors (red) and warnings (yellow) from
+`dotnet build --no-restore`, followed by the flags: comment markers from
+tracked files. The preview shows the reported line, with the full message
+beneath it. Search matches the full message.
+- `X`, `W` and `F` filter to errors, warnings and flags.
+- `Enter` or `e` opens the source at the reported line.
+- `y` copies the issue to the clipboard.
+
+The flags recognised are `TODO`, `FIXME`, `REVIEW`, `QUESTION`, `NOTE`,
+`WARNING`, `WARN`, `HACK`, `XXX`, `BUG`, `DEPRECATED`, `REFACTOR` and
+`OPTIMIZE`.
 
 ### Comments
 
 <!-- Screenshot: preview with the comment box open -->
 ![Comments](docs/images/comments.png)
 
-Press `c` in a preview to leave a note against that file; each file carries one
-note.
+Press `c` in the preview to leave a note against the file it shows; each file
+carries one note.
 
 <!-- Screenshot: writing a note against a file from the preview -->
 ![Leaving a comment](docs/images/add-comment.png)
 
-The Comments panel lists every file with a note, and search matches the file or
-the note's text.
+Panel `5` lists every file with a note, and search matches the file or the
+note's text.
 
 - `Enter` or `v` reads a note, `e` rewrites it, and `d` deletes it.
-- `p` previews the file the note is against.
 - `y` copies every note to the clipboard.
 - `w` saves every note to a file, suggesting `comments.md` beside the solution.
   It asks before replacing an existing file.
@@ -260,34 +261,15 @@ the note's text.
 Comments live in memory while the app is open. Quitting with notes you have
 not copied or saved asks first.
 
-### Flags
-
-<!-- Screenshot: Flags panel filtered to Tasks -->
-![Flags panel](docs/images/flags.png)
-
-Comment markers from tracked files, grouped under their headings. Search
-matches both the path and the comment text. The numbered filters are:
-
-| Key | Filter | Markers |
-| --- | --- | --- |
-| `1` | Tasks | `TODO`, `FIXME` |
-| `2` | Review | `REVIEW`, `QUESTION`, `NOTE` |
-| `3` | Warning | `WARNING`, `WARN`, `HACK`, `XXX`, `BUG`, `DEPRECATED` |
-| `4` | Improve | `REFACTOR`, `OPTIMIZE` |
-
-`Enter` or `e` edits the file at the flagged line. `p` previews it there, with
-the flag repeated below the preview.
-
 ### Preview
 
 <!-- Screenshot: syntax-highlighted preview -->
 ![Preview](docs/images/preview.png)
 
-A full-screen, syntax-highlighted view of a file.
+Panel `0`. A syntax-highlighted view of whatever is selected in the last list
+you were in, or the diff of a change.
 - `↑`/`k`, `↓`/`j`, `PgUp`/`PgDn`, `Home` and `End` scroll through it.
-- `n` and `N` move to the next and previous row of the panel you came from,
-  without closing the preview. They follow the panel's search and filter, skip
-  rows with nothing to show, and move the panel's selection with them.
+- `n` and `N` move the list it follows to its next and previous row.
 - `e` hands the file to your editor at the same line.
 - `c` writes a comment against the file.
 
@@ -314,33 +296,27 @@ A full-screen, syntax-highlighted view of a file.
 
 | Key | Action |
 | --- | --- |
-| `Shift+E` / `F` / `T` / `I` / `G` / `C` / `L` | Go to Explorer, Files, Tests, Issues, Changes, Comments, Flags |
-| `Tab` | Move between search, panels and rows |
-| `←` / `→` | Focus the panel rail / the rows |
-| `s` | Search the active panel |
+| `0`–`5` | Go to the Preview, Explorer, Tests, Changes, Issues or Comments |
+| `Tab` / `Shift+Tab` | Go to the next or previous panel |
+| `/` | Search the focused panel |
 | `Enter` (in search) | Leave the search, keeping it |
 | `Esc` | Close what is open, or clear the search |
-| `1`–`4` | Toggle the panel's numbered filters (while the search box is not focused) |
+| Capital letters | Toggle the focused panel's filters, as named in its title |
 | `Ctrl+R` | Refresh every panel and rebuild the project |
 | `?` | Show every command |
 | `q` | Quit, asking first if comments would be lost |
-
-Changes answers to `G` because `C` belongs to Comments, and Flags answers to `L`
-because `F` belongs to Files.
 
 ### Panels
 
 | Panel | Keys |
 | --- | --- |
-| All lists | `↑`/`k` up, `↓`/`j` down |
-| Explorer, Files | `Space`/`Enter` fold a folder, `z` fold all, `Enter`/`e` edit, `p` preview, `1` updated |
-| Tests | `Space` fold a suite, `z` fold all, `Enter`/`r` run, `l` rerun last, `u` rerun failures, `f` next failure, `c` cancel, `o` output, `e` edit, `p` preview, `1` updated |
-| Issues | `Enter`/`e` edit, `p` preview, `y` copy, `1` errors, `2` warnings |
-| Changes | `Enter`/`d` diff, `e` edit, `p` preview, `r` restore deleted |
-| Comments | `Enter`/`v` read, `e` edit, `p` preview, `d` delete, `y` copy all, `w` save all, `x` clear all |
-| Flags | `Enter`/`e` edit, `p` preview, `1`–`4` filter |
-| Preview | `PgUp`/`PgDn` page, `Home`/`End` ends, `n`/`N` next/previous row, `e` edit, `c` comment, `Esc` close |
-| Diff | `n`/`N` next/previous file, `c` comment, `Esc` close |
+| All lists | `↑`/`k` up, `↓`/`j` down, `p` go to the preview |
+| Explorer | `Space`/`Enter` fold a folder, `z` fold all, `Enter`/`e` edit, `A` all files, `U` updated |
+| Tests | `Space` fold a suite, `z` fold all, `Enter`/`r` run, `l` rerun last, `u` rerun failures, `f` next failure, `c` cancel, `o` output, `e` edit, `U`/`F`/`P`/`L`/`N` filters |
+| Changes | `Enter`/`d` read the diff, `e` edit, `r` restore deleted |
+| Issues | `Enter`/`e` edit, `y` copy, `X` errors, `W` warnings, `F` flags |
+| Comments | `Enter`/`v` read, `e` edit, `d` delete, `y` copy all, `w` save all, `x` clear all |
+| Preview | `PgUp`/`PgDn` page, `Home`/`End` ends, `n`/`N` next/previous row, `e` edit, `c` comment |
 
 ## Configuration
 

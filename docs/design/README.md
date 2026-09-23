@@ -7,29 +7,24 @@ Keep `support.js` beside the HTML file when opening it in a browser. The hidden
 
 ## Current direction
 
-The implementation deliberately diverges from the original three-column
-variant 1b:
+The layout follows the panel-based design, "Terminal Dotnet Layout", from the
+project's Claude Design workspace:
 
-- The outer window title is `terminal-dotnet`.
-- The layout has two columns: a full-height panel rail on the left and the
-  selected panel workspace on the right.
-- The Explorer workspace is a searchable, collapsible project, folder, and
-  file tree, mirroring the layout on disk. Folders sort before the files
-  beside them. Modified files are blue and new files are green.
-- The Tests workspace is split vertically into a scrollable test tree and a
-  scrollable execution-output pane.
-- A one-cell inset separates content from the outer box, with a one-cell gutter
-  between the rail and workspace.
-- Keyboard shortcuts remain visible along the bottom.
-- `Tab` and `←` / `→` move focus directly between the panel rail and
-  workspace. `s` focuses search; `↑` / `↓` and `j` / `k` scroll the focused pane.
-- Test outcomes are coloured: failed red, passed green, not run white, and
-  running cyan. Execution output uses red for failures, green for passes,
-  yellow for skips, cyan for status, and the terminal theme for neutral lines.
-
-- The Comments workspace lists the files carrying a note, each row showing the
-  file and the note's opening line. Notes are written from the preview and
-  leave with the clipboard or a file.
-
-The Explorer and Tests panels reuse the same two-column shell and replace the
-right-hand workspace rather than introducing a permanent third column.
+- Every panel is on the screen at once. The Explorer, Tests and Changes are
+  stacked on the left; the Preview takes the rest of the width, over the Issues
+  and the Comments.
+- The list on the left that the reader was last in stretches to show more of
+  its rows.
+- Each panel is reached by the number in its title (`0` Preview, `1` Explorer,
+  `2` Tests, `3` Changes, `4` Issues, `5` Comments), or by `Tab` and
+  `Shift+Tab` in that on-screen order.
+- Filters are toggled with capital letters and named in the panel's title; the
+  focused panel spells each one out, the others show only the letters and any
+  filter in use. One filter is active per panel at a time.
+- The Explorer and the former Files panel are one panel, with `A` for every
+  file beneath the launch folder. The Issues and the former Flags panel are
+  one list, with `X`, `W` and `F` for errors, warnings and flags.
+- The Preview follows the selection of the last list and shows a change's diff
+  in place, replacing the full-screen preview and diff dialogs.
+- `/` searches the focused panel. The keys for the focused panel and its
+  selection are listed along the bottom.
