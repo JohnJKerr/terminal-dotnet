@@ -93,13 +93,11 @@ public sealed class WhenHandingTheScreenToTheEditor
     private static ExplorerEditorWorkflow Workflow(
         FileExplorerSession explorer,
         IFileOpener editor,
-        FlagSession? flags = null,
         IssueSession? issues = null) =>
         new([explorer],
             new ChangesetSession(new EmptyChangesetBackend()),
             editor,
             "App.csproj",
-            flags,
             issues);
 
     private sealed class GrowingFlagBackend : IFlagBackend

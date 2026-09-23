@@ -110,12 +110,10 @@ public sealed class WhenReloadingWhatIsOnDisk
     private static PanelReload Reload(
         IReadOnlyList<FileExplorerSession>? explorers = null,
         ChangesetSession? changes = null,
-        FlagSession? flags = null,
         IssueSession? issues = null) =>
         new(explorers ?? [],
             changes ?? new ChangesetSession(new ChangingChangesetBackend()),
             "App.csproj",
-            flags,
             issues);
 
     private sealed class CountingIssueBackend : IIssueBackend

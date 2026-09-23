@@ -1,6 +1,5 @@
 using TerminalDotnet.Changes;
 using TerminalDotnet.Files;
-using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 
 namespace TerminalDotnet.Terminal;
@@ -16,7 +15,6 @@ public sealed class PanelReload(
     IReadOnlyList<FileExplorerSession> explorers,
     ChangesetSession changes,
     string target,
-    FlagSession? flags = null,
     IssueSession? issues = null)
 {
     private delegate Task PanelLoad(CancellationToken cancellationToken);
@@ -52,7 +50,6 @@ public sealed class PanelReload(
         .. explorers.Select<FileExplorerSession, PanelLoad>(
             explorer => token => explorer.LoadAsync(target, token)),
         token => changes.LoadAsync(target, token),
-        .. Present(flags, token => flags!.LoadAsync(target, token)),
         .. Present(issues, token => issues!.LoadFlagsAsync(target, token))
     ];
 
