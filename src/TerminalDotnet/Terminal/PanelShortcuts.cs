@@ -20,12 +20,17 @@ public static class PanelShortcuts
         :
         [
             "Tab pane",
-            "s search",
+            .. panel == PanelKind.Preview ? Array.Empty<string>() : ["s search"],
             .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, issueState),
             "^R refresh",
             "? commands",
             "q quit"
         ];
+
+    /// <summary>The preview has nothing to search; it scrolls what it shows
+    /// and steps the list it follows.</summary>
+    private static readonly IReadOnlyList<string> PreviewShortcuts =
+        [.. Navigation(), "PgUp/PgDn page", "n/N next/previous row", "e edit", "c comment"];
 
     /// <summary>Every letter types into the search box, so the line offers only
     /// the two ways out of it and the commands that still answer.</summary>
@@ -46,6 +51,7 @@ public static class PanelShortcuts
             ? [.. Navigation(), "Enter/e edit", "p preview", "y copy", "X errors", "W warnings", "F flags"]
             : ["X errors", "W warnings", "F flags"],
         PanelKind.Comments => CommentShortcuts(commentState),
+        PanelKind.Preview => PreviewShortcuts,
         _ => TestShortcuts(testState)
     };
 

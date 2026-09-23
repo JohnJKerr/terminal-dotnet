@@ -313,6 +313,23 @@ public sealed class WhenListingPanelShortcuts
         Assert.Contains("F flags", shortcuts);
     }
 
+    [Fact]
+    public void It_offers_the_preview_commands_in_the_preview()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Preview,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            TestState(),
+            EmptyComments());
+
+        // Assert
+        Assert.Equal(
+            ["Tab pane", "↑/k up", "↓/j down", "PgUp/PgDn page", "n/N next/previous row", "e edit", "c comment", "^R refresh", "? commands", "q quit"],
+            shortcuts);
+    }
+
     private static CommentsState EmptyComments() => new([]);
 
     private static ChangesetState EmptyChangeset() => new([]);
