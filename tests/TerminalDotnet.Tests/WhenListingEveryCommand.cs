@@ -108,6 +108,16 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_names_the_key_that_searches()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(anywhere.Entries, entry => entry.Keys == "/" && entry.Description == "search the active panel");
+    }
+
+    [Fact]
     public void It_names_the_key_that_reaches_the_issues()
     {
         // Act

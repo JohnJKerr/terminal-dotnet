@@ -24,7 +24,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/e edit", "p preview", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/e edit", "p preview", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -41,7 +41,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -222,7 +222,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/d diff", "e edit", "p preview", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "e edit", "p preview", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -242,7 +242,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/d diff", "r restore", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "r restore", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -278,7 +278,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/v view", "e edit", "p preview", "d delete", "y copy", "w save", "x clear all", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/v view", "e edit", "p preview", "d delete", "y copy", "w save", "x clear all", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -294,7 +294,7 @@ public sealed class WhenListingPanelShortcuts
             EmptyComments());
 
         // Assert
-        Assert.Equal(["Tab pane", "s search", "^R refresh", "? commands", "q quit"], shortcuts);
+        Assert.Equal(["Tab pane", "/ search", "^R refresh", "? commands", "q quit"], shortcuts);
     }
 
     [Fact]

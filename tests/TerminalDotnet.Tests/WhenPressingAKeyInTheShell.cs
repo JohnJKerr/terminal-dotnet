@@ -18,13 +18,23 @@ public sealed class WhenPressingAKeyInTheShell
     }
 
     [Fact]
-    public void Pressing_s_moves_to_the_search()
+    public void Pressing_slash_moves_to_the_search()
+    {
+        // Act
+        var action = ActionFor(new Key((KeyCode)'/'));
+
+        // Assert
+        Assert.Equal(new ShellAction.FocusSearch(), action);
+    }
+
+    [Fact]
+    public void Pressing_s_leaves_the_key_to_the_panel()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.S));
 
         // Assert
-        Assert.Equal(new ShellAction.FocusSearch(), action);
+        Assert.Null(action);
     }
 
     [Fact]

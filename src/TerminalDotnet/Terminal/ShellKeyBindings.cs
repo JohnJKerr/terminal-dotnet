@@ -66,7 +66,7 @@ public static class ShellKeyBindings
             return new ShellAction.Quit();
         }
 
-        return Is(key, KeyCode.S) ? new ShellAction.FocusSearch() : null;
+        return Is(key, (KeyCode)'/') ? new ShellAction.FocusSearch() : null;
     }
 
     private static PanelKind? PanelFor(Key key) =>

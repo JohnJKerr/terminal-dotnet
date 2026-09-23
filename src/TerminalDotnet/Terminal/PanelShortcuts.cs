@@ -20,7 +20,7 @@ public static class PanelShortcuts
         :
         [
             "Tab pane",
-            .. panel == PanelKind.Preview ? Array.Empty<string>() : ["s search"],
+            .. panel == PanelKind.Preview ? Array.Empty<string>() : ["/ search"],
             .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, issueState),
             "^R refresh",
             "? commands",
