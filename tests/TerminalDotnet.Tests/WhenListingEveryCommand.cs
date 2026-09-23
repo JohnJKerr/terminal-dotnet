@@ -16,14 +16,14 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_offers_a_section_for_every_panel_the_preview_and_the_diff()
+    public void It_offers_a_section_for_every_panel()
     {
         // Act
         var titles = CommandMenu.Sections().Select(section => section.Title);
 
         // Assert
         Assert.Equal(
-            ["Anywhere", "Explorer", "Tests", "Changes", "Issues", "Comments", "Preview", "Diff"],
+            ["Anywhere", "Explorer", "Tests", "Changes", "Issues", "Comments", "Preview"],
             titles);
     }
 
@@ -132,27 +132,23 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_lists_stepping_to_the_next_file_under_the_diff()
+    public void It_lists_commenting_under_the_preview()
     {
         // Act
-        var diff = CommandMenu.Sections().Single(section => section.Title == "Diff");
+        var preview = CommandMenu.Sections().Single(section => section.Title == "Preview");
 
         // Assert
-        Assert.Contains(
-            diff.Entries,
-            entry => entry.Keys == "n" && entry.Description == "show the next file's diff");
+        Assert.Contains(preview.Entries, entry => entry.Keys == "c" && entry.Description == "comment on the file");
     }
 
     [Fact]
-    public void It_lists_commenting_under_the_diff()
+    public void It_leaves_the_preview_open_on_escape()
     {
         // Act
-        var diff = CommandMenu.Sections().Single(section => section.Title == "Diff");
+        var preview = CommandMenu.Sections().Single(section => section.Title == "Preview");
 
         // Assert
-        Assert.Contains(
-            diff.Entries,
-            entry => entry.Keys == "c" && entry.Description == "comment on the file");
+        Assert.DoesNotContain(preview.Entries, entry => entry.Keys == "Esc");
     }
 
     [Fact]

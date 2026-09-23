@@ -24,8 +24,7 @@ public static class CommandMenu
         new("Changes", Changes),
         new("Issues", Issues),
         new("Comments", Comments),
-        new("Preview", Preview),
-        new("Diff", Diff)
+        new("Preview", Preview)
     ];
 
     public static IReadOnlyList<CommandMenuRow> Rows()
@@ -139,17 +138,7 @@ public static class CommandMenu
         new("n", "preview the next row of the panel"),
         new("N", "preview the previous row of the panel"),
         new("e", "edit the file"),
-        new("c", "comment on the file"),
-        new("Esc", "close the preview")
-    ];
-
-    private static readonly IReadOnlyList<CommandMenuEntry> Diff =
-    [
-        .. Navigation,
-        new("n", "show the next file's diff"),
-        new("N", "show the previous file's diff"),
-        new("c", "comment on the file"),
-        new("Esc", "close the diff")
+        new("c", "comment on the file")
     ];
 
     private static IReadOnlyList<CommandMenuEntry> Navigation =>
