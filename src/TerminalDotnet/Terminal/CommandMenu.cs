@@ -53,6 +53,7 @@ public static class CommandMenu
 
     private static readonly IReadOnlyList<CommandMenuEntry> Anywhere =
     [
+        new("0", "go to the Preview"),
         new("1", "go to the Explorer"),
         new("2", "go to the Tests"),
         new("3", "go to the Changes"),

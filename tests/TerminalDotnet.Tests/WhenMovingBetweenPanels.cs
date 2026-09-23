@@ -62,6 +62,44 @@ public sealed class WhenMovingBetweenPanels
     }
 
     [Fact]
+    public void It_moves_from_the_changes_to_the_preview()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select(PanelKind.Changes);
+
+        // Act
+        shell.SelectNext();
+
+        // Assert
+        Assert.Equal(PanelKind.Preview, shell.State.ActivePanel);
+    }
+
+    [Fact]
+    public void It_moves_from_the_preview_to_the_issues()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select(PanelKind.Preview);
+
+        // Act
+        shell.SelectNext();
+
+        // Assert
+        Assert.Equal(PanelKind.Issues, shell.State.ActivePanel);
+    }
+
+    [Fact]
+    public void Pressing_0_goes_to_the_preview()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D0));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Preview), action);
+    }
+
+    [Fact]
     public void Pressing_1_goes_to_the_explorer()
     {
         // Act

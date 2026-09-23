@@ -79,6 +79,16 @@ public sealed class WhenTitlingAPanel
         Assert.Equal("0 of 0", footer);
     }
 
+    [Fact]
+    public void It_titles_the_preview_with_the_key_that_reaches_it()
+    {
+        // Act
+        var title = PanelTitle.For(PanelKind.Preview, [], "", focused: false);
+
+        // Assert
+        Assert.Equal("[0]─Preview", title);
+    }
+
     private static IReadOnlyList<FilterChip> Filters() =>
         [new FilterChip("A All files", false), new FilterChip("U Updated", false)];
 }

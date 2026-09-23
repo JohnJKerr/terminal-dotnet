@@ -78,7 +78,9 @@ internal sealed class TestRunnerApplication(
     private View workspace = new();
     private View preview = new();
 
-    private ListView ActiveList => lists[shell.State.ActivePanel].View;
+    /// <summary>The list taking the keys, or the list the preview follows
+    /// while the reader is in the preview.</summary>
+    private ListView ActiveList => lists[shell.State.PreviewedList].View;
 
     public void Run()
     {
@@ -285,13 +287,18 @@ internal sealed class TestRunnerApplication(
             Height = Dim.Fill(SearchRow),
             CanFocus = true
         };
-        foreach (var panel in Enum.GetValues<PanelKind>())
+        foreach (var panel in Enum.GetValues<PanelKind>().Where(panel => panel != PanelKind.Preview))
         {
             lists[panel] = new ListPanel();
             shown.Add(lists[panel].View);
         }
 
-        preview = new View { BorderStyle = LineStyle.Single, Title = "[0]─Preview", CanFocus = false };
+        preview = new View
+        {
+            BorderStyle = LineStyle.Single,
+            Title = PanelTitle.For(PanelKind.Preview, [], "", focused: false),
+            CanFocus = true
+        };
         shown.Add(preview);
         shown.ViewportChanged += (_, _) => ArrangePanels();
         return shown;
@@ -356,6 +363,11 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
+        if (shell.State.ActivePanel == PanelKind.Preview)
+        {
+            return;
+        }
+
         if (ActiveFileSession() is { } files)
         {
             HandleFileKey(application, key, files);
@@ -404,6 +416,8 @@ internal sealed class TestRunnerApplication(
             case ShellAction.LeaveSearch:
                 ActiveList.SetFocus();
                 Render();
+                return;
+            case ShellAction.FocusSearch when shell.State.ActivePanel == PanelKind.Preview:
                 return;
             case ShellAction.FocusSearch:
                 search.SetFocus();
@@ -473,8 +487,7 @@ internal sealed class TestRunnerApplication(
         }
     }
 
-    private PanelKind SteppedPanel(int step) =>
-        (PanelKind)((shell.State.ActiveIndex + step + shell.State.Panels.Count) % shell.State.Panels.Count);
+    private PanelKind SteppedPanel(int step) => shell.State.Stepped(step);
 
     /// <summary>Moving to a list on the left stretches it, so the panels are
     /// laid out again before the new one takes the keys.</summary>
@@ -482,6 +495,12 @@ internal sealed class TestRunnerApplication(
     {
         ArrangePanels();
         Render();
+        if (shell.State.ActivePanel == PanelKind.Preview)
+        {
+            preview.SetFocus();
+            return;
+        }
+
         ActiveList.SetFocus();
     }
 

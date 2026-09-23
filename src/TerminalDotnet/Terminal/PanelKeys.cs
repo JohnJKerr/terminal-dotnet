@@ -6,7 +6,7 @@ namespace TerminalDotnet.Terminal;
 /// </summary>
 public static class PanelKeys
 {
-    public static string For(PanelKind panel) => ((int)panel + 1).ToString();
+    public static string For(PanelKind panel) => ((int)panel).ToString();
 
     public static PanelKind? For(string key) => Enum
         .GetValues<PanelKind>()

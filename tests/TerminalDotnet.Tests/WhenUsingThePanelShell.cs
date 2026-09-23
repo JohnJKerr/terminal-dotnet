@@ -16,7 +16,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Tests", "Changes", "Issues", "Comments"],
+            ["Preview", "Explorer", "Tests", "Changes", "Issues", "Comments"],
             state.Panels);
     }
 
@@ -163,5 +163,45 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(PanelKind.Changes, shell.State.ExpandedList);
+    }
+
+    [Fact]
+    public void It_previews_the_explorer_at_first()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.Equal(PanelKind.Explorer, state.PreviewedList);
+    }
+
+    [Fact]
+    public void It_previews_the_list_the_reader_moves_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.Select(PanelKind.Issues);
+
+        // Assert
+        Assert.Equal(PanelKind.Issues, shell.State.PreviewedList);
+    }
+
+    [Fact]
+    public void It_keeps_previewing_the_last_list_from_inside_the_preview()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select(PanelKind.Tests);
+
+        // Act
+        shell.Select(PanelKind.Preview);
+
+        // Assert
+        Assert.Equal(PanelKind.Tests, shell.State.PreviewedList);
     }
 }
