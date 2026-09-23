@@ -76,7 +76,12 @@ internal sealed class TestRunnerApplication(
     private readonly Dictionary<PanelKind, ListPanel> lists = [];
 
     private View workspace = new();
-    private View preview = new();
+    private PreviewPanel preview = new();
+    private IApplication? running;
+
+    /// <summary>What the preview panel was last asked to show, so it loads
+    /// again only when the selection it follows moves.</summary>
+    private PreviewSubject? previewed;
 
     /// <summary>The list taking the keys, or the list the preview follows
     /// while the reader is in the preview.</summary>
@@ -122,6 +127,8 @@ internal sealed class TestRunnerApplication(
         openLine = 1;
         using IApplication application = Application.Create();
         application.Init(TerminalDriver());
+        running = application;
+        previewed = null;
 
         using var window = new Window { Title = $"terminal-dotnet - {VersionNumber.Current}" };
         search = Search();
@@ -293,13 +300,8 @@ internal sealed class TestRunnerApplication(
             shown.Add(lists[panel].View);
         }
 
-        preview = new View
-        {
-            BorderStyle = LineStyle.Single,
-            Title = PanelTitle.For(PanelKind.Preview, [], "", focused: false),
-            CanFocus = true
-        };
-        shown.Add(preview);
+        preview = new PreviewPanel();
+        shown.Add(preview.View);
         shown.ViewportChanged += (_, _) => ArrangePanels();
         return shown;
     }
@@ -315,10 +317,7 @@ internal sealed class TestRunnerApplication(
             shown.Place(layout[panel]);
         }
 
-        preview.X = layout.Preview.X;
-        preview.Y = layout.Preview.Y;
-        preview.Width = layout.Preview.Width;
-        preview.Height = layout.Preview.Height;
+        preview.Place(layout.Preview);
     }
 
     /// <summary>The shortcuts keep their rows whether or not they fill them, so
@@ -497,7 +496,7 @@ internal sealed class TestRunnerApplication(
         Render();
         if (shell.State.ActivePanel == PanelKind.Preview)
         {
-            preview.SetFocus();
+            preview.View.SetFocus();
             return;
         }
 
@@ -1878,7 +1877,114 @@ internal sealed class TestRunnerApplication(
         RenderChanges();
         RenderIssues();
         RenderComments();
+        FollowTheSelection();
     }
+
+    private void FollowTheSelection()
+    {
+        var subject = PreviewSubject.For(shell.State.PreviewedList, PanelStatesNow());
+        if (subject == previewed)
+        {
+            return;
+        }
+
+        previewed = subject;
+        switch (subject)
+        {
+            case PreviewSubject.SourceFile file:
+                PreviewSource(new SourceLocation(file.Path, file.Line));
+                return;
+            case PreviewSubject.ChangeDiff:
+                panelWork.Track(PreviewDiffAsync(subject));
+                return;
+            case PreviewSubject.SelectedTest:
+                panelWork.Track(PreviewTestAsync(subject));
+                return;
+            default:
+                preview.ShowNothing(PreviewPanelTitle("Preview", ""));
+                return;
+        }
+    }
+
+    private PanelStates PanelStatesNow() => new(
+        ExplorerSession().State,
+        session.State,
+        changesetSession.State,
+        issueSession.State,
+        commentSession.State);
+
+    /// <summary>A file that cannot be read says so in the preview rather than
+    /// in a box over the panels, because the preview follows every move.</summary>
+    private void PreviewSource(SourceLocation source)
+    {
+        var title = PreviewPanelTitle("Preview", $"{DisplayPathFor(source.Path)}:{source.HighlightLine}");
+        try
+        {
+            preview.ShowSource(
+                title,
+                FileText.ReadWithin(source.Path) ?? TooLargeToPreview(source.Path),
+                LanguageFrom(source.Path),
+                source.HighlightLine,
+                shell.State.PreviewedList is PanelKind.Issues or PanelKind.Tests,
+                PreviewedDetails(),
+                PreviewedDetailTone());
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            preview.ShowNothing(title);
+        }
+    }
+
+    private string PreviewedDetails() => shell.State.PreviewedList == PanelKind.Issues
+        ? IssuePanelSnapshot.From(issueSession.State).SelectedDetails
+        : "";
+
+    private FileRowTone PreviewedDetailTone() =>
+        shell.State.PreviewedList == PanelKind.Issues &&
+        issueSession.State.SelectedIndex < issueSession.State.Issues.Count
+            ? IssuePanelSnapshot.ToneFor(issueSession.State.Issues[issueSession.State.SelectedIndex])
+            : FileRowTone.Neutral;
+
+    /// <summary>The diff and the test's source both take a moment to fetch, so
+    /// the preview shows them only if the reader is still on the row that
+    /// asked.</summary>
+    private async Task PreviewDiffAsync(PreviewSubject subject)
+    {
+        await changesetSession.DispatchAsync(new ChangesetCommand.LoadSelectedDiff());
+        running?.Invoke(() =>
+        {
+            if (previewed != subject)
+            {
+                return;
+            }
+
+            var snapshot = ChangesetPanelSnapshot.From(changesetSession.State);
+            preview.ShowDiff(PreviewPanelTitle("Diff", snapshot.DiffTitle), snapshot.DiffLines);
+        });
+    }
+
+    private async Task PreviewTestAsync(PreviewSubject subject)
+    {
+        await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
+        running?.Invoke(() =>
+        {
+            if (previewed != subject)
+            {
+                return;
+            }
+
+            if (session.State.SourceLocation is { } source)
+            {
+                PreviewSource(source);
+                return;
+            }
+
+            preview.ShowNothing(PreviewPanelTitle("Preview", "source not found"));
+        });
+    }
+
+    private static string PreviewPanelTitle(string name, string subject) =>
+        $"[{PanelKeys.For(PanelKind.Preview)}]─{name}" + (subject.Length == 0 ? "" : $" ─ {subject}");
 
     /// <summary>Wraps to the width the label has now, which is why it is also
     /// called as the width changes rather than only as the shortcuts change.</summary>
