@@ -59,8 +59,8 @@ public sealed record IssuePanelSnapshot(
          new(CountedNoun.Of(state.Issues.Count(x => x.Severity == IssueSeverity.Warning), "Warning"), FileRowTone.Warning),
          new(CountedNoun.Of(state.Issues.Count(x => x.Severity == IssueSeverity.Flag), "Flag"), FileRowTone.Neutral),
          .. state.Notice.Length == 0 ? [] : new[] { new FileStatusSegment(state.Notice, FileRowTone.Neutral) }],
-        [new("1. Errors", state.ActiveFilter == IssueFilter.Errors),
-         new("2. Warnings", state.ActiveFilter == IssueFilter.Warnings),
-         new("3. Flags", state.ActiveFilter == IssueFilter.Flags)],
+        [new("X Errors", state.ActiveFilter == IssueFilter.Errors),
+         new("W Warnings", state.ActiveFilter == IssueFilter.Warnings),
+         new("F Flags", state.ActiveFilter == IssueFilter.Flags)],
         state.Loading ? "" : PanelEmptyState.For("issues", state.Issues.Count, state.SearchQuery));
 }

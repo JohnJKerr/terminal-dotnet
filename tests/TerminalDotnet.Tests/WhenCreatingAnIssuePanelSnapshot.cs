@@ -76,7 +76,20 @@ public sealed class WhenCreatingAnIssuePanelSnapshot
         var snapshot = IssuePanelSnapshot.From(state);
 
         // Assert
-        Assert.Contains(new FilterChip("3. Flags", true), snapshot.Filters);
+        Assert.Contains(new FilterChip("F Flags", true), snapshot.Filters);
+    }
+
+    [Fact]
+    public void It_names_each_filter_by_its_capital_letter()
+    {
+        // Arrange
+        var state = new IssueState([]);
+
+        // Act
+        var snapshot = IssuePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(["X Errors", "W Warnings", "F Flags"], snapshot.Filters.Select(chip => chip.Text));
     }
 
     [Fact]

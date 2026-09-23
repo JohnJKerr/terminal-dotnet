@@ -115,9 +115,9 @@ public static class CommandMenu
         new("Enter/e", "edit the issue's file"),
         new("p", "preview the issue's file"),
         new("y", "copy the issue"),
-        new("1", "filter errors"),
-        new("2", "filter warnings"),
-        new("3", "filter flags")
+        new("X", "filter errors"),
+        new("W", "filter warnings"),
+        new("F", "filter flags")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Comments =

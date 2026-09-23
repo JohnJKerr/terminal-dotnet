@@ -310,7 +310,7 @@ public sealed class WhenListingPanelShortcuts
             issueState: new IssueState([]));
 
         // Assert
-        Assert.Contains("3 flags", shortcuts);
+        Assert.Contains("F flags", shortcuts);
     }
 
     private static CommentsState EmptyComments() => new([]);
