@@ -247,23 +247,6 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
-    public void It_offers_the_files_panel_the_same_actions_as_the_explorer()
-    {
-        // Arrange
-        var file = new FileEntry("/repo", "/repo/scripts/build.sh", FileGitStatus.Unchanged);
-        var fileState = new FileExplorerState(
-            [new VisibleFileNode(1, FileNodeKind.File, "build.sh", [file])]);
-
-        // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Files, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
-
-        // Assert
-        Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/e edit", "p preview", "^R refresh", "? commands", "q quit"],
-            shortcuts);
-    }
-
-    [Fact]
     public void It_offers_folding_for_a_selected_repository_folder()
     {
         // Arrange
@@ -272,7 +255,7 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(0, FileNodeKind.Folder, "scripts", [file])]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Files, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
+        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
 
         // Assert
         Assert.Contains("Space/Enter fold", shortcuts);

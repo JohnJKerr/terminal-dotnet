@@ -9,7 +9,6 @@ public static class PanelKeys
     public static string For(PanelKind panel) => panel switch
     {
         PanelKind.Explorer => "E",
-        PanelKind.Files => "F",
         PanelKind.Tests => "T",
         PanelKind.Issues => "I",
         PanelKind.Changes => "G",

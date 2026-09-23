@@ -582,12 +582,13 @@ internal sealed class TestRunnerApplication(
         }
     }
 
-    /// <summary>The Explorer and the Files browse the same kind of tree, so
-    /// everything below here treats them as one panel over two sessions.</summary>
+    /// <summary>The Explorer browses the projects' files or every file beneath
+    /// the launch folder, so everything below here treats it as one panel over
+    /// two sessions.</summary>
     private FileExplorerSession? ActiveFileSession() => shell.State.ActivePanel switch
     {
+        PanelKind.Explorer when shell.State.ShowsAllFiles => folderSession,
         PanelKind.Explorer => fileSession,
-        PanelKind.Files => folderSession,
         _ => null
     };
 
@@ -657,6 +658,14 @@ internal sealed class TestRunnerApplication(
                 new FileExplorerCommand.ToggleFilter(toggle.Filter),
                 search,
                 files));
+            return;
+        }
+
+        if (action is FilePanelAction.ToggleAllFiles)
+        {
+            key.Handled = true;
+            shell.ToggleAllFiles();
+            Render(search, files);
             return;
         }
 
@@ -2030,7 +2039,7 @@ internal sealed class TestRunnerApplication(
 
     private void RenderFiles(TextField search, ListView files, FileExplorerSession fileExplorer)
     {
-        var snapshot = FilePanelSnapshot.From(fileExplorer.State);
+        var snapshot = FilePanelSnapshot.From(fileExplorer.State, shell.State.ShowsAllFiles);
         files.Title = shell.State.Panels[shell.State.ActiveIndex];
         RenderRows(
             search,

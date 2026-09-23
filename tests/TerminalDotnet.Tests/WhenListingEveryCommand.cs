@@ -23,7 +23,7 @@ public sealed class WhenListingEveryCommand
 
         // Assert
         Assert.Equal(
-            ["Anywhere", "Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Preview", "Diff"],
+            ["Anywhere", "Explorer", "Tests", "Issues", "Changes", "Comments", "Preview", "Diff"],
             titles);
     }
 
@@ -174,23 +174,23 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_names_the_key_that_reaches_the_files()
+    public void It_lists_the_file_commands_under_the_explorer()
     {
         // Act
-        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+        var explorer = CommandMenu.Sections().Single(section => section.Title == "Explorer");
 
         // Assert
-        Assert.Contains(anywhere.Entries, entry => entry.Keys == "F");
+        Assert.Contains(explorer.Entries, entry => entry.Description == "edit the file");
     }
 
     [Fact]
-    public void It_lists_the_file_commands_under_the_files()
+    public void It_lists_every_file_under_the_explorer()
     {
         // Act
-        var files = CommandMenu.Sections().Single(section => section.Title == "Files");
+        var explorer = CommandMenu.Sections().Single(section => section.Title == "Explorer");
 
         // Assert
-        Assert.Contains(files.Entries, entry => entry.Description == "edit the file");
+        Assert.Contains(explorer.Entries, entry => entry.Keys == "2" && entry.Description == "show every file");
     }
 
     [Fact]

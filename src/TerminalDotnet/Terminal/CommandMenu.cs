@@ -20,7 +20,6 @@ public static class CommandMenu
     [
         new("Anywhere", Anywhere),
         new("Explorer", FileTree),
-        new("Files", FileTree),
         new("Tests", Tests),
         new("Issues", Issues),
         new("Changes", Changes),
@@ -55,7 +54,6 @@ public static class CommandMenu
     private static readonly IReadOnlyList<CommandMenuEntry> Anywhere =
     [
         new("E", "go to the Explorer"),
-        new("F", "go to the Files"),
         new("T", "go to the Tests"),
         new("I", "go to the Issues"),
         new("G", "go to the Changes"),
@@ -71,8 +69,6 @@ public static class CommandMenu
         new("q", "quit, asking first if comments would be lost")
     ];
 
-    /// <summary>The Explorer and the Files browse the same kind of tree, so
-    /// they answer to the same keys.</summary>
     private static readonly IReadOnlyList<CommandMenuEntry> FileTree =
     [
         .. Navigation,
@@ -80,7 +76,8 @@ public static class CommandMenu
         new("z", "fold or unfold every folder"),
         new("Enter/e", "edit the file"),
         new("p", "preview the file"),
-        new("1", "show only updated files")
+        new("1", "show only updated files"),
+        new("2", "show every file")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Tests =
