@@ -42,7 +42,10 @@ var commentSession = new CommentSession(
     new CommandClipboard(commandRunner, Path.GetDirectoryName(Path.GetFullPath(target))!),
     new FileCommentStore());
 var clipboard = new CommandClipboard(commandRunner, Path.GetDirectoryName(Path.GetFullPath(target))!);
-var issueSession = new IssueSession(new DotnetBuildIssueBackend(commandRunner), clipboard);
+var issueSession = new IssueSession(
+    new DotnetBuildIssueBackend(commandRunner),
+    clipboard,
+    new FileFlagBackend(folderBackend));
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
     new FileTestSourceLocator(),

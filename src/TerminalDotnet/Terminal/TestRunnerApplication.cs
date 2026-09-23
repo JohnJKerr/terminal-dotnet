@@ -1367,12 +1367,9 @@ internal sealed class TestRunnerApplication(
 
     private FileRowTone PreviewDetailTone() =>
         shell.State.ActivePanel == PanelKind.Issues &&
-        issueSession.State.SelectedIndex < issueSession.State.Issues.Count &&
-        issueSession.State.Issues[issueSession.State.SelectedIndex].Severity == IssueSeverity.Warning
-            ? FileRowTone.Warning
-            : shell.State.ActivePanel == PanelKind.Issues
-                ? FileRowTone.Deleted
-                : FileRowTone.Neutral;
+        issueSession.State.SelectedIndex < issueSession.State.Issues.Count
+            ? IssuePanelSnapshot.ToneFor(issueSession.State.Issues[issueSession.State.SelectedIndex])
+            : FileRowTone.Neutral;
 
     private bool PreviewHighlightsSource() =>
         shell.State.ActivePanel is PanelKind.Issues or PanelKind.Flags;
