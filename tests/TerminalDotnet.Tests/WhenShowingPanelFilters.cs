@@ -58,7 +58,7 @@ public sealed class WhenShowingPanelFilters
 
         // Assert
         Assert.Equal(
-            ["1. Updated", "2. Failing", "3. Passing", "4. Last run", "5. Not run"],
+            ["U Updated", "F Failing", "P Passing", "L Last run", "N Not run"],
             snapshot.Filters.Select(chip => chip.Text));
     }
 
@@ -77,7 +77,7 @@ public sealed class WhenShowingPanelFilters
         var snapshot = TestPanelSnapshot.From(state, "App.slnx");
 
         // Assert
-        Assert.True(snapshot.Filters.Single(chip => chip.IsActive).Text == "1. Updated");
+        Assert.True(snapshot.Filters.Single(chip => chip.IsActive).Text == "U Updated");
     }
 
     [Fact]

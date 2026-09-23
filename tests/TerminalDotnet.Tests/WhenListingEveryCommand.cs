@@ -164,6 +164,18 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_lists_the_test_filters_under_tests()
+    {
+        // Act
+        var tests = CommandMenu.Sections().Single(section => section.Title == "Tests");
+
+        // Assert
+        Assert.Equal(
+            ["U", "F", "P", "L", "N"],
+            tests.Entries.Select(entry => entry.Keys).Where(keys => keys.All(char.IsUpper)));
+    }
+
+    [Fact]
     public void It_heads_each_section_with_its_title()
     {
         // Act

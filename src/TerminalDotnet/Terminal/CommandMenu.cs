@@ -93,7 +93,11 @@ public static class CommandMenu
         new("o", "show the captured output"),
         new("e", "edit the test"),
         new("p", "preview the test"),
-        new("1", "show only updated tests")
+        new("U", "show only updated tests"),
+        new("F", "show only failing tests"),
+        new("P", "show only passing tests"),
+        new("L", "show only the last run"),
+        new("N", "show only tests not yet run")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Changes =

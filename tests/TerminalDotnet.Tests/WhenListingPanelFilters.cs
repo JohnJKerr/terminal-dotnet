@@ -47,14 +47,14 @@ public sealed class WhenListingPanelFilters
     }
 
     [Fact]
-    public void The_test_panel_numbers_its_run_filters_after_updated()
+    public void The_test_panel_names_its_run_filters_after_updated()
     {
         // Act
         var chips = PanelFilters.TestChips(active: null);
 
         // Assert
         Assert.Equal(
-            ["1. Updated", "2. Failing", "3. Passing", "4. Last run", "5. Not run"],
+            ["U Updated", "F Failing", "P Passing", "L Last run", "N Not run"],
             chips.Select(chip => chip.Text));
     }
 }
