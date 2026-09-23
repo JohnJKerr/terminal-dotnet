@@ -23,7 +23,7 @@ public sealed class WhenListingEveryCommand
 
         // Assert
         Assert.Equal(
-            ["Anywhere", "Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags", "Preview", "Diff"],
+            ["Anywhere", "Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Preview", "Diff"],
             titles);
     }
 

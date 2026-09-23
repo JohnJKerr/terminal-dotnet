@@ -16,7 +16,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"],
+            ["Explorer", "Files", "Tests", "Issues", "Changes", "Comments"],
             state.Panels);
     }
 
@@ -95,7 +95,7 @@ public sealed class WhenUsingThePanelShell
         var panels = shell.State.KeyedPanels;
 
         // Assert
-        Assert.Equal(["E", "F", "T", "I", "G", "C", "L"], panels.Select(panel => panel.Key));
+        Assert.Equal(["E", "F", "T", "I", "G", "C"], panels.Select(panel => panel.Key));
     }
 
     [Fact]
@@ -109,7 +109,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"],
+            ["Explorer", "Files", "Tests", "Issues", "Changes", "Comments"],
             panels.Select(panel => panel.Name));
     }
 
@@ -120,11 +120,11 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        var panels = shell.State.KeyedPanelsWith(new PanelCounts(3, 2, 5));
+        var panels = shell.State.KeyedPanelsWith(new PanelCounts(3, 2));
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Files", "Tests", "Issues (3)", "Changes", "Comments (2)", "Flags (5)"],
+            ["Explorer", "Files", "Tests", "Issues (3)", "Changes", "Comments (2)"],
             panels.Select(panel => panel.Name));
     }
 
@@ -135,11 +135,11 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        var panels = shell.State.KeyedPanelsWith(new PanelCounts(null, 0, null));
+        var panels = shell.State.KeyedPanelsWith(new PanelCounts(null, 0));
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Files", "Tests", "Issues (-)", "Changes", "Comments (0)", "Flags (-)"],
+            ["Explorer", "Files", "Tests", "Issues (-)", "Changes", "Comments (0)"],
             panels.Select(panel => panel.Name));
     }
 

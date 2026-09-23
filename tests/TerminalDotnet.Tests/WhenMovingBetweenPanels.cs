@@ -58,7 +58,7 @@ public sealed class WhenMovingBetweenPanels
         shell.SelectPrevious();
 
         // Assert
-        Assert.Equal(PanelKind.Flags, shell.State.ActivePanel);
+        Assert.Equal(PanelKind.Comments, shell.State.ActivePanel);
     }
 
     [Fact]

@@ -13,8 +13,7 @@ public static class PanelKeys
         PanelKind.Tests => "T",
         PanelKind.Issues => "I",
         PanelKind.Changes => "G",
-        PanelKind.Comments => "C",
-        _ => "L"
+        _ => "C"
     };
 
     public static PanelKind? For(string key) => Enum

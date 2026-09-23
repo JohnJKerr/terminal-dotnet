@@ -2,7 +2,6 @@ using TerminalDotnet.Changes;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
-using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 
 namespace TerminalDotnet.Terminal;
@@ -16,14 +15,13 @@ public static class PanelShortcuts
         ExplorerState testState,
         CommentsState commentState,
         bool searchFocused = false,
-        FlagState? flagState = null,
         IssueState? issueState = null) => searchFocused
         ? SearchingShortcuts
         :
         [
             "Tab pane",
             "s search",
-            .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, flagState, issueState),
+            .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, issueState),
             "^R refresh",
             "? commands",
             "q quit"
@@ -40,7 +38,6 @@ public static class PanelShortcuts
         ChangesetState changesetState,
         ExplorerState testState,
         CommentsState commentState,
-        FlagState? flagState,
         IssueState? issueState) => panel switch
     {
         PanelKind.Explorer or PanelKind.Files => ExplorerShortcuts(fileState),
@@ -49,9 +46,6 @@ public static class PanelShortcuts
             ? [.. Navigation(), "Enter/e edit", "p preview", "y copy", "1 errors", "2 warnings", "3 flags"]
             : ["1 errors", "2 warnings", "3 flags"],
         PanelKind.Comments => CommentShortcuts(commentState),
-        PanelKind.Flags => flagState is { Flags.Count: > 0 }
-            ? [.. Navigation(), "Enter/e edit", "p preview"]
-            : [],
         _ => TestShortcuts(testState)
     };
 

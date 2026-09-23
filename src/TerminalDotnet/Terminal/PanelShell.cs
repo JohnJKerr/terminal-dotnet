@@ -7,13 +7,12 @@ public enum PanelKind
     Tests,
     Issues,
     Changes,
-    Comments,
-    Flags
+    Comments
 }
 
 public sealed record PanelLabel(string Key, string Name);
 
-public sealed record PanelCounts(int? Issues, int? Comments, int? Flags);
+public sealed record PanelCounts(int? Issues, int? Comments);
 
 public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind ActivePanel)
 {
@@ -29,7 +28,6 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
     {
         "Issues" => $"Issues ({Shown(counts.Issues)})",
         "Comments" => $"Comments ({Shown(counts.Comments)})",
-        "Flags" => $"Flags ({Shown(counts.Flags)})",
         _ => name
     };
 
@@ -39,7 +37,7 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
 public sealed class PanelShell
 {
     public PanelShellState State { get; private set; } =
-        new(["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"], PanelKind.Explorer);
+        new(["Explorer", "Files", "Tests", "Issues", "Changes", "Comments"], PanelKind.Explorer);
 
     public void Select(int index)
     {

@@ -25,7 +25,6 @@ public static class CommandMenu
         new("Issues", Issues),
         new("Changes", Changes),
         new("Comments", Comments),
-        new("Flags", Flags),
         new("Preview", Preview),
         new("Diff", Diff)
     ];
@@ -61,7 +60,6 @@ public static class CommandMenu
         new("I", "go to the Issues"),
         new("G", "go to the Changes"),
         new("C", "go to the Comments"),
-        new("L", "go to the Flags"),
         new("Tab", "move between search, panels and rows"),
         new("←", "focus the panel list"),
         new("→", "focus the rows"),
@@ -131,14 +129,6 @@ public static class CommandMenu
         new("y", "copy every comment to the clipboard"),
         new("w", "save every comment to a file"),
         new("x", "clear every comment")
-    ];
-
-    private static readonly IReadOnlyList<CommandMenuEntry> Flags =
-    [
-        .. Navigation,
-        new("Enter/e", "edit the flag's file"),
-        new("p", "preview the flag's file"),
-        new("1/2/3/4", "filter Tasks, Review, Warning or Improve")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Preview =

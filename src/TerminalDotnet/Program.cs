@@ -37,7 +37,6 @@ var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandR
 var folderBackend = new LaunchFolderBackend(commandRunner);
 var folderSession = new FileExplorerSession(folderBackend, FileGrouping.Folder);
 var changesetSession = new ChangesetSession(new GitChangesetBackend(commandRunner));
-var flagSession = new FlagSession(new FileFlagBackend(folderBackend));
 var commentSession = new CommentSession(
     new CommandClipboard(commandRunner, Path.GetDirectoryName(Path.GetFullPath(target))!),
     new FileCommentStore());
@@ -62,7 +61,6 @@ new TestRunnerApplication(
     folderSession,
     changesetSession,
     commentSession,
-    flagSession,
     issueSession,
     target,
     editorLauncher,
