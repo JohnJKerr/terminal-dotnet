@@ -73,64 +73,6 @@ public sealed class WhenUsingThePanelShell
     }
 
     [Fact]
-    public void It_labels_each_panel_with_the_key_that_reaches_it()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var panels = shell.State.KeyedPanels;
-
-        // Assert
-        Assert.Equal(["1", "2", "3", "4", "5"], panels.Select(panel => panel.Key));
-    }
-
-    [Fact]
-    public void It_names_each_panel_beside_its_key()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var panels = shell.State.KeyedPanels;
-
-        // Assert
-        Assert.Equal(
-            ["Explorer", "Tests", "Changes", "Issues", "Comments"],
-            panels.Select(panel => panel.Name));
-    }
-
-    [Fact]
-    public void It_shows_the_item_counts_beside_the_content_panels_that_need_them()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var panels = shell.State.KeyedPanelsWith(new PanelCounts(3, 2));
-
-        // Assert
-        Assert.Equal(
-            ["Explorer", "Tests", "Changes", "Issues (3)", "Comments (2)"],
-            panels.Select(panel => panel.Name));
-    }
-
-    [Fact]
-    public void It_shows_a_dash_when_a_panel_count_is_not_known_yet()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var panels = shell.State.KeyedPanelsWith(new PanelCounts(null, 0));
-
-        // Assert
-        Assert.Equal(
-            ["Explorer", "Tests", "Changes", "Issues (-)", "Comments (0)"],
-            panels.Select(panel => panel.Name));
-    }
-
-    [Fact]
     public void It_changes_the_active_panel_when_the_comments_are_selected()
     {
         // Arrange

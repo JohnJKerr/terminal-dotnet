@@ -9,10 +9,6 @@ public enum PanelKind
     Comments
 }
 
-public sealed record PanelLabel(string Key, string Name);
-
-public sealed record PanelCounts(int? Issues, int? Comments);
-
 public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind ActivePanel)
 {
     /// <summary>The Explorer lists the projects' files until the reader asks
@@ -24,21 +20,6 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
     public PanelKind ExpandedList { get; init; } = PanelKind.Explorer;
 
     public int ActiveIndex => (int)ActivePanel;
-
-    public IReadOnlyList<PanelLabel> KeyedPanels =>
-        [.. Panels.Select((name, index) => new PanelLabel(PanelKeys.For((PanelKind)index), name))];
-
-    public IReadOnlyList<PanelLabel> KeyedPanelsWith(PanelCounts counts) =>
-        [.. KeyedPanels.Select(panel => panel with { Name = CountedName(panel.Name, counts) })];
-
-    private static string CountedName(string name, PanelCounts counts) => name switch
-    {
-        "Issues" => $"Issues ({Shown(counts.Issues)})",
-        "Comments" => $"Comments ({Shown(counts.Comments)})",
-        _ => name
-    };
-
-    private static string Shown(int? count) => count?.ToString() ?? "-";
 }
 
 public sealed class PanelShell

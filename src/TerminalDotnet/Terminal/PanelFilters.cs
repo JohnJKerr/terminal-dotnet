@@ -1,4 +1,3 @@
-using Terminal.Gui.Drawing;
 using TerminalDotnet.Filters;
 
 namespace TerminalDotnet.Terminal;
@@ -27,9 +26,4 @@ public static class PanelFilters
 
     private static ExplorerFilter? Lettered(string letter, IReadOnlyList<ExplorerFilter> offered) =>
         offered.Cast<ExplorerFilter?>().FirstOrDefault(filter => filter!.Value.Key() == letter);
-}
-
-public static class FilterAppearance
-{
-    public static Color ForegroundFor(bool isActive) => isActive ? Color.BrightGreen : Color.Gray;
 }

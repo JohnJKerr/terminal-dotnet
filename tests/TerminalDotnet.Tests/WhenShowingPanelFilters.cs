@@ -80,23 +80,4 @@ public sealed class WhenShowingPanelFilters
         Assert.True(snapshot.Filters.Single(chip => chip.IsActive).Text == "U Updated");
     }
 
-    [Fact]
-    public void An_active_filter_stands_out_from_the_ones_it_offers()
-    {
-        // Act
-        var foreground = FilterAppearance.ForegroundFor(isActive: true);
-
-        // Assert
-        Assert.Equal(global::Terminal.Gui.Drawing.Color.BrightGreen, foreground);
-    }
-
-    [Fact]
-    public void An_unused_filter_stays_muted()
-    {
-        // Act
-        var foreground = FilterAppearance.ForegroundFor(isActive: false);
-
-        // Assert
-        Assert.Equal(global::Terminal.Gui.Drawing.Color.Gray, foreground);
-    }
 }
