@@ -52,7 +52,8 @@ public sealed class PanelReload(
         .. explorers.Select<FileExplorerSession, PanelLoad>(
             explorer => token => explorer.LoadAsync(target, token)),
         token => changes.LoadAsync(target, token),
-        .. Present(flags, token => flags!.LoadAsync(target, token))
+        .. Present(flags, token => flags!.LoadAsync(target, token)),
+        .. Present(issues, token => issues!.LoadFlagsAsync(target, token))
     ];
 
     private IEnumerable<PanelLoad> BuildingPanels() =>

@@ -25,6 +25,7 @@ public sealed record IssueState(
 {
     public IssueFilter? ActiveFilter { get; init; }
     public bool Loading { get; init; } = true;
+    public bool FlagsLoading { get; init; } = true;
     public string Notice { get; init; } = "";
 }
 

@@ -1,6 +1,9 @@
 using TerminalDotnet.Changes;
+using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TerminalDotnet.Flags;
+using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using Xunit;
@@ -86,6 +89,48 @@ public sealed class WhenFillingThePanels
 
         // Assert
         Assert.Equal(["changes", "tests"], loaded);
+    }
+
+    [Fact]
+    public async Task It_fills_the_flags_among_the_issues()
+    {
+        // Arrange
+        var issues = new IssueSession(new NoIssues(), new UnusedClipboard(), new OneFlag());
+        var startup = new PanelStartup(
+            new FileExplorerSession(new RecordingFileBackend(new Recorder([], new(), null), "files")),
+            new FileExplorerSession(new RecordingFileBackend(new Recorder([], new(), null), "folder")),
+            new ChangesetSession(new RecordingChangesetBackend(new Recorder([], new(), null))),
+            new TestExplorerSession(new RecordingTestBackend(new Recorder([], new(), null))),
+            "App.slnx",
+            issues: issues);
+
+        // Act
+        await startup.LoadPendingAsync(() => Task.CompletedTask);
+
+        // Assert
+        Assert.Contains(issues.State.Issues, issue => issue.Severity == IssueSeverity.Flag);
+    }
+
+    private sealed class NoIssues : IIssueBackend
+    {
+        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
+            string target,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<CompilationIssue>>([]);
+    }
+
+    private sealed class OneFlag : IFlagBackend
+    {
+        public Task<IReadOnlyList<Flag>> DiscoverAsync(
+            string target,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Flag>>([new("/repo/Work.cs", "Work.cs", 1, FlagKind.Todo, "later")]);
+    }
+
+    private sealed class UnusedClipboard : ICommentClipboard
+    {
+        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
     }
 
     private sealed record Startup(PanelStartup Panels, CancellationToken Cancelled)

@@ -45,7 +45,8 @@ public sealed class PanelStartup(
         .. Pending(
             tests.State.Status == ExplorerStatus.Loading,
             token => tests.LoadAsync(target, token)),
-        .. flags is null ? [] : Pending(flags.State.Loading, token => flags.LoadAsync(target, token))
+        .. flags is null ? [] : Pending(flags.State.Loading, token => flags.LoadAsync(target, token)),
+        .. issues is null ? [] : Pending(issues.State.FlagsLoading, token => issues.LoadFlagsAsync(target, token))
     ];
 
     private static IEnumerable<Func<CancellationToken, Task>> Pending(

@@ -48,10 +48,10 @@ public sealed class WhenReloadingWhatIsOnDisk
     {
         // Arrange
         var flagBackend = new CountingFlagBackend();
-        var flags = new FlagSession(flagBackend);
+        var issues = new IssueSession(new CountingIssueBackend(), new SilentClipboard(), flagBackend);
 
         // Act
-        await Reload(flags: flags).FromDiskAsync(() => Task.CompletedTask);
+        await Reload(issues: issues).FromDiskAsync(() => Task.CompletedTask);
 
         // Assert
         Assert.Equal(1, flagBackend.Discoveries);
@@ -94,7 +94,9 @@ public sealed class WhenReloadingWhatIsOnDisk
         var landed = 0;
 
         // Act
-        await Reload(explorers: [explorer], flags: new FlagSession(new CountingFlagBackend()))
+        await Reload(
+                explorers: [explorer],
+                issues: new IssueSession(new CountingIssueBackend(), new SilentClipboard(), new CountingFlagBackend()))
             .FromDiskAsync(() =>
             {
                 landed++;

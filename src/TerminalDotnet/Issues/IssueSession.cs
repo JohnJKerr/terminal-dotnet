@@ -46,6 +46,7 @@ public sealed class IssueSession(
     {
         if (flagBackend is null)
         {
+            State = State with { FlagsLoading = false };
             return;
         }
 
@@ -59,7 +60,7 @@ public sealed class IssueSession(
             flagged = [];
         }
 
-        State = State with { Issues = Matching() };
+        State = State with { Issues = Matching(), FlagsLoading = false };
         State = State with { SelectedIndex = RowFor(standingOn) };
     }
 
