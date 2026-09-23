@@ -19,6 +19,7 @@ public static class IssuePanelKeyBindings
         if (searchActive) return null;
         if (!key.IsShift && key.NoShift.KeyCode == KeyCode.D1) return new IssuePanelAction.Dispatch(new IssueCommand.ToggleErrors());
         if (!key.IsShift && key.NoShift.KeyCode == KeyCode.D2) return new IssuePanelAction.Dispatch(new IssueCommand.ToggleWarnings());
+        if (!key.IsShift && key.NoShift.KeyCode == KeyCode.D3) return new IssuePanelAction.Dispatch(new IssueCommand.ToggleFlags());
         if (issue is null) return null;
         return key.NoShift.KeyCode switch
         {
