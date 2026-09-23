@@ -17,7 +17,7 @@ public sealed class WhenCreatingAnIssuePanelSnapshot
 
         // Assert
         Assert.Equal(
-            ["1 Error", "1 Warning"],
+            ["1 Error", "1 Warning", "0 Flags"],
             snapshot.StatusSegments.Select(segment => segment.Text));
     }
 
@@ -32,7 +32,7 @@ public sealed class WhenCreatingAnIssuePanelSnapshot
 
         // Assert
         Assert.Equal(
-            ["2 Errors", "2 Warnings"],
+            ["2 Errors", "2 Warnings", "0 Flags"],
             snapshot.StatusSegments.Select(segment => segment.Text));
     }
 
@@ -47,9 +47,59 @@ public sealed class WhenCreatingAnIssuePanelSnapshot
 
         // Assert
         Assert.Equal(
-            ["0 Errors", "0 Warnings"],
+            ["0 Errors", "0 Warnings", "0 Flags"],
             snapshot.StatusSegments.Select(segment => segment.Text));
     }
+
+    [Fact]
+    public void It_counts_the_flags()
+    {
+        // Arrange
+        var state = new IssueState([Error(), Flag()]);
+
+        // Act
+        var snapshot = IssuePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(
+            ["1 Error", "0 Warnings", "1 Flag"],
+            snapshot.StatusSegments.Select(segment => segment.Text));
+    }
+
+    [Fact]
+    public void It_offers_a_filter_for_the_flags()
+    {
+        // Arrange
+        var state = new IssueState([Flag()]) { ActiveFilter = IssueFilter.Flags };
+
+        // Act
+        var snapshot = IssuePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Contains(new FilterChip("3. Flags", true), snapshot.Filters);
+    }
+
+    [Fact]
+    public void It_leaves_a_flag_in_the_plain_colour()
+    {
+        // Arrange
+        var state = new IssueState([Flag()]);
+
+        // Act
+        var snapshot = IssuePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal([FileRowTone.Neutral], snapshot.Rows.Select(row => row.Tone));
+    }
+
+    private static CompilationIssue Flag() => new(
+        "/repo/src/Cart.cs",
+        "src/Cart.cs",
+        3,
+        0,
+        "TODO",
+        "handle discounts",
+        IssueSeverity.Flag);
 
     private static CompilationIssue Error() => new(
         "/repo/src/Order.cs",
