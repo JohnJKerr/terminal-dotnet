@@ -182,4 +182,44 @@ public sealed class WhenUsingThePanelShell
         // Assert
         Assert.False(shell.State.ShowsAllFiles);
     }
+
+    [Fact]
+    public void It_expands_the_explorer_at_first()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.Equal(PanelKind.Explorer, state.ExpandedList);
+    }
+
+    [Fact]
+    public void It_expands_the_list_the_reader_moves_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.Select((int)PanelKind.Tests);
+
+        // Assert
+        Assert.Equal(PanelKind.Tests, shell.State.ExpandedList);
+    }
+
+    [Fact]
+    public void It_keeps_the_last_list_expanded_while_the_reader_is_in_the_issues()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select((int)PanelKind.Changes);
+
+        // Act
+        shell.Select((int)PanelKind.Issues);
+
+        // Assert
+        Assert.Equal(PanelKind.Changes, shell.State.ExpandedList);
+    }
 }
