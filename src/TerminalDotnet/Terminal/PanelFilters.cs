@@ -25,15 +25,12 @@ public static class PanelFilters
             filter == active))
         .ToArray();
 
-    public static ExplorerFilter? Lettered(string letter) =>
-        FileFilters.Cast<ExplorerFilter?>().FirstOrDefault(filter => filter!.Value.Key() == letter);
+    public static ExplorerFilter? Lettered(string letter) => Lettered(letter, FileFilters);
 
-    public static ExplorerFilter? NumberedTest(int number) => Numbered(number, TestFilters);
+    public static ExplorerFilter? LetteredTest(string letter) => Lettered(letter, TestFilters);
 
-    private static ExplorerFilter? Numbered(int number, IReadOnlyList<ExplorerFilter> offered) =>
-        number >= 1 && number <= offered.Count
-        ? offered[number - 1]
-        : null;
+    private static ExplorerFilter? Lettered(string letter, IReadOnlyList<ExplorerFilter> offered) =>
+        offered.Cast<ExplorerFilter?>().FirstOrDefault(filter => filter!.Value.Key() == letter);
 }
 
 public static class FilterAppearance
