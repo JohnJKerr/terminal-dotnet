@@ -29,15 +29,10 @@ internal sealed class TestRunnerApplication(
     IWorkspaceWatcher? workspaceWatcher = null)
 {
     private const int ContentInset = 1;
-    private const int PanelWidth = 20;
-    private const int WorkspaceX = ContentInset + PanelWidth + 1;
     private const int SegmentGap = 2;
-    private const int FilterRowHeight = 1;
-    private const int FilterGap = 1;
     private const int MaxStatusSegments = 4;
-    private const int MaxFilterChips = 5;
     private const int StatusRow = ShortcutLines.Rows + 1;
-    private const int RowsBelowTheList = StatusRow + 1;
+    private const int SearchRow = StatusRow + 1;
     private const int IssueDetailRows = 4;
     private const int ClearChoice = 0;
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
@@ -48,8 +43,6 @@ internal sealed class TestRunnerApplication(
     private readonly Stopwatch sinceLoadStarted = new();
     private readonly Stopwatch sincePanelsAppeared = new();
     private IReadOnlyList<VisibleTestNode> testNodes = [];
-    private IReadOnlyList<FileRowTone> rowTones = [];
-    private object? listedContent;
     private readonly PanelShell shell = new();
     private readonly BackgroundWork panelWork = new();
     private readonly EditBurst outsideEdits = new();
@@ -74,17 +67,18 @@ internal sealed class TestRunnerApplication(
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
     private IReadOnlyList<FileStatusSegment> statusSegments = [];
-    private IReadOnlyList<Label> filterLabels = [];
-    private IReadOnlyList<FilterChip> filterChips = [];
-    private Label? emptyState;
     private Label? shortcuts;
     private IReadOnlyList<string> shortcutSegments = [];
-    private PanelListSource? panelSource;
 
     /// <summary>The views of the terminal that is up. Each terminal the app
     /// raises builds its own, so these stand in until the first one does.</summary>
     private TextField search = new();
-    private ListView list = new();
+    private readonly Dictionary<PanelKind, ListPanel> lists = [];
+
+    private View workspace = new();
+    private View preview = new();
+
+    private ListView ActiveList => lists[shell.State.ActivePanel].View;
 
     public void Run()
     {
@@ -124,14 +118,12 @@ internal sealed class TestRunnerApplication(
         openSourceRequested = false;
         openPath = null;
         openLine = 1;
-        listedContent = null;
         using IApplication application = Application.Create();
         application.Init(TerminalDriver());
 
         using var window = new Window { Title = $"terminal-dotnet - {VersionNumber.Current}" };
-        var panels = Panels();
         search = Search();
-        list = Tests();
+        workspace = Workspace();
         testStatus = TestStatus();
         testStatus.GettingAttributeForRole += (_, args) =>
         {
@@ -142,14 +134,11 @@ internal sealed class TestRunnerApplication(
             args.Handled = true;
         };
         segmentLabels = StatusSegmentLabels();
-        filterLabels = FilterLabels();
-        emptyState = EmptyState(list);
         shortcuts = Shortcuts();
         shortcuts.ViewportChanged += (_, _) => ShowShortcuts();
 
-        window.Add(panels, search, list, emptyState, testStatus, shortcuts);
+        window.Add(workspace, search, testStatus, shortcuts);
         window.Add([.. segmentLabels]);
-        window.Add([.. filterLabels]);
         toast = Toast();
         window.Add(toast);
         search.ValueChanged += async (_, _) =>
@@ -158,11 +147,10 @@ internal sealed class TestRunnerApplication(
             Render();
         };
         application.Keyboard.KeyDown += (_, key) =>
-            HandleKey(application, key, panels);
+            HandleKey(application, key);
         Render();
         sincePanelsAppeared.Restart();
-        panels.SelectedItem = shell.State.ActiveIndex;
-        list.SetFocus();
+        ActiveList.SetFocus();
         FillPanels(application);
         RefreshEditedPanels(application);
         ReloadWhenTheWorkingTreeSettles(application);
@@ -214,12 +202,7 @@ internal sealed class TestRunnerApplication(
                 return false;
             }
 
-            if (shell.State.ActivePanel != PanelKind.Tests)
-            {
-                return true;
-            }
-
-            ShowEmptyState(TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed).EmptyMessage);
+            RenderTests();
             application.LayoutAndDraw(true);
             return true;
         });
@@ -241,29 +224,11 @@ internal sealed class TestRunnerApplication(
             },
             cancellationToken);
 
-    private ListView Panels()
-    {
-        var panels = new ListView
-        {
-            Title = "Panels",
-            X = ContentInset,
-            Y = ContentInset,
-            Width = PanelWidth,
-            Height = Dim.Fill(2),
-            ShowMarks = false,
-            KeystrokeNavigator = null
-        };
-        panelSource = new PanelListSource(PanelLabels());
-        panels.Source = panelSource;
-        panels.SelectedItem = shell.State.ActiveIndex;
-        return panels;
-    }
-
     private static string? TerminalDriver() => TerminalDriverChoice.FromEnvironment();
 
     private static Label TestStatus() => new()
     {
-        X = WorkspaceX,
+        X = ContentInset,
         Y = Pos.AnchorEnd(StatusRow),
         Width = Dim.Fill(ContentInset),
         Height = 1
@@ -278,7 +243,7 @@ internal sealed class TestRunnerApplication(
     {
         var label = new Label
         {
-            X = WorkspaceX,
+            X = ContentInset,
             Y = Pos.AnchorEnd(StatusRow),
             Height = 1,
             Visible = false
@@ -298,67 +263,56 @@ internal sealed class TestRunnerApplication(
         ? statusSegments[index].Tone
         : FileRowTone.Neutral;
 
-    private IReadOnlyList<Label> FilterLabels() => Enumerable
-        .Range(0, MaxFilterChips)
-        .Select(index => FilterLabel(index))
-        .ToArray();
-
-    private Label FilterLabel(int index)
-    {
-        var label = new Label
-        {
-            X = WorkspaceX,
-            Y = Pos.Bottom(search),
-            Height = 1,
-            Visible = false
-        };
-        label.GettingAttributeForRole += (_, args) =>
-        {
-            var background = args.Result?.Background ?? Color.Black;
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(
-                FilterAppearance.ForegroundFor(IsActiveFilter(index)),
-                background);
-            args.Handled = true;
-        };
-        return label;
-    }
-
-    private bool IsActiveFilter(int index) => index < filterChips.Count && filterChips[index].IsActive;
-
     private static TextField Search() => new()
     {
         Title = "Search",
-        X = WorkspaceX,
-        Y = ContentInset,
+        X = ContentInset,
+        Y = Pos.AnchorEnd(SearchRow),
         Width = Dim.Fill(ContentInset),
         Height = 1,
         TabStop = TabBehavior.NoStop
     };
 
-    private ListView Tests()
+    /// <summary>Every panel is on the screen at once, laid out again whenever
+    /// the room they share changes size.</summary>
+    private View Workspace()
     {
-        var tests = new ListView
+        var shown = new View
         {
-            Title = "Tests",
-            X = WorkspaceX,
-            Y = Pos.Bottom(search) + FilterRowHeight + FilterGap,
+            X = ContentInset,
+            Y = ContentInset,
             Width = Dim.Fill(ContentInset),
-            Height = Dim.Fill(RowsBelowTheList),
-            ShowMarks = false,
-            KeystrokeNavigator = null
+            Height = Dim.Fill(SearchRow),
+            CanFocus = true
         };
-        tests.RowRender += (_, args) => ColorTreeRow(tests, args);
-        return tests;
+        foreach (var panel in Enum.GetValues<PanelKind>())
+        {
+            lists[panel] = new ListPanel();
+            shown.Add(lists[panel].View);
+        }
+
+        preview = new View { BorderStyle = LineStyle.Single, Title = "[0]─Preview", CanFocus = false };
+        shown.Add(preview);
+        shown.ViewportChanged += (_, _) => ArrangePanels();
+        return shown;
     }
 
-    private static Label EmptyState(ListView list) => new()
+    private void ArrangePanels()
     {
-        X = WorkspaceX,
-        Y = Pos.Top(list),
-        Width = Dim.Fill(ContentInset),
-        Height = 1,
-        Visible = false
-    };
+        var layout = PanelLayout.For(
+            workspace.Viewport.Width,
+            workspace.Viewport.Height,
+            shell.State.ExpandedList);
+        foreach (var (panel, shown) in lists)
+        {
+            shown.Place(layout[panel]);
+        }
+
+        preview.X = layout.Preview.X;
+        preview.Y = layout.Preview.Y;
+        preview.Width = layout.Preview.Width;
+        preview.Height = layout.Preview.Height;
+    }
 
     /// <summary>The shortcuts keep their rows whether or not they fill them, so
     /// a longer line wraps instead of running off the edge and the rows above do
@@ -379,8 +333,7 @@ internal sealed class TestRunnerApplication(
 
     private void HandleKey(
         IApplication application,
-        Key key,
-        ListView panels)
+        Key key)
     {
         if (!StartupInput.Accepts(sincePanelsAppeared.Elapsed, SettleDuration))
         {
@@ -399,7 +352,7 @@ internal sealed class TestRunnerApplication(
             ActiveSearchQuery().Length > 0);
         if (shellAction is not null)
         {
-            HandleShellAction(application, shellAction, key, panels);
+            HandleShellAction(application, shellAction, key);
             return;
         }
 
@@ -433,8 +386,7 @@ internal sealed class TestRunnerApplication(
     private void HandleShellAction(
         IApplication application,
         ShellAction action,
-        Key key,
-        ListView panels)
+        Key key)
     {
         if (action is ShellAction.TypeIntoSearch)
         {
@@ -447,10 +399,10 @@ internal sealed class TestRunnerApplication(
             case ShellAction.ClearSearch:
                 search.Text = "";
                 panelWork.Track(ClearSearchAsync(application));
-                list.SetFocus();
+                ActiveList.SetFocus();
                 return;
             case ShellAction.LeaveSearch:
-                list.SetFocus();
+                ActiveList.SetFocus();
                 Render();
                 return;
             case ShellAction.FocusSearch:
@@ -458,13 +410,13 @@ internal sealed class TestRunnerApplication(
                 Render();
                 return;
             case ShellAction.SelectPanel selected:
-                OpenPanel(application, (int)selected.Panel, panels);
+                OpenPanel(application, (int)selected.Panel);
                 return;
             case ShellAction.SelectNextPanel:
-                OpenPanel(application, SteppedPanel(1), panels);
+                OpenPanel(application, SteppedPanel(1));
                 return;
             case ShellAction.SelectPreviousPanel:
-                OpenPanel(application, SteppedPanel(-1), panels);
+                OpenPanel(application, SteppedPanel(-1));
                 return;
             case ShellAction.ShowCommands:
                 ShowCommands(application);
@@ -510,14 +462,11 @@ internal sealed class TestRunnerApplication(
     /// <summary>The tests and the issues describe the last build, so opening
     /// either after the tree has been edited sets a rebuild off rather than
     /// showing the reader what the project used to be.</summary>
-    private void OpenPanel(
-        IApplication application,
-        int index,
-        ListView panels)
+    private void OpenPanel(IApplication application, int index)
     {
         var from = shell.State.ActivePanel;
         shell.Select(index);
-        ShowActivePanel(panels);
+        ShowActivePanel();
         if (editsSinceTheBuild.WorthRebuildingOnOpening(from, shell.State.ActivePanel))
         {
             Rebuild(application, askedFor: false);
@@ -527,11 +476,13 @@ internal sealed class TestRunnerApplication(
     private int SteppedPanel(int step) =>
         (shell.State.ActiveIndex + step + shell.State.Panels.Count) % shell.State.Panels.Count;
 
-    private void ShowActivePanel(ListView panels)
+    /// <summary>Moving to a list on the left stretches it, so the panels are
+    /// laid out again before the new one takes the keys.</summary>
+    private void ShowActivePanel()
     {
-        panels.SelectedItem = shell.State.ActiveIndex;
+        ArrangePanels();
         Render();
-        list.SetFocus();
+        ActiveList.SetFocus();
     }
 
     private void HandleTestKey(
@@ -541,7 +492,7 @@ internal sealed class TestRunnerApplication(
         var action = TestPanelKeyBindings.ActionFor(
             key,
             session.State.SearchQuery,
-            list.HasFocus);
+            ActiveList.HasFocus);
         if (action is null)
         {
             return;
@@ -578,12 +529,10 @@ internal sealed class TestRunnerApplication(
     /// <summary>The Explorer browses the projects' files or every file beneath
     /// the launch folder, so everything below here treats it as one panel over
     /// two sessions.</summary>
-    private FileExplorerSession? ActiveFileSession() => shell.State.ActivePanel switch
-    {
-        PanelKind.Explorer when shell.State.ShowsAllFiles => folderSession,
-        PanelKind.Explorer => fileSession,
-        _ => null
-    };
+    private FileExplorerSession? ActiveFileSession() =>
+        shell.State.ActivePanel == PanelKind.Explorer ? ExplorerSession() : null;
+
+    private FileExplorerSession ExplorerSession() => shell.State.ShowsAllFiles ? folderSession : fileSession;
 
     private string ActiveSearchQuery() => ActiveFileSession() is { } files
         ? files.State.SearchQuery
@@ -632,7 +581,7 @@ internal sealed class TestRunnerApplication(
         Key key,
         FileExplorerSession fileExplorer)
     {
-        if (!list.HasFocus)
+        if (!ActiveList.HasFocus)
         {
             return;
         }
@@ -721,7 +670,7 @@ internal sealed class TestRunnerApplication(
         IApplication application,
         Key key)
     {
-        if (!list.HasFocus || changesetSession.State.Files.Count == 0)
+        if (!ActiveList.HasFocus || changesetSession.State.Files.Count == 0)
         {
             return;
         }
@@ -768,7 +717,7 @@ internal sealed class TestRunnerApplication(
 
     private void HandleIssueKey(IApplication application, Key key)
     {
-        if (!list.HasFocus) return;
+        if (!ActiveList.HasFocus) return;
         var selected = issueSession.State.SelectedIndex < issueSession.State.Issues.Count
             ? issueSession.State.Issues[issueSession.State.SelectedIndex]
             : null;
@@ -808,7 +757,7 @@ internal sealed class TestRunnerApplication(
         IApplication application,
         Key key)
     {
-        if (!list.HasFocus)
+        if (!ActiveList.HasFocus)
         {
             return;
         }
@@ -1895,7 +1844,6 @@ internal sealed class TestRunnerApplication(
 
     private void Render()
     {
-        panelSource?.Update(PanelLabels());
         var fileExplorer = ActiveFileSession();
         shortcutSegments = PanelShortcuts.For(
             shell.State.ActivePanel,
@@ -1906,55 +1854,12 @@ internal sealed class TestRunnerApplication(
             search.HasFocus,
             issueSession.State);
         ShowShortcuts();
-        if (fileExplorer is not null)
-        {
-            RenderFiles(fileExplorer);
-            return;
-        }
-
-        if (shell.State.ActivePanel == PanelKind.Changes)
-        {
-            RenderChanges();
-            return;
-        }
-
-        if (shell.State.ActivePanel == PanelKind.Issues)
-        {
-            RenderIssues();
-            return;
-        }
-
-        if (shell.State.ActivePanel == PanelKind.Comments)
-        {
-            RenderComments();
-            return;
-        }
-
-        var snapshot = TestPanelSnapshot.From(session.State, target);
-        list.Title = $"Tests — {snapshot.Breadcrumb}";
-        list.Height = Dim.Fill(RowsBelowTheList);
-        HideSegments();
-        ShowFilters(snapshot.Filters);
-        ShowEmptyState(snapshot.EmptyMessage);
-        testStatus!.Visible = true;
-        testStatus.Text = snapshot.StatusLine;
-        search.Title = snapshot.SearchQuery.Length == 0
-            ? "Search"
-            : $"Search — {snapshot.SearchHitCount} hits";
-        search.Text = snapshot.SearchQuery;
-        testNodes = snapshot.Tests;
-        ListRows(list, snapshot.Tests, () => snapshot.TestRows);
-        if (snapshot.Tests.Count > 0)
-        {
-            list.SelectedItem = snapshot.SelectedIndex;
-        }
+        RenderExplorer();
+        RenderTests();
+        RenderChanges();
+        RenderIssues();
+        RenderComments();
     }
-
-    private IReadOnlyList<PanelLabel> PanelLabels() => shell.State.KeyedPanelsWith(new PanelCounts(
-        KnownCount(issueSession.State.Issues.Count, issueSession.State.Loading),
-        commentSession.State.Comments.Count));
-
-    private static int? KnownCount(int count, bool loading) => loading && count == 0 ? null : count;
 
     /// <summary>Wraps to the width the label has now, which is why it is also
     /// called as the width changes rather than only as the shortcuts change.</summary>
@@ -1963,159 +1868,138 @@ internal sealed class TestRunnerApplication(
             '\n',
             ShortcutLines.For(shortcutSegments, shortcuts.Viewport.Width));
 
-    private void ListRows(ListView list, object content, Func<IReadOnlyList<string>> rows)
+    private void RenderExplorer()
     {
-        if (ReferenceEquals(listedContent, content))
-        {
-            return;
-        }
-
-        listedContent = content;
-        list.SetSource(new ObservableCollection<string>(rows()));
-    }
-
-    private void ListTonedRows(
-        ListView list,
-        object content,
-        Func<IReadOnlyList<(string Text, FileRowTone Tone)>> rows)
-    {
-        if (ReferenceEquals(listedContent, content))
-        {
-            return;
-        }
-
-        var listed = rows();
-        listedContent = content;
-        rowTones = listed.Select(row => row.Tone).ToArray();
-        list.SetSource(new ObservableCollection<string>(listed.Select(row => row.Text)));
-    }
-
-    private void RenderFiles(FileExplorerSession fileExplorer)
-    {
-        var snapshot = FilePanelSnapshot.From(fileExplorer.State, shell.State.ShowsAllFiles);
-        list.Title = shell.State.Panels[shell.State.ActiveIndex];
-        RenderRows(
-            
+        var snapshot = FilePanelSnapshot.From(ExplorerSession().State, shell.State.ShowsAllFiles);
+        RenderPanel(
+            PanelKind.Explorer,
+            snapshot.Filters,
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
             snapshot.Nodes,
-            () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
+            () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
             snapshot.SelectedIndex,
-            snapshot.StatusSegments,
-            snapshot.Filters,
             snapshot.EmptyMessage);
+        ShowSegmentsWhenActive(PanelKind.Explorer, snapshot.StatusSegments);
     }
+
+    private void RenderTests()
+    {
+        var snapshot = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
+        testNodes = snapshot.Tests;
+        RenderPanel(
+            PanelKind.Tests,
+            snapshot.Filters,
+            snapshot.SearchQuery,
+            snapshot.SearchHitCount,
+            snapshot.Tests,
+            () => [.. snapshot.TestRows.Zip(snapshot.Tests, TestRow)],
+            snapshot.SelectedIndex,
+            snapshot.EmptyMessage);
+        if (shell.State.ActivePanel != PanelKind.Tests)
+        {
+            testStatus!.Visible = false;
+            return;
+        }
+
+        HideSegments();
+        testStatus!.Visible = true;
+        testStatus.Text = snapshot.StatusLine;
+    }
+
+    private static ListRow TestRow(string text, VisibleTestNode node) =>
+        new(text, TestRowAppearance.ForegroundFor(node.Outcome, node.Update));
 
     private void RenderChanges()
     {
         var snapshot = ChangesetPanelSnapshot.From(changesetSession.State);
-        list.Title = "Changes";
-        RenderRows(
-            
+        RenderPanel(
+            PanelKind.Changes,
+            [],
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
             snapshot.Files,
-            () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
+            () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
             snapshot.SelectedIndex,
-            snapshot.StatusSegments,
-            [],
             snapshot.EmptyMessage);
+        ShowSegmentsWhenActive(PanelKind.Changes, snapshot.StatusSegments);
     }
 
     private void RenderIssues()
     {
         var snapshot = IssuePanelSnapshot.From(issueSession.State);
-        var layout = IssuePanelLayout.From(snapshot, list.Viewport.Width);
-        list.Title = "Issues";
-        RenderRows(snapshot.SearchQuery, snapshot.Issues.Count, layout,
-            () => [.. layout.Rows.Select(row => (row.Text, row.Tone))], layout.SelectedRowIndex,
-            snapshot.StatusSegments, snapshot.Filters, snapshot.EmptyMessage);
+        var layout = IssuePanelLayout.From(snapshot, lists[PanelKind.Issues].View.Viewport.Width);
+        RenderPanel(
+            PanelKind.Issues,
+            snapshot.Filters,
+            snapshot.SearchQuery,
+            snapshot.Issues.Count,
+            layout,
+            () => [.. layout.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
+            layout.SelectedRowIndex,
+            snapshot.EmptyMessage);
+        ShowSegmentsWhenActive(PanelKind.Issues, snapshot.StatusSegments);
     }
 
     private void RenderComments()
     {
         var snapshot = CommentPanelSnapshot.From(commentSession.State);
-        list.Title = "Comments";
-        RenderRows(
-            
+        RenderPanel(
+            PanelKind.Comments,
+            [],
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
             snapshot.Comments,
-            () => [.. snapshot.Rows.Select(row => (row.Text, row.Tone))],
+            () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
             snapshot.SelectedIndex,
-            snapshot.StatusSegments,
-            [],
             snapshot.EmptyMessage);
+        ShowSegmentsWhenActive(PanelKind.Comments, snapshot.StatusSegments);
     }
 
-    private void RenderRows(
+    /// <summary>Every panel lists its rows, but only the one taking the keys
+    /// fills the search box beneath them.</summary>
+    private void RenderPanel(
+        PanelKind panel,
+        IReadOnlyList<FilterChip> filters,
         string searchQuery,
         int searchHitCount,
         object content,
-        Func<IReadOnlyList<(string Text, FileRowTone Tone)>> rows,
+        Func<IReadOnlyList<ListRow>> rows,
         int selectedIndex,
-        IReadOnlyList<FileStatusSegment> segments,
-        IReadOnlyList<FilterChip> filters,
         string emptyMessage)
     {
+        var active = shell.State.ActivePanel == panel;
+        lists[panel].Show(
+            PanelTitle.For(panel, filters, searchQuery, active),
+            content,
+            rows,
+            selectedIndex,
+            emptyMessage);
+        if (!active)
+        {
+            return;
+        }
+
         search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
         search.Text = searchQuery;
-        ListTonedRows(list, content, rows);
-        list.Height = Dim.Fill(RowsBelowTheList);
-        testStatus!.Visible = false;
-        ShowSegments(segments);
-        ShowFilters(filters);
-        ShowEmptyState(emptyMessage);
-        if (rowTones.Count > 0)
-        {
-            list.SelectedItem = selectedIndex;
-        }
     }
 
-    private void ShowEmptyState(string message)
+    private void ShowSegmentsWhenActive(PanelKind panel, IReadOnlyList<FileStatusSegment> segments)
     {
-        emptyState!.Text = message;
-        emptyState.Visible = message.Length > 0;
+        if (shell.State.ActivePanel == panel)
+        {
+            ShowSegments(segments);
+        }
     }
 
     private void ShowSegments(IReadOnlyList<FileStatusSegment> segments)
     {
         statusSegments = segments;
-        var placed = StatusSegmentLayout.Place(segments, WorkspaceX, SegmentGap);
+        var placed = StatusSegmentLayout.Place(segments, ContentInset, SegmentGap);
         for (var index = 0; index < segmentLabels.Count; index++)
         {
             Show(segmentLabels[index], index < placed.Count ? placed[index] : null);
         }
-    }
-
-    private void ShowFilters(IReadOnlyList<FilterChip> chips)
-    {
-        filterChips = chips;
-        var columns = StatusSegmentLayout.ColumnsFor(
-            chips.Select(chip => chip.Text).ToArray(),
-            WorkspaceX,
-            SegmentGap);
-        for (var index = 0; index < filterLabels.Count; index++)
-        {
-            ShowChip(filterLabels[index], chips, columns, index);
-        }
-    }
-
-    private static void ShowChip(
-        Label label,
-        IReadOnlyList<FilterChip> chips,
-        IReadOnlyList<int> columns,
-        int index)
-    {
-        label.Visible = index < chips.Count;
-        if (index >= chips.Count)
-        {
-            return;
-        }
-
-        label.X = columns[index];
-        label.Width = chips[index].Text.Length;
-        label.Text = chips[index].Text;
     }
 
     private static void Show(Label label, PlacedStatusSegment? segment)
@@ -2137,51 +2021,6 @@ internal sealed class TestRunnerApplication(
         {
             label.Visible = false;
         }
-    }
-
-    private void ColorTreeRow(ListView tree, ListViewRowEventArgs args)
-    {
-        if (shell.State.ActivePanel == PanelKind.Tests)
-        {
-            ColorTestRow(args);
-            return;
-        }
-
-        ColorFileRow(args);
-    }
-
-    private void ColorFileRow(ListViewRowEventArgs args)
-    {
-        if (args.Row >= rowTones.Count)
-        {
-            return;
-        }
-
-        args.RowAttribute = FileRowAppearance.For(
-            rowTones[args.Row],
-            list.IsSelectedOrMarked(args.Row),
-            list.GetAttributeForRole(VisualRole.Normal),
-            list.GetAttributeForRole(VisualRole.Focus));
-    }
-
-    private void ColorTestRow(ListViewRowEventArgs args)
-    {
-        if (args.Row >= testNodes.Count || list.IsSelectedOrMarked(args.Row))
-        {
-            return;
-        }
-
-        var node = testNodes[args.Row];
-        SetRowForeground(list, args, TestRowAppearance.ForegroundFor(node.Outcome, node.Update));
-    }
-
-    private static void SetRowForeground(
-        ListView list,
-        ListViewRowEventArgs args,
-        Color foreground)
-    {
-        var background = list.GetAttributeForRole(VisualRole.Normal).Background;
-        args.RowAttribute = new global::Terminal.Gui.Drawing.Attribute(foreground, background);
     }
 
     private void RequestOpen(IApplication application, string path, int line)
