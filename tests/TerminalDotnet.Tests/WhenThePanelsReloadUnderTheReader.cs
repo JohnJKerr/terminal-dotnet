@@ -1,7 +1,9 @@
 using TerminalDotnet.Changes;
+using TerminalDotnet.Comments;
 using TerminalDotnet.Files;
 using TerminalDotnet.Filters;
 using TerminalDotnet.Flags;
+using TerminalDotnet.Issues;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
@@ -116,16 +118,16 @@ public sealed class WhenThePanelsReloadUnderTheReader
     {
         // Arrange
         var backend = new GrowingFlagBackend("Order.cs", "Basket.cs");
-        var flags = new FlagSession(backend);
-        await flags.LoadAsync("App.csproj");
-        await flags.DispatchAsync(new FlagCommand.SelectIndex(1));
+        var issues = new IssueSession(new NoIssues(), new UnusedClipboard(), backend);
+        await issues.LoadFlagsAsync("App.csproj");
+        await issues.DispatchAsync(new IssueCommand.SelectIndex(1));
         backend.Add("Alpha.cs");
 
         // Act
-        await flags.LoadAsync("App.csproj");
+        await issues.LoadFlagsAsync("App.csproj");
 
         // Assert
-        Assert.Equal("Order.cs", flags.State.Flags[flags.State.SelectedIndex].DisplayPath);
+        Assert.Equal("Order.cs", issues.State.Issues[issues.State.SelectedIndex].DisplayPath);
     }
 
     private static GrowingFileBackend Files(params string[] names) => new(names);
@@ -162,6 +164,20 @@ public sealed class WhenThePanelsReloadUnderTheReader
 
         public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
             Task.FromResult(true);
+    }
+
+    private sealed class NoIssues : IIssueBackend
+    {
+        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
+            string target,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<CompilationIssue>>([]);
+    }
+
+    private sealed class UnusedClipboard : ICommentClipboard
+    {
+        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
     }
 
     private sealed class GrowingFlagBackend(params string[] names) : IFlagBackend

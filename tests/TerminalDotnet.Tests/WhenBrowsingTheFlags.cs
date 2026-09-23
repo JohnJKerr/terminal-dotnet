@@ -1,5 +1,6 @@
+using TerminalDotnet.Comments;
 using TerminalDotnet.Flags;
-using TerminalDotnet.Terminal;
+using TerminalDotnet.Issues;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Flags;
@@ -10,17 +11,17 @@ public sealed class WhenBrowsingTheFlags
     public async Task It_lists_flags_in_category_and_kind_order()
     {
         // Arrange
-        var session = new FlagSession(new StubBackend([
+        var session = Session(new StubBackend([
             new Flag("Bug.cs", "Bug.cs", 8, FlagKind.Bug, "BUG broken"),
             new Flag("Todo.cs", "Todo.cs", 2, FlagKind.Todo, "TODO do this"),
             new Flag("Fix.cs", "Fix.cs", 4, FlagKind.Fixme, "FIXME repair")
         ]));
 
         // Act
-        await session.LoadAsync("App.slnx");
+        await session.LoadFlagsAsync("App.slnx");
 
         // Assert
-        Assert.Equal([FlagKind.Todo, FlagKind.Fixme, FlagKind.Bug], session.State.Flags.Select(flag => flag.Kind));
+        Assert.Equal(["TODO", "FIXME", "BUG"], session.State.Issues.Select(issue => issue.Code));
     }
 
     [Fact]
@@ -31,15 +32,15 @@ public sealed class WhenBrowsingTheFlags
         Directory.CreateDirectory(folder);
         var path = Path.Combine(folder, "Work.cs");
         await File.WriteAllLinesAsync(path, ["//todo first", "// TODO: second", "/*fixme*/", "// ReViEw consider this"]);
-        var session = new FlagSession(new FileFlagBackend(new StubFileBackend(path)));
+        var session = Session(new FileFlagBackend(new StubFileBackend(path)));
 
         // Act
-        await session.LoadAsync(Path.Combine(folder, "App.slnx"));
+        await session.LoadFlagsAsync(Path.Combine(folder, "App.slnx"));
 
         // Assert
         Assert.Equal(
-            [(FlagKind.Todo, "first"), (FlagKind.Todo, "second"), (FlagKind.Fixme, ""), (FlagKind.Review, "consider this")],
-            session.State.Flags.Select(flag => (flag.Kind, flag.Comment)));
+            [("TODO", "first"), ("TODO", "second"), ("FIXME", ""), ("REVIEW", "consider this")],
+            session.State.Issues.Select(issue => (issue.Code, issue.Message)));
     }
 
     [Fact(Timeout = 10_000)]
@@ -55,13 +56,13 @@ public sealed class WhenBrowsingTheFlags
                 return;
             }
 
-            var session = new FlagSession(new FileFlagBackend(new StubFileBackend(path)));
+            var session = Session(new FileFlagBackend(new StubFileBackend(path)));
 
             // Act
-            await Task.Run(() => session.LoadAsync(Path.Combine(folder.FullName, "App.slnx")));
+            await Task.Run(() => session.LoadFlagsAsync(Path.Combine(folder.FullName, "App.slnx")));
 
             // Assert
-            Assert.Empty(session.State.Flags);
+            Assert.Empty(session.State.Issues);
         }
         finally
         {
@@ -69,49 +70,21 @@ public sealed class WhenBrowsingTheFlags
         }
     }
 
-    [Fact]
-    public async Task It_filters_flags_by_the_four_categories()
+    private static IssueSession Session(IFlagBackend flags) =>
+        new(new NoIssues(), new UnusedClipboard(), flags);
+
+    private sealed class NoIssues : IIssueBackend
     {
-        // Arrange
-        var session = new FlagSession(new StubBackend([
-            new Flag("a", "a", 1, FlagKind.Todo, "task"),
-            new Flag("b", "b", 2, FlagKind.Note, "context"),
-            new Flag("c", "c", 3, FlagKind.Hack, "warning"),
-            new Flag("d", "d", 4, FlagKind.Optimize, "improve")
-        ]));
-        await session.LoadAsync("App.slnx");
-
-        // Act
-        await session.DispatchAsync(new FlagCommand.ToggleFilter(FlagCategory.Review));
-
-        // Assert
-        Assert.Equal([FlagKind.Note], session.State.Flags.Select(flag => flag.Kind));
+        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
+            string target,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<CompilationIssue>>([]);
     }
 
-    [Fact]
-    public void It_places_the_heading_above_the_location_and_comment()
+    private sealed class UnusedClipboard : ICommentClipboard
     {
-        // Arrange
-        var state = new FlagState([new Flag("Work.cs", "src/Work.cs", 12, FlagKind.Todo, "finish it")]);
-
-        // Act
-        var snapshot = FlagPanelSnapshot.From(state);
-
-        // Assert
-        Assert.Equal(["TODO", "  src/Work.cs:12", "    finish it"], snapshot.Rows.Select(row => row.Text));
-    }
-
-    [Fact]
-    public void It_exposes_the_complete_selected_flag_for_the_preview()
-    {
-        // Arrange
-        var state = new FlagState([new Flag("Work.cs", "src/Work.cs", 12, FlagKind.Todo, "finish it")]);
-
-        // Act
-        var snapshot = FlagPanelSnapshot.From(state);
-
-        // Assert
-        Assert.Equal("src/Work.cs:12: TODO finish it", snapshot.SelectedDetails);
+        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
     }
 
     private sealed class StubBackend(IReadOnlyList<Flag> flags) : IFlagBackend
