@@ -1,8 +1,8 @@
 namespace TerminalDotnet.Issues;
 
-public enum IssueSeverity { Error, Warning }
+public enum IssueSeverity { Error, Warning, Flag }
 
-public enum IssueFilter { Errors, Warnings }
+public enum IssueFilter { Errors, Warnings, Flags }
 
 public sealed record CompilationIssue(
     string Path,
@@ -13,7 +13,9 @@ public sealed record CompilationIssue(
     string Message,
     IssueSeverity Severity)
 {
-    public string Details => $"{DisplayPath}({Line},{Column}): {Severity.ToString().ToLowerInvariant()} {Code}: {Message}";
+    public string Details => Severity == IssueSeverity.Flag
+        ? $"{DisplayPath}:{Line}: {Code} {Message}".TrimEnd()
+        : $"{DisplayPath}({Line},{Column}): {Severity.ToString().ToLowerInvariant()} {Code}: {Message}";
 }
 
 public sealed record IssueState(
@@ -35,6 +37,7 @@ public abstract record IssueCommand
     public sealed record MoveDown : IssueCommand;
     public sealed record ToggleErrors : IssueCommand;
     public sealed record ToggleWarnings : IssueCommand;
+    public sealed record ToggleFlags : IssueCommand;
     public sealed record CopySelected : IssueCommand;
 }
 
