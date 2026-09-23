@@ -81,6 +81,11 @@ internal sealed class TestRunnerApplication(
     private IReadOnlyList<string> shortcutSegments = [];
     private PanelListSource? panelSource;
 
+    /// <summary>The views of the terminal that is up. Each terminal the app
+    /// raises builds its own, so these stand in until the first one does.</summary>
+    private TextField search = new();
+    private ListView list = new();
+
     public void Run()
     {
         WatchTheWorkingTree();
@@ -125,8 +130,8 @@ internal sealed class TestRunnerApplication(
 
         using var window = new Window { Title = $"terminal-dotnet - {VersionNumber.Current}" };
         var panels = Panels();
-        var search = Search();
-        var tests = Tests(search);
+        search = Search();
+        list = Tests();
         testStatus = TestStatus();
         testStatus.GettingAttributeForRole += (_, args) =>
         {
@@ -137,12 +142,12 @@ internal sealed class TestRunnerApplication(
             args.Handled = true;
         };
         segmentLabels = StatusSegmentLabels();
-        filterLabels = FilterLabels(search);
-        emptyState = EmptyState(tests);
+        filterLabels = FilterLabels();
+        emptyState = EmptyState(list);
         shortcuts = Shortcuts();
         shortcuts.ViewportChanged += (_, _) => ShowShortcuts();
 
-        window.Add(panels, search, tests, emptyState, testStatus, shortcuts);
+        window.Add(panels, search, list, emptyState, testStatus, shortcuts);
         window.Add([.. segmentLabels]);
         window.Add([.. filterLabels]);
         toast = Toast();
@@ -150,17 +155,17 @@ internal sealed class TestRunnerApplication(
         search.ValueChanged += async (_, _) =>
         {
             await SearchAsync(search.Text);
-            Render(search, tests);
+            Render();
         };
         application.Keyboard.KeyDown += (_, key) =>
-            HandleKey(application, key, panels, search, tests);
-        Render(search, tests);
+            HandleKey(application, key, panels);
+        Render();
         sincePanelsAppeared.Restart();
         panels.SelectedItem = shell.State.ActiveIndex;
-        tests.SetFocus();
-        FillPanels(application, search, tests);
-        RefreshEditedPanels(application, search, tests);
-        ReloadWhenTheWorkingTreeSettles(application, search, tests);
+        list.SetFocus();
+        FillPanels(application);
+        RefreshEditedPanels(application);
+        ReloadWhenTheWorkingTreeSettles(application);
 
         application.Run(window);
         ShutDown();
@@ -186,12 +191,12 @@ internal sealed class TestRunnerApplication(
     /// does not wait on test discovery, which builds the solution. Each panel
     /// fills in as its own load lands.
     /// </summary>
-    private void FillPanels(IApplication application, TextField search, ListView tests)
+    private void FillPanels(IApplication application)
     {
         loadCancellation = new CancellationTokenSource();
         sinceLoadStarted.Restart();
-        TurnActivityMarker(application, search, tests);
-        panelWork.Track(FillPanelsAsync(application, search, tests, loadCancellation.Token));
+        TurnActivityMarker(application);
+        panelWork.Track(FillPanelsAsync(application, loadCancellation.Token));
     }
 
     /// <summary>
@@ -200,7 +205,7 @@ internal sealed class TestRunnerApplication(
     /// draw is asked for explicitly because nothing else wakes the loop while
     /// the reader is waiting.
     /// </summary>
-    private void TurnActivityMarker(IApplication application, TextField search, ListView tests) =>
+    private void TurnActivityMarker(IApplication application) =>
         application.AddTimeout(ActivityMarker.FrameDuration, () =>
         {
             if (session.State.Status != ExplorerStatus.Loading)
@@ -221,8 +226,6 @@ internal sealed class TestRunnerApplication(
 
     private Task FillPanelsAsync(
         IApplication application,
-        TextField search,
-        ListView tests,
         CancellationToken cancellationToken) =>
         new PanelStartup(
             fileSession,
@@ -233,7 +236,7 @@ internal sealed class TestRunnerApplication(
             issues: issueSession).LoadPendingAsync(
             () =>
             {
-                application.Invoke(() => Render(search, tests));
+                application.Invoke(() => Render());
                 return Task.CompletedTask;
             },
             cancellationToken);
@@ -295,12 +298,12 @@ internal sealed class TestRunnerApplication(
         ? statusSegments[index].Tone
         : FileRowTone.Neutral;
 
-    private IReadOnlyList<Label> FilterLabels(TextField search) => Enumerable
+    private IReadOnlyList<Label> FilterLabels() => Enumerable
         .Range(0, MaxFilterChips)
-        .Select(index => FilterLabel(search, index))
+        .Select(index => FilterLabel(index))
         .ToArray();
 
-    private Label FilterLabel(TextField search, int index)
+    private Label FilterLabel(int index)
     {
         var label = new Label
         {
@@ -332,7 +335,7 @@ internal sealed class TestRunnerApplication(
         TabStop = TabBehavior.NoStop
     };
 
-    private ListView Tests(TextField search)
+    private ListView Tests()
     {
         var tests = new ListView
         {
@@ -377,9 +380,7 @@ internal sealed class TestRunnerApplication(
     private void HandleKey(
         IApplication application,
         Key key,
-        ListView panels,
-        TextField search,
-        ListView tests)
+        ListView panels)
     {
         if (!StartupInput.Accepts(sincePanelsAppeared.Elapsed, SettleDuration))
         {
@@ -399,44 +400,42 @@ internal sealed class TestRunnerApplication(
             ActiveSearchQuery().Length > 0);
         if (shellAction is not null)
         {
-            HandleShellAction(application, shellAction, key, panels, search, tests);
+            HandleShellAction(application, shellAction, key, panels);
             return;
         }
 
         if (ActiveFileSession() is { } files)
         {
-            HandleFileKey(application, key, files, tests, search);
+            HandleFileKey(application, key, files);
             return;
         }
 
         if (shell.State.ActivePanel == PanelKind.Changes)
         {
-            HandleChangesetKey(application, key, tests, search);
+            HandleChangesetKey(application, key);
             return;
         }
 
         if (shell.State.ActivePanel == PanelKind.Issues)
         {
-            HandleIssueKey(application, key, tests, search);
+            HandleIssueKey(application, key);
             return;
         }
 
         if (shell.State.ActivePanel == PanelKind.Comments)
         {
-            HandleCommentKey(application, key, tests, search);
+            HandleCommentKey(application, key);
             return;
         }
 
-        HandleTestKey(application, key, search, tests);
+        HandleTestKey(application, key);
     }
 
     private void HandleShellAction(
         IApplication application,
         ShellAction action,
         Key key,
-        ListView panels,
-        TextField search,
-        ListView tests)
+        ListView panels)
     {
         if (action is ShellAction.TypeIntoSearch)
         {
@@ -448,40 +447,40 @@ internal sealed class TestRunnerApplication(
         {
             case ShellAction.ClearSearch:
                 search.Text = "";
-                panelWork.Track(ClearSearchAsync(application, search, tests));
-                tests.SetFocus();
+                panelWork.Track(ClearSearchAsync(application));
+                list.SetFocus();
                 return;
             case ShellAction.LeaveSearch:
             case ShellAction.FocusRows:
-                tests.SetFocus();
-                Render(search, tests);
+                list.SetFocus();
+                Render();
                 return;
             case ShellAction.FocusSearch:
                 search.SetFocus();
-                Render(search, tests);
+                Render();
                 return;
             case ShellAction.FocusPanels:
                 panels.SetFocus();
-                Render(search, tests);
+                Render();
                 return;
             case ShellAction.SelectFocusedPanel:
-                OpenPanel(application, panels.SelectedItem ?? 0, panels, search, tests);
+                OpenPanel(application, panels.SelectedItem ?? 0, panels);
                 return;
             case ShellAction.SelectPanel selected:
-                OpenPanel(application, (int)selected.Panel, panels, search, tests);
+                OpenPanel(application, (int)selected.Panel, panels);
                 return;
             case ShellAction.SelectNextPanel:
-                OpenPanel(application, SteppedPanel(1), panels, search, tests);
+                OpenPanel(application, SteppedPanel(1), panels);
                 return;
             case ShellAction.SelectPreviousPanel:
-                OpenPanel(application, SteppedPanel(-1), panels, search, tests);
+                OpenPanel(application, SteppedPanel(-1), panels);
                 return;
             case ShellAction.ShowCommands:
                 ShowCommands(application);
                 return;
             case ShellAction.Refresh:
-                ReloadWhatIsOnDisk(application, search, tests);
-                Rebuild(application, search, tests, askedFor: true);
+                ReloadWhatIsOnDisk(application);
+                Rebuild(application, askedFor: true);
                 return;
             case ShellAction.Dismiss:
                 return;
@@ -523,61 +522,55 @@ internal sealed class TestRunnerApplication(
     private void OpenPanel(
         IApplication application,
         int index,
-        ListView panels,
-        TextField search,
-        ListView tests)
+        ListView panels)
     {
         var from = shell.State.ActivePanel;
         shell.Select(index);
-        ShowActivePanel(panels, search, tests);
+        ShowActivePanel(panels);
         if (editsSinceTheBuild.WorthRebuildingOnOpening(from, shell.State.ActivePanel))
         {
-            Rebuild(application, search, tests, askedFor: false);
+            Rebuild(application, askedFor: false);
         }
     }
 
     private int SteppedPanel(int step) =>
         (shell.State.ActiveIndex + step + shell.State.Panels.Count) % shell.State.Panels.Count;
 
-    private void ShowActivePanel(ListView panels, TextField search, ListView tests)
+    private void ShowActivePanel(ListView panels)
     {
         panels.SelectedItem = shell.State.ActiveIndex;
-        Render(search, tests);
-        tests.SetFocus();
+        Render();
+        list.SetFocus();
     }
 
     private void HandleTestKey(
         IApplication application,
-        Key key,
-        TextField search,
-        ListView tests)
+        Key key)
     {
         var action = TestPanelKeyBindings.ActionFor(
             key,
             session.State.SearchQuery,
-            tests.HasFocus);
+            list.HasFocus);
         if (action is null)
         {
             return;
         }
 
         key.Handled = true;
-        HandleTestAction(application, action, search, tests);
+        HandleTestAction(application, action);
     }
 
     private void HandleTestAction(
         IApplication application,
-        TestPanelAction action,
-        TextField search,
-        ListView tests)
+        TestPanelAction action)
     {
         switch (action)
         {
             case TestPanelAction.OpenSource:
-                RequestTestSource(application, preview: false, search, tests);
+                RequestTestSource(application, preview: false);
                 return;
             case TestPanelAction.PreviewSource:
-                RequestTestSource(application, preview: true, search, tests);
+                RequestTestSource(application, preview: true);
                 return;
             case TestPanelAction.ShowOutput:
                 ShowTestOutput(application);
@@ -586,7 +579,7 @@ internal sealed class TestRunnerApplication(
                 runCancellation?.Cancel();
                 return;
             case TestPanelAction.Dispatch dispatch:
-                panelWork.Track(DispatchAsync(application, dispatch.Command, search, tests));
+                panelWork.Track(DispatchAsync(application, dispatch.Command));
                 return;
         }
     }
@@ -621,16 +614,16 @@ internal sealed class TestRunnerApplication(
             _ => session.DispatchAsync(new ExplorerCommand.Search(query))
         };
 
-    private async Task ClearSearchAsync(IApplication application, TextField search, ListView tests)
+    private async Task ClearSearchAsync(IApplication application)
     {
         if (shell.State.ActivePanel == PanelKind.Tests)
         {
-            await DispatchAsync(application, new ExplorerCommand.ClearSearch(), search, tests);
+            await DispatchAsync(application, new ExplorerCommand.ClearSearch());
             return;
         }
 
         await ClearPanelSearchAsync();
-        Render(search, tests);
+        Render();
     }
 
     private Task ClearPanelSearchAsync() => ActiveFileSession() is { } files
@@ -646,11 +639,9 @@ internal sealed class TestRunnerApplication(
     private void HandleFileKey(
         IApplication application,
         Key key,
-        FileExplorerSession fileExplorer,
-        ListView files,
-        TextField search)
+        FileExplorerSession fileExplorer)
     {
-        if (!files.HasFocus)
+        if (!list.HasFocus)
         {
             return;
         }
@@ -664,9 +655,7 @@ internal sealed class TestRunnerApplication(
             key.Handled = true;
             panelWork.Track(DispatchFileAsync(
                 fileExplorer,
-                new FileExplorerCommand.ToggleFilter(toggle.Filter),
-                search,
-                files));
+                new FileExplorerCommand.ToggleFilter(toggle.Filter)));
             return;
         }
 
@@ -674,7 +663,7 @@ internal sealed class TestRunnerApplication(
         {
             key.Handled = true;
             shell.ToggleAllFiles();
-            Render(search, files);
+            Render();
             return;
         }
 
@@ -688,7 +677,7 @@ internal sealed class TestRunnerApplication(
         if (action is FilePanelAction.PreviewFile preview)
         {
             key.Handled = true;
-            ShowPreview(application, preview.Path, 1, search, files);
+            ShowPreview(application, preview.Path, 1);
             return;
         }
 
@@ -699,7 +688,7 @@ internal sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        panelWork.Track(DispatchFileAsync(fileExplorer, command, search, files));
+        panelWork.Track(DispatchFileAsync(fileExplorer, command));
     }
 
     private static VisibleFileNode? SelectedFile(FileExplorerSession fileExplorer) =>
@@ -731,21 +720,17 @@ internal sealed class TestRunnerApplication(
 
     private async Task DispatchFileAsync(
         FileExplorerSession fileExplorer,
-        FileExplorerCommand command,
-        TextField search,
-        ListView files)
+        FileExplorerCommand command)
     {
         await fileExplorer.DispatchAsync(command);
-        Render(search, files);
+        Render();
     }
 
     private void HandleChangesetKey(
         IApplication application,
-        Key key,
-        ListView files,
-        TextField search)
+        Key key)
     {
-        if (!files.HasFocus || changesetSession.State.Files.Count == 0)
+        if (!list.HasFocus || changesetSession.State.Files.Count == 0)
         {
             return;
         }
@@ -755,7 +740,7 @@ internal sealed class TestRunnerApplication(
         if (action is ChangesetAction.ShowDiff)
         {
             key.Handled = true;
-            ShowDiff(application, search, files);
+            ShowDiff(application);
             return;
         }
 
@@ -769,14 +754,14 @@ internal sealed class TestRunnerApplication(
         if (action is ChangesetAction.PreviewFile preview)
         {
             key.Handled = true;
-            ShowPreview(application, preview.Path, 1, search, files);
+            ShowPreview(application, preview.Path, 1);
             return;
         }
 
         if (action is ChangesetAction.RestoreFile)
         {
             key.Handled = true;
-            panelWork.Track(RestoreSelectedAsync(application, search, files));
+            panelWork.Track(RestoreSelectedAsync(application));
             return;
         }
 
@@ -787,12 +772,12 @@ internal sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        panelWork.Track(DispatchChangesetAsync(command, search, files));
+        panelWork.Track(DispatchChangesetAsync(command));
     }
 
-    private void HandleIssueKey(IApplication application, Key key, ListView rows, TextField search)
+    private void HandleIssueKey(IApplication application, Key key)
     {
-        if (!rows.HasFocus) return;
+        if (!list.HasFocus) return;
         var selected = issueSession.State.SelectedIndex < issueSession.State.Issues.Count
             ? issueSession.State.Issues[issueSession.State.SelectedIndex]
             : null;
@@ -806,7 +791,7 @@ internal sealed class TestRunnerApplication(
         if (action is IssuePanelAction.Preview preview)
         {
             key.Handled = true;
-            ShowPreview(application, preview.Path, preview.Line, search, rows);
+            ShowPreview(application, preview.Path, preview.Line);
             return;
         }
         var command = action switch
@@ -819,22 +804,20 @@ internal sealed class TestRunnerApplication(
         };
         if (command is null) return;
         key.Handled = true;
-        panelWork.Track(DispatchIssueAsync(command, search, rows));
+        panelWork.Track(DispatchIssueAsync(command));
     }
 
-    private async Task DispatchIssueAsync(IssueCommand command, TextField search, ListView rows)
+    private async Task DispatchIssueAsync(IssueCommand command)
     {
         await issueSession.DispatchAsync(command);
-        Render(search, rows);
+        Render();
     }
 
     private void HandleCommentKey(
         IApplication application,
-        Key key,
-        ListView files,
-        TextField search)
+        Key key)
     {
-        if (!files.HasFocus)
+        if (!list.HasFocus)
         {
             return;
         }
@@ -844,7 +827,7 @@ internal sealed class TestRunnerApplication(
         if (action is not null && selected is not null)
         {
             key.Handled = true;
-            HandleCommentAction(application, action, selected, search, files);
+            HandleCommentAction(application, action, selected);
             return;
         }
 
@@ -855,7 +838,7 @@ internal sealed class TestRunnerApplication(
         }
 
         key.Handled = true;
-        panelWork.Track(DispatchCommentAsync(command, search, files));
+        panelWork.Track(DispatchCommentAsync(command));
     }
 
     private FileComment? SelectedComment() =>
@@ -866,9 +849,7 @@ internal sealed class TestRunnerApplication(
     private void HandleCommentAction(
         IApplication application,
         CommentAction action,
-        FileComment selected,
-        TextField search,
-        ListView files)
+        FileComment selected)
     {
         if (action is CommentAction.ReadComment)
         {
@@ -878,44 +859,42 @@ internal sealed class TestRunnerApplication(
 
         if (action is CommentAction.RewriteComment)
         {
-            RewriteComment(application, selected, search, files);
+            RewriteComment(application, selected);
             return;
         }
 
         if (action is CommentAction.PreviewFile preview)
         {
-            ShowPreview(application, preview.Path, 1, search, files);
+            ShowPreview(application, preview.Path, 1);
             return;
         }
 
         if (action is CommentAction.SaveComments)
         {
-            SaveComments(application, search, files);
+            SaveComments(application);
             return;
         }
 
         if (action is CommentAction.ClearComments)
         {
-            ClearComments(application, search, files);
+            ClearComments(application);
             return;
         }
 
         if (action is CommentAction.CopyComments)
         {
-            panelWork.Track(DispatchCommentAsync(new CommentCommand.CopyAll(), search, files));
+            panelWork.Track(DispatchCommentAsync(new CommentCommand.CopyAll()));
             return;
         }
 
         panelWork.Track(DispatchCommentAsync(
-            new CommentCommand.DeleteSelected(),
-            search,
-            files));
+            new CommentCommand.DeleteSelected()));
     }
 
     /// <summary>Clearing cannot be undone, so it is asked for twice. Cancel is
     /// offered last because the box opens on its last button, and a reader who
     /// presses Enter without reading should keep their notes.</summary>
-    private void ClearComments(IApplication application, TextField search, ListView files)
+    private void ClearComments(IApplication application)
     {
         var count = commentSession.State.Comments.Count;
         var chosen = OverThePanels(() => MessageBox.Query(
@@ -929,10 +908,10 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        panelWork.Track(DispatchCommentAsync(new CommentCommand.ClearAll(), search, files));
+        panelWork.Track(DispatchCommentAsync(new CommentCommand.ClearAll()));
     }
 
-    private void SaveComments(IApplication application, TextField search, ListView files)
+    private void SaveComments(IApplication application)
     {
         var path = OverThePanels(
             () => SavePrompt.Ask(application, "Save comments", SuggestedCommentPath()));
@@ -941,7 +920,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        panelWork.Track(DispatchCommentAsync(new CommentCommand.SaveAll(path), search, files));
+        panelWork.Track(DispatchCommentAsync(new CommentCommand.SaveAll(path)));
     }
 
     /// <summary>Saving replaces what the file held, so a path that already has
@@ -982,9 +961,7 @@ internal sealed class TestRunnerApplication(
 
     private void RewriteComment(
         IApplication application,
-        FileComment selected,
-        TextField search,
-        ListView files)
+        FileComment selected)
     {
         var written = OverThePanels(
             () => CommentDialog.Ask(application, selected.DisplayPath, selected.Text));
@@ -994,9 +971,7 @@ internal sealed class TestRunnerApplication(
         }
 
         panelWork.Track(DispatchCommentAsync(
-            new CommentCommand.RewriteSelected(written),
-            search,
-            files));
+            new CommentCommand.RewriteSelected(written)));
     }
 
     private static CommentCommand? CommentCommandFor(Key key)
@@ -1012,12 +987,10 @@ internal sealed class TestRunnerApplication(
     }
 
     private async Task DispatchCommentAsync(
-        CommentCommand command,
-        TextField search,
-        ListView files)
+        CommentCommand command)
     {
         await commentSession.DispatchAsync(command);
-        Render(search, files);
+        Render();
     }
 
     private static ChangesetCommand? ChangesetCommandFor(Key key, string searchQuery)
@@ -1033,36 +1006,32 @@ internal sealed class TestRunnerApplication(
     }
 
     private async Task DispatchChangesetAsync(
-        ChangesetCommand command,
-        TextField search,
-        ListView files)
+        ChangesetCommand command)
     {
         await changesetSession.DispatchAsync(command);
-        Render(search, files);
+        Render();
     }
 
     private async Task RestoreSelectedAsync(
-        IApplication application,
-        TextField search,
-        ListView files)
+        IApplication application)
     {
         await changesetSession.DispatchAsync(new ChangesetCommand.RestoreSelected());
-        application.Invoke(() => Render(search, files));
+        application.Invoke(() => Render());
     }
 
-    private void ShowDiff(IApplication application, TextField search, ListView files) =>
-        panelWork.Track(ShowDiffAsync(application, search, files));
+    private void ShowDiff(IApplication application) =>
+        panelWork.Track(ShowDiffAsync(application));
 
-    private async Task ShowDiffAsync(IApplication application, TextField search, ListView files)
+    private async Task ShowDiffAsync(IApplication application)
     {
         await changesetSession.DispatchAsync(new ChangesetCommand.LoadSelectedDiff());
-        application.Invoke(() => ShowDiffDialog(application, search, files));
+        application.Invoke(() => ShowDiffDialog(application));
     }
 
     /// <summary>The diff is read in its own window rather than the shared cell
     /// dialog, because it answers to keys of its own: the reader steps through
     /// the changeset without closing what they are reading.</summary>
-    private void ShowDiffDialog(IApplication application, TextField search, ListView files)
+    private void ShowDiffDialog(IApplication application)
     {
         using var dialog = FullScreenDialog(DiffTitle());
         var diff = new ColoredTextView(wordWrap: false)
@@ -1079,7 +1048,7 @@ internal sealed class TestRunnerApplication(
         dialog.KeyDown += (_, key) => HandleDiffKey(application, dialog, diff, key);
         dialog.Add(diff);
         OverThePanels(() => application.Run(dialog));
-        Render(search, files);
+        Render();
     }
 
     private void HandleDiffKey(
@@ -1177,14 +1146,12 @@ internal sealed class TestRunnerApplication(
 
     private async Task DispatchAsync(
         IApplication application,
-        ExplorerCommand command,
-        TextField search,
-        ListView tests)
+        ExplorerCommand command)
     {
         if (!RunsTests(command))
         {
             await session.DispatchAsync(command);
-            Render(search, tests);
+            Render();
             return;
         }
 
@@ -1198,7 +1165,7 @@ internal sealed class TestRunnerApplication(
         try
         {
             var run = session.DispatchAsync(command, cancellation.Token);
-            Render(search, tests);
+            Render();
             await run;
         }
         finally
@@ -1206,23 +1173,19 @@ internal sealed class TestRunnerApplication(
             runCancellation = null;
         }
 
-        application.Invoke(() => Render(search, tests));
+        application.Invoke(() => Render());
     }
 
     private void RequestTestSource(
         IApplication application,
-        bool preview,
-        TextField search,
-        ListView rows)
+        bool preview)
     {
-        panelWork.Track(RequestTestSourceAsync(application, preview, search, rows));
+        panelWork.Track(RequestTestSourceAsync(application, preview));
     }
 
     private async Task RequestTestSourceAsync(
         IApplication application,
-        bool preview,
-        TextField search,
-        ListView rows)
+        bool preview)
     {
         await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
         if (session.State.SourceLocation is not { } source)
@@ -1234,7 +1197,7 @@ internal sealed class TestRunnerApplication(
         {
             if (preview)
             {
-                ShowPreview(application, source.Path, source.HighlightLine, search, rows);
+                ShowPreview(application, source.Path, source.HighlightLine);
                 return;
             }
 
@@ -1245,9 +1208,7 @@ internal sealed class TestRunnerApplication(
     private void ShowPreview(
         IApplication application,
         string path,
-        int line,
-        TextField search,
-        ListView rows)
+        int line)
     {
         if (ReadForPreview(application, path) is not { } text)
         {
@@ -1284,7 +1245,7 @@ internal sealed class TestRunnerApplication(
         ScrollToHighlightedLine(code, line);
         ShowSourceHighlight(code, sourceHighlight);
         OverThePanels(() => application.Run(preview));
-        Render(search, rows);
+        Render();
         LeaveForTheEditor(application);
     }
 
@@ -1735,9 +1696,7 @@ internal sealed class TestRunnerApplication(
     /// dozens. The burst answers once the tree has been quiet.
     /// </summary>
     private void ReloadWhenTheWorkingTreeSettles(
-        IApplication application,
-        TextField search,
-        ListView tests)
+        IApplication application)
     {
         if (workspaceWatcher is null)
         {
@@ -1748,7 +1707,7 @@ internal sealed class TestRunnerApplication(
         {
             if (!reloadingWhatIsOnDisk && outsideEdits.SettledAt(sinceWatching.Elapsed))
             {
-                ReloadWhatIsOnDisk(application, search, tests);
+                ReloadWhatIsOnDisk(application);
             }
 
             return true;
@@ -1762,7 +1721,7 @@ internal sealed class TestRunnerApplication(
     /// it. A rebuild set off by opening a panel keeps quiet when it cannot
     /// start: only a reader who pressed for one is owed the reason.
     /// </summary>
-    private void Rebuild(IApplication application, TextField search, ListView rows, bool askedFor)
+    private void Rebuild(IApplication application, bool askedFor)
     {
         var rebuild = new ProjectRebuild(issueSession, session, target);
         var started = rebuild.Start();
@@ -1778,26 +1737,24 @@ internal sealed class TestRunnerApplication(
         }
 
         editsSinceTheBuild.Built();
-        Render(search, rows);
+        Render();
         sinceLoadStarted.Restart();
-        TurnActivityMarker(application, search, rows);
+        TurnActivityMarker(application);
         sinceRebuildStarted.Restart();
         ShowToast(application, RebuildToast.Rebuilding(TimeSpan.Zero));
         TurnRebuildToast(application);
-        panelWork.Track(RebuildAsync(application, rebuild, search, rows, loadCancellation!.Token));
+        panelWork.Track(RebuildAsync(application, rebuild, loadCancellation!.Token));
     }
 
     private async Task RebuildAsync(
         IApplication application,
         ProjectRebuild rebuild,
-        TextField search,
-        ListView rows,
         CancellationToken cancellationToken)
     {
         await rebuild.RunAsync(
             () =>
             {
-                application.Invoke(() => Render(search, rows));
+                application.Invoke(() => Render());
                 return Task.CompletedTask;
             },
             cancellationToken);
@@ -1890,7 +1847,7 @@ internal sealed class TestRunnerApplication(
 
     /// <summary>The issues are left out: an agent saves often enough that a
     /// build per burst would never finish one before the next began.</summary>
-    private void ReloadWhatIsOnDisk(IApplication application, TextField search, ListView tests)
+    private void ReloadWhatIsOnDisk(IApplication application)
     {
         if (reloadingWhatIsOnDisk)
         {
@@ -1898,13 +1855,11 @@ internal sealed class TestRunnerApplication(
         }
 
         reloadingWhatIsOnDisk = true;
-        panelWork.Track(ReloadWhatIsOnDiskAsync(application, search, tests, loadCancellation!.Token));
+        panelWork.Track(ReloadWhatIsOnDiskAsync(application, loadCancellation!.Token));
     }
 
     private async Task ReloadWhatIsOnDiskAsync(
         IApplication application,
-        TextField search,
-        ListView tests,
         CancellationToken cancellationToken)
     {
         try
@@ -1912,7 +1867,7 @@ internal sealed class TestRunnerApplication(
             await PanelReload().FromDiskAsync(
                 () =>
                 {
-                    application.Invoke(() => Render(search, tests));
+                    application.Invoke(() => Render());
                     return Task.CompletedTask;
                 },
                 cancellationToken);
@@ -1923,7 +1878,7 @@ internal sealed class TestRunnerApplication(
         }
     }
 
-    private void RefreshEditedPanels(IApplication application, TextField search, ListView tests)
+    private void RefreshEditedPanels(IApplication application)
     {
         if (!panelsWereEdited)
         {
@@ -1933,23 +1888,21 @@ internal sealed class TestRunnerApplication(
         panelsWereEdited = false;
         outsideEdits.Forget();
         editsSinceTheBuild.Noticed();
-        panelWork.Track(RefreshEditedPanelsAsync(application, search, tests, loadCancellation!.Token));
+        panelWork.Track(RefreshEditedPanelsAsync(application, loadCancellation!.Token));
     }
 
     private Task RefreshEditedPanelsAsync(
         IApplication application,
-        TextField search,
-        ListView tests,
         CancellationToken cancellationToken) =>
         EditorWorkflow().RefreshAsync(
             () =>
             {
-                application.Invoke(() => Render(search, tests));
+                application.Invoke(() => Render());
                 return Task.CompletedTask;
             },
             cancellationToken);
 
-    private void Render(TextField search, ListView tests)
+    private void Render()
     {
         panelSource?.Update(PanelLabels());
         var fileExplorer = ActiveFileSession();
@@ -1964,31 +1917,31 @@ internal sealed class TestRunnerApplication(
         ShowShortcuts();
         if (fileExplorer is not null)
         {
-            RenderFiles(search, tests, fileExplorer);
+            RenderFiles(fileExplorer);
             return;
         }
 
         if (shell.State.ActivePanel == PanelKind.Changes)
         {
-            RenderChanges(search, tests);
+            RenderChanges();
             return;
         }
 
         if (shell.State.ActivePanel == PanelKind.Issues)
         {
-            RenderIssues(search, tests);
+            RenderIssues();
             return;
         }
 
         if (shell.State.ActivePanel == PanelKind.Comments)
         {
-            RenderComments(search, tests);
+            RenderComments();
             return;
         }
 
         var snapshot = TestPanelSnapshot.From(session.State, target);
-        tests.Title = $"Tests — {snapshot.Breadcrumb}";
-        tests.Height = Dim.Fill(RowsBelowTheList);
+        list.Title = $"Tests — {snapshot.Breadcrumb}";
+        list.Height = Dim.Fill(RowsBelowTheList);
         HideSegments();
         ShowFilters(snapshot.Filters);
         ShowEmptyState(snapshot.EmptyMessage);
@@ -1999,10 +1952,10 @@ internal sealed class TestRunnerApplication(
             : $"Search — {snapshot.SearchHitCount} hits";
         search.Text = snapshot.SearchQuery;
         testNodes = snapshot.Tests;
-        ListRows(tests, snapshot.Tests, () => snapshot.TestRows);
+        ListRows(list, snapshot.Tests, () => snapshot.TestRows);
         if (snapshot.Tests.Count > 0)
         {
-            tests.SelectedItem = snapshot.SelectedIndex;
+            list.SelectedItem = snapshot.SelectedIndex;
         }
     }
 
@@ -2046,13 +1999,12 @@ internal sealed class TestRunnerApplication(
         list.SetSource(new ObservableCollection<string>(listed.Select(row => row.Text)));
     }
 
-    private void RenderFiles(TextField search, ListView files, FileExplorerSession fileExplorer)
+    private void RenderFiles(FileExplorerSession fileExplorer)
     {
         var snapshot = FilePanelSnapshot.From(fileExplorer.State, shell.State.ShowsAllFiles);
-        files.Title = shell.State.Panels[shell.State.ActiveIndex];
+        list.Title = shell.State.Panels[shell.State.ActiveIndex];
         RenderRows(
-            search,
-            files,
+            
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
             snapshot.Nodes,
@@ -2063,13 +2015,12 @@ internal sealed class TestRunnerApplication(
             snapshot.EmptyMessage);
     }
 
-    private void RenderChanges(TextField search, ListView files)
+    private void RenderChanges()
     {
         var snapshot = ChangesetPanelSnapshot.From(changesetSession.State);
-        files.Title = "Changes";
+        list.Title = "Changes";
         RenderRows(
-            search,
-            files,
+            
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
             snapshot.Files,
@@ -2080,23 +2031,22 @@ internal sealed class TestRunnerApplication(
             snapshot.EmptyMessage);
     }
 
-    private void RenderIssues(TextField search, ListView rows)
+    private void RenderIssues()
     {
         var snapshot = IssuePanelSnapshot.From(issueSession.State);
-        var layout = IssuePanelLayout.From(snapshot, rows.Viewport.Width);
-        rows.Title = "Issues";
-        RenderRows(search, rows, snapshot.SearchQuery, snapshot.Issues.Count, layout,
+        var layout = IssuePanelLayout.From(snapshot, list.Viewport.Width);
+        list.Title = "Issues";
+        RenderRows(snapshot.SearchQuery, snapshot.Issues.Count, layout,
             () => [.. layout.Rows.Select(row => (row.Text, row.Tone))], layout.SelectedRowIndex,
             snapshot.StatusSegments, snapshot.Filters, snapshot.EmptyMessage);
     }
 
-    private void RenderComments(TextField search, ListView files)
+    private void RenderComments()
     {
         var snapshot = CommentPanelSnapshot.From(commentSession.State);
-        files.Title = "Comments";
+        list.Title = "Comments";
         RenderRows(
-            search,
-            files,
+            
             snapshot.SearchQuery,
             snapshot.SearchHitCount,
             snapshot.Comments,
@@ -2108,8 +2058,6 @@ internal sealed class TestRunnerApplication(
     }
 
     private void RenderRows(
-        TextField search,
-        ListView files,
         string searchQuery,
         int searchHitCount,
         object content,
@@ -2121,15 +2069,15 @@ internal sealed class TestRunnerApplication(
     {
         search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
         search.Text = searchQuery;
-        ListTonedRows(files, content, rows);
-        files.Height = Dim.Fill(RowsBelowTheList);
+        ListTonedRows(list, content, rows);
+        list.Height = Dim.Fill(RowsBelowTheList);
         testStatus!.Visible = false;
         ShowSegments(segments);
         ShowFilters(filters);
         ShowEmptyState(emptyMessage);
         if (rowTones.Count > 0)
         {
-            files.SelectedItem = selectedIndex;
+            list.SelectedItem = selectedIndex;
         }
     }
 
@@ -2204,14 +2152,14 @@ internal sealed class TestRunnerApplication(
     {
         if (shell.State.ActivePanel == PanelKind.Tests)
         {
-            ColorTestRow(tree, args);
+            ColorTestRow(args);
             return;
         }
 
-        ColorFileRow(tree, args);
+        ColorFileRow(args);
     }
 
-    private void ColorFileRow(ListView files, ListViewRowEventArgs args)
+    private void ColorFileRow(ListViewRowEventArgs args)
     {
         if (args.Row >= rowTones.Count)
         {
@@ -2220,20 +2168,20 @@ internal sealed class TestRunnerApplication(
 
         args.RowAttribute = FileRowAppearance.For(
             rowTones[args.Row],
-            files.IsSelectedOrMarked(args.Row),
-            files.GetAttributeForRole(VisualRole.Normal),
-            files.GetAttributeForRole(VisualRole.Focus));
+            list.IsSelectedOrMarked(args.Row),
+            list.GetAttributeForRole(VisualRole.Normal),
+            list.GetAttributeForRole(VisualRole.Focus));
     }
 
-    private void ColorTestRow(ListView tests, ListViewRowEventArgs args)
+    private void ColorTestRow(ListViewRowEventArgs args)
     {
-        if (args.Row >= testNodes.Count || tests.IsSelectedOrMarked(args.Row))
+        if (args.Row >= testNodes.Count || list.IsSelectedOrMarked(args.Row))
         {
             return;
         }
 
         var node = testNodes[args.Row];
-        SetRowForeground(tests, args, TestRowAppearance.ForegroundFor(node.Outcome, node.Update));
+        SetRowForeground(list, args, TestRowAppearance.ForegroundFor(node.Outcome, node.Update));
     }
 
     private static void SetRowForeground(
