@@ -10,6 +10,7 @@ public abstract record FilePanelAction
     public sealed record OpenFile(string Path) : FilePanelAction;
     public sealed record PreviewFile(string Path) : FilePanelAction;
     public sealed record ToggleFilter(ExplorerFilter Filter) : FilePanelAction;
+    public sealed record ToggleAllFiles : FilePanelAction;
 }
 
 public static class FilePanelKeyBindings
@@ -27,6 +28,11 @@ public static class FilePanelKeyBindings
         if (FilterKeyBindings.FilterFor(key) is { } filter)
         {
             return new FilePanelAction.ToggleFilter(filter);
+        }
+
+        if (Is(key, KeyCode.D2))
+        {
+            return new FilePanelAction.ToggleAllFiles();
         }
 
         if (selected is null || selected.Kind != FileNodeKind.File)

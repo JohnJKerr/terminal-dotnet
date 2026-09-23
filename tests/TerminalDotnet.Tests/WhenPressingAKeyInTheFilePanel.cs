@@ -24,6 +24,16 @@ public sealed class WhenPressingAKeyInTheFilePanel
     }
 
     [Fact]
+    public void Pressing_2_toggles_every_file()
+    {
+        // Act
+        var action = FilePanelKeyBindings.ActionFor(new Key(KeyCode.D2), selected: null, searchActive: false);
+
+        // Assert
+        Assert.Equal(new FilePanelAction.ToggleAllFiles(), action);
+    }
+
+    [Fact]
     public void Pressing_1_toggles_the_filter_while_the_filter_hides_every_file()
     {
         // Act
