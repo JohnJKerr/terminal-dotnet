@@ -83,6 +83,10 @@ internal sealed class TestRunnerApplication(
     /// again only when the selection it follows moves.</summary>
     private PreviewSubject? previewed;
 
+    /// <summary>The file the preview panel is showing, which its keys edit and
+    /// comment on.</summary>
+    private SourceLocation? previewedSource;
+
     /// <summary>The list taking the keys, or the list the preview follows
     /// while the reader is in the preview.</summary>
     private ListView ActiveList => lists[shell.State.PreviewedList].View;
@@ -364,6 +368,7 @@ internal sealed class TestRunnerApplication(
 
         if (shell.State.ActivePanel == PanelKind.Preview)
         {
+            HandlePreviewPanelKey(application, key);
             return;
         }
 
@@ -1889,6 +1894,7 @@ internal sealed class TestRunnerApplication(
         }
 
         previewed = subject;
+        previewedSource = null;
         switch (subject)
         {
             case PreviewSubject.SourceFile file:
@@ -1906,6 +1912,60 @@ internal sealed class TestRunnerApplication(
         }
     }
 
+    /// <summary>The preview reads its own keys: it scrolls what it shows,
+    /// hands it to the editor or a comment, and steps the list it follows.
+    /// </summary>
+    private void HandlePreviewPanelKey(IApplication application, Key key)
+    {
+        var action = PreviewKeyBindings.ActionFor(key, preview.PageHeight);
+        if (action is null || previewedSource is not { } source)
+        {
+            return;
+        }
+
+        key.Handled = true;
+        switch (action)
+        {
+            case PreviewAction.Edit:
+                RequestOpen(application, source.Path, source.HighlightLine);
+                return;
+            case PreviewAction.Comment:
+                CommentOn(application, source.Path);
+                return;
+            case PreviewAction.StepFile step:
+                panelWork.Track(StepPreviewedListAsync(step.Step));
+                return;
+            case PreviewAction.Scroll scroll:
+                preview.Scroll(scroll.Rows);
+                return;
+            case PreviewAction.ScrollToStart:
+                preview.ScrollToStart();
+                return;
+            case PreviewAction.ScrollToEnd:
+                preview.ScrollToEnd();
+                return;
+        }
+    }
+
+    private async Task StepPreviewedListAsync(int step)
+    {
+        var down = step > 0;
+        await (shell.State.PreviewedList switch
+        {
+            PanelKind.Explorer => ExplorerSession().DispatchAsync(
+                down ? new FileExplorerCommand.MoveDown() : new FileExplorerCommand.MoveUp()),
+            PanelKind.Tests => session.DispatchAsync(
+                down ? new ExplorerCommand.MoveDown() : new ExplorerCommand.MoveUp()),
+            PanelKind.Changes => changesetSession.DispatchAsync(
+                down ? new ChangesetCommand.MoveDown() : new ChangesetCommand.MoveUp()),
+            PanelKind.Issues => issueSession.DispatchAsync(
+                down ? new IssueCommand.MoveDown() : new IssueCommand.MoveUp()),
+            _ => commentSession.DispatchAsync(
+                down ? new CommentCommand.MoveDown() : new CommentCommand.MoveUp())
+        });
+        running?.Invoke(Render);
+    }
+
     private PanelStates PanelStatesNow() => new(
         ExplorerSession().State,
         session.State,
@@ -1918,6 +1978,7 @@ internal sealed class TestRunnerApplication(
     private void PreviewSource(SourceLocation source)
     {
         var title = PreviewPanelTitle("Preview", $"{DisplayPathFor(source.Path)}:{source.HighlightLine}");
+        previewedSource = source;
         try
         {
             preview.ShowSource(
@@ -1959,6 +2020,7 @@ internal sealed class TestRunnerApplication(
             }
 
             var snapshot = ChangesetPanelSnapshot.From(changesetSession.State);
+            previewedSource = new SourceLocation(((PreviewSubject.ChangeDiff)subject).Path, 1);
             preview.ShowDiff(PreviewPanelTitle("Diff", snapshot.DiffTitle), snapshot.DiffLines);
         });
     }
