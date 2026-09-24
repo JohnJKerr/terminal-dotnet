@@ -27,6 +27,7 @@ internal sealed class PreviewPanel
     private int highlightedLine = 1;
     private bool highlighting;
     private FileRowTone detailTone;
+    private readonly PanelFrame frame;
 
     public PreviewPanel()
     {
@@ -60,13 +61,17 @@ internal sealed class PreviewPanel
         View = new View
         {
             BorderStyle = LineStyle.Single,
-            Title = PanelTitle.For(PanelKind.Preview, [], "", focused: false),
             CanFocus = true
         };
         View.Add(code, diff, highlight, details);
+        frame = new PanelFrame(View);
+        frame.Show(PanelTitle.Segments(PanelKind.Preview, [], "", focused: false), "");
     }
 
     public View View { get; }
+
+    /// <summary>The title drawn over the preview's frame.</summary>
+    public IEnumerable<View> Overlays => frame.Overlays;
 
     /// <summary>The rows a page of the preview scrolls by.</summary>
     public int PageHeight => ShowingDiff ? diff.Viewport.Height : code.Viewport.Height;
@@ -91,7 +96,7 @@ internal sealed class PreviewPanel
         string detail,
         FileRowTone tone)
     {
-        View.Title = title;
+        frame.Show([new TitleSegment(title, false)], "");
         diff.Visible = false;
         code.Visible = true;
         code.Language = language;
@@ -109,7 +114,7 @@ internal sealed class PreviewPanel
 
     public void ShowDiff(string title, IReadOnlyList<DiffLine> lines)
     {
-        View.Title = title;
+        frame.Show([new TitleSegment(title, false)], "");
         code.Visible = false;
         highlight.Visible = false;
         details.Visible = false;
@@ -142,6 +147,7 @@ internal sealed class PreviewPanel
         View.Y = area.Y;
         View.Width = area.Width;
         View.Height = area.Height;
+        frame.Place(area);
     }
 
     private void ShowHighlight()

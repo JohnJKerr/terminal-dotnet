@@ -369,11 +369,13 @@ internal sealed class TestRunnerApplication(
         foreach (var panel in Enum.GetValues<PanelKind>().Where(panel => panel != PanelKind.Preview))
         {
             lists[panel] = new ListPanel();
-            shown.Add(lists[panel].View, lists[panel].Footer);
+            shown.Add(lists[panel].View);
+            shown.Add([.. lists[panel].Overlays]);
         }
 
         preview = new PreviewPanel();
         shown.Add(preview.View);
+        shown.Add([.. preview.Overlays]);
         shown.ViewportChanged += (_, _) => ArrangePanels();
         return shown;
     }
@@ -1761,7 +1763,7 @@ internal sealed class TestRunnerApplication(
     {
         var active = shell.State.ActivePanel == panel;
         lists[panel].Show(
-            PanelTitle.For(panel, filters, searchQuery, active),
+            PanelTitle.Segments(panel, filters, searchQuery, active),
             PanelTitle.Footer(position.Selected, position.Count),
             content,
             rows,

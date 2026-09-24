@@ -24,7 +24,7 @@ internal sealed class ListPanel
     private object? listed;
     private string listedMessage = "";
     private IReadOnlyList<Color?> foregrounds = [];
-    private PanelArea area = new(0, 0, 0, 0);
+    private readonly PanelFrame frame;
 
     public ListPanel()
     {
@@ -35,31 +35,27 @@ internal sealed class ListPanel
             KeystrokeNavigator = null
         };
         View.RowRender += (_, args) => ColorRow(args);
-        Footer = new Label { Height = 1, HotKeySpecifier = new System.Text.Rune(0xFFFF) };
+        frame = new PanelFrame(View);
     }
 
     public ListView View { get; }
 
-    /// <summary>Where the selection stands, drawn over the bottom edge of the
-    /// frame. It sits beside the list rather than in it, because a list draws
-    /// nothing on its own border.</summary>
-    public Label Footer { get; }
+    /// <summary>The title and footer drawn over the list's frame.</summary>
+    public IEnumerable<View> Overlays => frame.Overlays;
 
     /// <summary>A panel with nothing to list says why in place of its rows,
     /// and has no row to select. A message such as the discovery marker moves
     /// while the content stays the same, so either one changing lists again.
     /// </summary>
     public void Show(
-        string title,
+        IReadOnlyList<TitleSegment> title,
         string footer,
         object content,
         Func<IReadOnlyList<ListRow>> rows,
         int selectedIndex,
         string emptyMessage)
     {
-        View.Title = title;
-        Footer.Text = footer;
-        PlaceFooter();
+        frame.Show(title, footer);
         if (!ReferenceEquals(listed, content) || listedMessage != emptyMessage)
         {
             listed = content;
@@ -73,22 +69,13 @@ internal sealed class ListPanel
         }
     }
 
-    public void Place(PanelArea placed)
+    public void Place(PanelArea area)
     {
-        area = placed;
         View.X = area.X;
         View.Y = area.Y;
         View.Width = area.Width;
         View.Height = area.Height;
-        PlaceFooter();
-    }
-
-    private void PlaceFooter()
-    {
-        var width = Footer.Text.Length;
-        Footer.Width = width;
-        Footer.X = Math.Max(area.X, area.X + area.Width - width - 2);
-        Footer.Y = area.Y + area.Height - 1;
+        frame.Place(area);
     }
 
     private static IReadOnlyList<ListRow> Shown(IReadOnlyList<ListRow> rows, string emptyMessage) =>
