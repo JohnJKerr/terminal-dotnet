@@ -38,13 +38,33 @@ public sealed class WhenPressingAKeyInTheShell
     }
 
     [Fact]
-    public void Pressing_the_left_arrow_leaves_the_key_to_the_panel()
+    public void Pressing_the_left_arrow_keeps_the_focus_on_the_panel()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.CursorLeft));
 
         // Assert
-        Assert.Null(action);
+        Assert.Equal(new ShellAction.HoldFocus(), action);
+    }
+
+    [Fact]
+    public void Pressing_the_right_arrow_keeps_the_focus_on_the_panel()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.CursorRight));
+
+        // Assert
+        Assert.Equal(new ShellAction.HoldFocus(), action);
+    }
+
+    [Fact]
+    public void Pressing_the_left_arrow_in_the_search_moves_through_the_text()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.CursorLeft), searchFocused: true);
+
+        // Assert
+        Assert.Equal(new ShellAction.TypeIntoSearch(), action);
     }
 
     [Fact]

@@ -19,6 +19,11 @@ public abstract record ShellAction
     /// <summary>Escape with nothing left to close. It is taken so that it
     /// cannot reach the terminal framework, which would quit on it.</summary>
     public sealed record Dismiss : ShellAction;
+
+    /// <summary>A sideways arrow. Panels are reached by number and Tab, so
+    /// the arrows are kept from the terminal framework, which would otherwise
+    /// move the focus behind the shell's back.</summary>
+    public sealed record HoldFocus : ShellAction;
 }
 
 public static class ShellKeyBindings
@@ -64,6 +69,11 @@ public static class ShellKeyBindings
         if (Is(key, KeyCode.Q))
         {
             return new ShellAction.Quit();
+        }
+
+        if (Is(key, KeyCode.CursorLeft) || Is(key, KeyCode.CursorRight))
+        {
+            return new ShellAction.HoldFocus();
         }
 
         return Is(key, (KeyCode)'/') ? new ShellAction.FocusSearch() : null;

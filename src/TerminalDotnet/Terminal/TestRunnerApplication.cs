@@ -155,7 +155,10 @@ internal sealed class TestRunnerApplication(
             Render();
         };
         application.Keyboard.KeyDown += (_, key) =>
+        {
             HandleKey(application, key);
+            HoldTheFocus(key);
+        };
         Render();
         sincePanelsAppeared.Restart();
         ActiveList.SetFocus();
@@ -394,6 +397,20 @@ internal sealed class TestRunnerApplication(
         HandleTestKey(application, key);
     }
 
+    /// <summary>An arrow a panel had no use for, such as ↓ on its
+    /// last row, would carry the focus into the panel beside it without the
+    /// shell knowing. Panels are left only by number or Tab.</summary>
+    private void HoldTheFocus(Key key)
+    {
+        if (key.Handled || openDialogs > 0 || search.HasFocus)
+        {
+            return;
+        }
+
+        key.Handled = key.NoShift.KeyCode is
+            KeyCode.CursorUp or KeyCode.CursorDown or KeyCode.CursorLeft or KeyCode.CursorRight;
+    }
+
     private void HandleShellAction(
         IApplication application,
         ShellAction action,
@@ -439,6 +456,7 @@ internal sealed class TestRunnerApplication(
                 Rebuild(application, askedFor: true);
                 return;
             case ShellAction.Dismiss:
+            case ShellAction.HoldFocus:
                 return;
             case ShellAction.Quit:
                 QuitUnlessNotesWouldBeLost(application);
