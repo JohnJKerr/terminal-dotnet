@@ -80,7 +80,8 @@ public sealed class TestExplorerSession(
             Status = ExplorerStatus.Ready,
             VisibleNodes = nodes,
             SelectedIndex = RowFor(standingOn, nodes),
-            Message = $"Ready — {tests.Count} tests discovered"
+            Message = $"Ready — {tests.Count} tests discovered",
+            DiscoveredTestCount = tests.Count
         };
     }
 
