@@ -871,12 +871,6 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (action is CommentAction.PreviewFile)
-        {
-            OpenPanel(application, PanelKind.Preview);
-            return;
-        }
-
         if (action is CommentAction.SaveComments)
         {
             SaveComments(application);

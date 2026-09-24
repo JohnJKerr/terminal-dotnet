@@ -246,6 +246,16 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_leaves_previewing_out_of_the_comments()
+    {
+        // Act
+        var comments = CommandMenu.Sections().Single(section => section.Title == "Comments");
+
+        // Assert
+        Assert.DoesNotContain(comments.Entries, entry => entry.Keys == "p");
+    }
+
+    [Fact]
     public void It_lists_every_file_under_the_explorer()
     {
         // Act
