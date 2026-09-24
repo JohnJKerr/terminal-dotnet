@@ -1083,8 +1083,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        panelWork.Track(commentSession.DispatchAsync(
-            new CommentCommand.Add(path, displayPath, written)));
+        panelWork.Track(DispatchCommentAsync(new CommentCommand.Add(path, displayPath, written)));
     }
 
     /// <summary>Comments read against the tree the app was launched in, the
