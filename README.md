@@ -171,8 +171,10 @@ Each panel shows a spinner while it loads, and a panel with nothing to list
 says so in place of its rows.
 
 Move between panels with the number in each panel's title, `0` to `5`, or step
-through them with `Tab` and `Shift+Tab`. Capital letters toggle the focused
-panel's filters, which are named in its title. `/` searches the focused panel,
+through them with `Tab` and `Shift+Tab`; the arrow keys stay within a panel.
+Capital letters toggle the focused panel's filters, which are listed beside the
+search box, with the one in use highlighted and marked `●` in the panel's
+title. `/` searches the focused panel,
 and `?` lists every command.
 
 ## Panels
@@ -189,7 +191,7 @@ reports as new are green and edited files are blue.
   from, whether or not a project claims it: scripts, docs, workflows and
   configuration.
 - `U` (**Updated**) keeps only the files git reports as changed.
-- `Enter` or `e` edits the file, and `p` moves into the preview.
+- `Enter` or `e` edits the file.
 
 ### Tests
 
@@ -208,6 +210,8 @@ Panel `2`. The discovered tests, grouped by project, class and test.
 - **Output.** `o` shows the captured output of the run.
 - **Filters.** `U` updated, `F` failing, `P` passing, `L` last run and `N` not
   run.
+- **Summary.** After a run, the status line counts the failed, passed and
+  skipped tests beside the total discovered.
 
 ### Changes
 
@@ -216,7 +220,8 @@ Panel `2`. The discovered tests, grouped by project, class and test.
 
 Panel `3`. The files git reports as added, modified or deleted beneath the
 launch directory. The preview shows the selected file's diff.
-- `Enter`, `d` or `p` moves into the preview to read the diff.
+- `p` previews the file as it now stands instead, and `Enter` or `d` returns
+  to the diff.
 - `e` edits the file.
 - `r` restores a deleted file. Only the file you selected is restored, even
   when its name looks like a glob.
@@ -310,10 +315,10 @@ you were in, or the diff of a change.
 
 | Panel | Keys |
 | --- | --- |
-| All lists | `↑`/`k` up, `↓`/`j` down, `p` go to the preview |
+| All lists | `↑`/`k` up, `↓`/`j` down |
 | Explorer | `Space`/`Enter` fold a folder, `z` fold all, `Enter`/`e` edit, `A` all files, `U` updated |
 | Tests | `Space` fold a suite, `z` fold all, `Enter`/`r` run, `l` rerun last, `u` rerun failures, `f` next failure, `c` cancel, `o` output, `e` edit, `U`/`F`/`P`/`L`/`N` filters |
-| Changes | `Enter`/`d` read the diff, `e` edit, `r` restore deleted |
+| Changes | `Enter`/`d` preview the diff, `p` preview the file, `e` edit, `r` restore deleted |
 | Issues | `Enter`/`e` edit, `y` copy, `X` errors, `W` warnings, `F` flags |
 | Comments | `Enter`/`v` read, `e` edit, `d` delete, `y` copy all, `w` save all, `x` clear all |
 | Preview | `PgUp`/`PgDn` page, `Home`/`End` ends, `n`/`N` next/previous row, `e` edit, `c` comment |
@@ -419,9 +424,8 @@ cd samples/TerminalDotnet.DemoTests
 EDITOR=nvim dotnet run --project ../../src/TerminalDotnet/TerminalDotnet.csproj
 ```
 
-Run `Opening a failure in the configured editor`, wait for the `Source:`
-excerpt, then press `p`. The preview opens `FailureDemoTests.cs` at the failing
-assertion.
+Run `Opening a failure in the configured editor`. With the test selected, the
+preview shows `FailureDemoTests.cs` at the failing assertion.
 
 ### Versioning and releases
 
