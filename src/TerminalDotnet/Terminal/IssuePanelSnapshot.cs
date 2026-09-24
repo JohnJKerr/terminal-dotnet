@@ -4,16 +4,26 @@ namespace TerminalDotnet.Terminal;
 
 public sealed record IssuePanelRow(string Text, FileRowTone Tone);
 
-public sealed record IssuePanelLayout(IReadOnlyList<IssuePanelRow> Rows, int SelectedRowIndex)
+public sealed record IssuePanelLayout(
+    IReadOnlyList<IssuePanelRow> Rows,
+    int SelectedRowIndex,
+    IReadOnlyList<int> FirstRows)
 {
+    /// <summary>The issue a row belongs to. The gap beneath an issue counts
+    /// as part of it, so a click there lands on the issue above.</summary>
+    public int IssueAt(int row) => Math.Max(0, FirstRows.Count(first => first <= row) - 1);
+
     public static IssuePanelLayout From(IssuePanelSnapshot snapshot, int width)
     {
         var displayed = snapshot.Issues.Select(issue => LinesFor(issue, Math.Max(1, width))).ToArray();
         var rows = displayed.SelectMany((lines, index) => index == displayed.Length - 1
             ? lines
             : [.. lines, new IssuePanelRow("", FileRowTone.Neutral)]).ToArray();
-        var selected = displayed.Take(snapshot.SelectedIndex).Sum(lines => lines.Count + 1);
-        return new IssuePanelLayout(rows, selected);
+        var firstRows = displayed
+            .Select((_, index) => displayed.Take(index).Sum(lines => lines.Count + 1))
+            .ToArray();
+        var selected = snapshot.SelectedIndex < firstRows.Length ? firstRows[snapshot.SelectedIndex] : 0;
+        return new IssuePanelLayout(rows, selected, firstRows);
     }
 
     private static IReadOnlyList<IssuePanelRow> LinesFor(CompilationIssue issue, int width)
