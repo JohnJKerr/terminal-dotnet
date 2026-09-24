@@ -166,7 +166,7 @@ internal sealed class TestRunnerApplication(
             HoldTheFocus(key);
         };
         Render();
-        sincePanelsAppeared.Restart();
+        SettleOnceTheFirstFrameIsDrawn(application);
         ActiveList.SetFocus();
         FillPanels(application);
         RefreshEditedPanels(application);
@@ -175,6 +175,28 @@ internal sealed class TestRunnerApplication(
         application.Run(window);
         ShutDown();
         return openSourceRequested;
+    }
+
+    /// <summary>
+    /// The terminal's replies to the driver's start-up queries arrive once
+    /// the first frame is on screen, and the tiled panels take long enough to
+    /// draw that a clock started before it would have run out by then. The
+    /// panels count as having appeared when that frame is drawn.
+    /// </summary>
+    private void SettleOnceTheFirstFrameIsDrawn(IApplication application)
+    {
+        sincePanelsAppeared.Restart();
+        var drawn = false;
+        application.LayoutAndDrawComplete += (_, _) =>
+        {
+            if (drawn)
+            {
+                return;
+            }
+
+            drawn = true;
+            sincePanelsAppeared.Restart();
+        };
     }
 
     /// <summary>
