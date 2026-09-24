@@ -173,8 +173,8 @@ says so in place of its rows.
 Move between panels with the number in each panel's title, `0` to `5`, or step
 through them with `Tab` and `Shift+Tab`; the arrow keys stay within a panel.
 Capital letters toggle the focused panel's filters, which are listed beside the
-search box, with the one in use highlighted and marked `●` in the panel's
-title. `/` searches the focused panel,
+search box; the one in use is green there and in the panel's title. The
+focused panel has a green frame, and a click moves to a panel or row too. `/` searches the focused panel,
 and `?` lists every command.
 
 ## Panels
