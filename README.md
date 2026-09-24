@@ -4,7 +4,7 @@ A keyboard-driven terminal workspace for .NET solutions. Browse the source, run
 tests and jump to failures, read compiler errors, review git changes, collect
 `TODO`s and leave notes, all from one screen beside your editor.
 
-<!-- Screenshot: the Tests panel mid-run, with the tree on the left and output on the right -->
+<!-- Screenshot: the whole screen with the Tests panel focused (green frame) after a run with a failure, the failing test selected and its source in the Preview -->
 ![terminal-dotnet](docs/images/overview.png)
 
 Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
@@ -15,6 +15,7 @@ Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
 - [Requirements](#requirements)
 - [Install](#install)
 - [Getting started](#getting-started)
+- [Layout](#layout)
 - [Panels](#panels)
 - [Keys](#keys)
 - [Configuration](#configuration)
@@ -30,17 +31,18 @@ Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
   more of its rows.
 - **Test explorer.** Discovers every test in the solution. Run a test, a class
   or a whole project; rerun the last set or only the failures; step between
-  failures; and open the failing line in a preview or your editor.
+  failures; and read the failing line in the preview or open it in your editor.
 - **Compiler issues.** Collects errors and warnings from `dotnet build`, filters
   them by severity, and opens or copies each one.
-- **Git changes.** Lists added, modified and deleted files, shows and steps
-  through their diffs, and restores deleted files.
+- **Git changes.** Lists added, modified and deleted files, previews each
+  one's diff or the file as it now stands, and restores deleted files.
 - **Change-aware filters.** One key narrows the Explorer to the files git
   reports as changed, and the Tests panel to the suites whose source changed,
   so `Enter` on the project runs only those.
 - **Flags.** Gathers `TODO`, `FIXME`, `HACK` and similar markers from every
   tracked file and lists them among the compiler's issues.
-- **Comments.** Leave a note against any file while reading it, then copy every
+- **Comments.** Leave a note against the file in the preview, whether it shows
+  the source, a diff or a flag, then copy every
   note to the clipboard or save them to a Markdown file. Handy for handing
   review feedback to a teammate or a coding agent.
 - **Live preview with syntax highlighting.** The Preview follows the selection
@@ -170,18 +172,47 @@ On launch the panels fill in the background:
 Each panel shows a spinner while it loads, and a panel with nothing to list
 says so in place of its rows.
 
-Move between panels with the number in each panel's title, `0` to `5`, or step
-through them with `Tab` and `Shift+Tab`; the arrow keys stay within a panel.
-Capital letters toggle the focused panel's filters, which are listed beside the
-search box; the one in use is green there and in the panel's title. The
-focused panel has a green frame, and a click moves to a panel or row too. `/` searches the focused panel,
-and `?` lists every command.
+## Layout
+
+Every panel is on the screen at once:
+
+```text
+┌─ [1]─Explorer ──────┐┌─ [0]─Preview ─ Order.cs:12 ──────────────────┐
+│                     ││                                              │
+└──────────── 3 of 42 ┘│                                              │
+┌─ [2]─Tests ─────────┐│                                              │
+│                     ││                                              │
+│                     │└──────────────────────────────────────────────┘
+└──────────── 1 of 16 ┘┌─ [4]─Issues ─────────┐┌─ [5]─Comments ───────┐
+┌─ [3]─Changes ───────┐│                      ││                      │
+└───────────── 0 of 0 ┘└───────────── 1 of 16 ┘└────────────── 0 of 0 ┘
+ Search                  X Errors  W Warnings  F Flags
+ 0 Errors  2 Warnings  14 Flags
+ Tab pane  / search  ↑/k up  ↓/j down  Enter/e edit  y copy  ? commands
+```
+
+- **Panels.** The Explorer, Tests and Changes are stacked on the left. The one
+  you were last in stretches to show more of its rows. The Preview takes the
+  rest of the width, over the Issues and the Comments.
+- **Moving.** Each title starts with the number that reaches the panel, `0`
+  to `5`, and `Tab` and `Shift+Tab` step through them in the order they sit on
+  screen. A click moves to a panel, or to a row within one. The arrow keys
+  stay within the panel.
+- **Focus.** The panel taking the keys has a green frame, and its title spells
+  out its filters. The others show only the filters' letters.
+- **Filters.** Capital letters toggle the focused panel's filters, one at a
+  time. The filter in use is green, both in the panel's title and in the list
+  of the focused panel's filters beside the search box.
+- **Bottom rows.** The search box and the filters, then the focused panel's
+  counts or run status, then the keys that apply to the focused panel and its
+  selection. `/` searches the focused panel, and `?` lists every command.
+- **Footers.** The bottom edge of each list says where its selection stands.
 
 ## Panels
 
 ### Explorer
 
-<!-- Screenshot: Explorer panel with the Updated filter on -->
+<!-- Screenshot: the Explorer focused with the U (Updated) filter on, showing the green filter in its title, with a changed file selected in the Preview -->
 ![Explorer panel](docs/images/explorer.png)
 
 Panel `1`. The solution's projects as a tree of folders and source files,
@@ -191,11 +222,12 @@ reports as new are green and edited files are blue.
   from, whether or not a project claims it: scripts, docs, workflows and
   configuration.
 - `U` (**Updated**) keeps only the files git reports as changed.
-- `Enter` or `e` edits the file.
+- `Space` or `Enter` folds a folder, and `z` folds or unfolds them all.
+- `Enter` or `e` edits the selected file. The Preview shows it as you move.
 
 ### Tests
 
-<!-- Screenshot: Tests panel with a failed test selected and its output below -->
+<!-- Screenshot: the Tests panel focused and expanded after a run, a failed test selected, the status line showing the Failed, Passed, Skipped and Total counts, and the failing line highlighted in the Preview -->
 ![Tests panel](docs/images/tests.png)
 
 Panel `2`. The discovered tests, grouped by project, class and test.
@@ -205,8 +237,8 @@ Panel `2`. The discovered tests, grouped by project, class and test.
 - **Outcomes.** Green passed, red failed, yellow skipped, cyan running.
   Before a test runs it takes the git colour of its source: green for a new
   suite, blue for an edited one.
-- **Failures.** `f` selects the next failed test, and the preview shows its
-  source. `e` opens it in your editor.
+- **Failures.** `f` selects the next failed test, and the Preview shows its
+  source with the failing line picked out. `e` opens it in your editor.
 - **Output.** `o` shows the captured output of the run.
 - **Filters.** `U` updated, `F` failing, `P` passing, `L` last run and `N` not
   run.
@@ -215,7 +247,7 @@ Panel `2`. The discovered tests, grouped by project, class and test.
 
 ### Changes
 
-<!-- Screenshot: Changes panel with a diff open -->
+<!-- Screenshot: the Changes panel focused and expanded with a modified file selected and its coloured diff in the Preview -->
 ![Changes panel](docs/images/changes.png)
 
 Panel `3`. The files git reports as added, modified or deleted beneath the
@@ -228,7 +260,7 @@ launch directory. The preview shows the selected file's diff.
 
 ### Issues
 
-<!-- Screenshot: Issues panel with an error selected and its preview open -->
+<!-- Screenshot: the Issues panel focused with a warning selected, the source line highlighted in the Preview and the compiler's message beneath it -->
 ![Issues panel](docs/images/issues.png)
 
 Panel `4`. Compiler errors (red) and warnings (yellow) from
@@ -245,14 +277,15 @@ The flags recognised are `TODO`, `FIXME`, `REVIEW`, `QUESTION`, `NOTE`,
 
 ### Comments
 
-<!-- Screenshot: preview with the comment box open -->
-![Comments](docs/images/comments.png)
-
-Press `c` in the preview to leave a note against the file it shows; each file
-carries one note.
-
-<!-- Screenshot: writing a note against a file from the preview -->
+<!-- Screenshot: the comment box open over the Preview, with a note being written against the previewed file -->
 ![Leaving a comment](docs/images/add-comment.png)
+
+Press `c` in the Preview to leave a note against the file it shows, whether
+it is showing the source, a diff or the line a flag marks. Each file carries
+one note.
+
+<!-- Screenshot: the Comments panel focused with two notes listed and the first note's file in the Preview -->
+![Comments](docs/images/comments.png)
 
 Panel `5` lists every file with a note, and search matches the file or the
 note's text.
@@ -268,11 +301,13 @@ not copied or saved asks first.
 
 ### Preview
 
-<!-- Screenshot: syntax-highlighted preview -->
+<!-- Screenshot: the Preview focused (green frame) showing a syntax-highlighted C# file, with its path and line in the title -->
 ![Preview](docs/images/preview.png)
 
 Panel `0`. A syntax-highlighted view of whatever is selected in the last list
-you were in, or the diff of a change.
+you were in, or the diff of a change. The title names the file and line. For
+an issue or a test, the reported line is highlighted, and an issue's full
+message sits beneath the source.
 - `↑`/`k`, `↓`/`j`, `PgUp`/`PgDn`, `Home` and `End` scroll through it.
 - `n` and `N` move the list it follows to its next and previous row.
 - `e` hands the file to your editor at the same line.
@@ -307,6 +342,7 @@ you were in, or the diff of a change.
 | `Enter` (in search) | Leave the search, keeping it |
 | `Esc` | Close what is open, or clear the search |
 | Capital letters | Toggle the focused panel's filters, as named in its title |
+| Click | Go to a panel, or select a row in it |
 | `Ctrl+R` | Refresh every panel and rebuild the project |
 | `?` | Show every command |
 | `q` | Quit, asking first if comments would be lost |
