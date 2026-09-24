@@ -256,6 +256,16 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_lists_previewing_the_file_under_the_changes()
+    {
+        // Act
+        var changes = CommandMenu.Sections().Single(section => section.Title == "Changes");
+
+        // Assert
+        Assert.Contains(changes.Entries, entry => entry.Keys == "p" && entry.Description == "preview the file instead of the diff");
+    }
+
+    [Fact]
     public void It_lists_every_file_under_the_explorer()
     {
         // Act

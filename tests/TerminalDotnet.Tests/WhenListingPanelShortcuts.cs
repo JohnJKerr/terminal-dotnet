@@ -217,7 +217,7 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
-    public void It_offers_diff_edit_and_preview_for_a_changed_file()
+    public void It_offers_the_diff_the_file_and_editing_for_a_changed_file()
     {
         // Arrange
         var changed = new ChangedFile("/repo/src/Order.cs", "Order.cs", ChangeKind.Modified);
@@ -232,7 +232,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "e edit", "p preview", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "p file", "e edit", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 

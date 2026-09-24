@@ -754,7 +754,8 @@ internal sealed class TestRunnerApplication(
         if (action is ChangesetAction.ShowDiff)
         {
             key.Handled = true;
-            OpenPanel(application, PanelKind.Preview);
+            shell.PreviewChangeDiff();
+            Render();
             return;
         }
 
@@ -768,7 +769,8 @@ internal sealed class TestRunnerApplication(
         if (action is ChangesetAction.PreviewFile)
         {
             key.Handled = true;
-            OpenPanel(application, PanelKind.Preview);
+            shell.PreviewChangedFile();
+            Render();
             return;
         }
 
@@ -1459,7 +1461,10 @@ internal sealed class TestRunnerApplication(
 
     private void FollowTheSelection()
     {
-        var subject = PreviewSubject.For(shell.State.PreviewedList, PanelStatesNow());
+        var subject = PreviewSubject.For(
+            shell.State.PreviewedList,
+            PanelStatesNow(),
+            shell.State.PreviewsChangedFile);
         if (subject == previewed)
         {
             return;

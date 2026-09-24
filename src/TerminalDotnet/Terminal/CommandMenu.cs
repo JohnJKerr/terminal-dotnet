@@ -99,9 +99,9 @@ public static class CommandMenu
     private static readonly IReadOnlyList<CommandMenuEntry> Changes =
     [
         .. Navigation,
-        new("Enter/d", "show the diff"),
+        new("Enter/d", "preview the diff"),
+        new("p", "preview the file instead of the diff"),
         new("e", "edit the file"),
-        new("p", "preview the file"),
         new("r", "restore a deleted file")
     ];
 

@@ -84,7 +84,7 @@ public static class PanelShortcuts
         IReadOnlyList<string> navigation = [.. Navigation(), "Enter/d diff"];
         return state.Files[state.SelectedIndex].Kind == ChangeKind.Deleted
             ? [.. navigation, "r restore"]
-            : [.. navigation, "e edit", "p preview"];
+            : [.. navigation, "p file", "e edit"];
     }
 
     private static IReadOnlyList<string> TestShortcuts(ExplorerState state) =>
