@@ -110,7 +110,6 @@ public static class PanelShortcuts
         }
 
         shortcuts.Add("e edit");
-        shortcuts.Add("p preview");
         return shortcuts;
     }
 

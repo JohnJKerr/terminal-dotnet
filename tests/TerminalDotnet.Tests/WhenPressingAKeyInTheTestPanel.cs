@@ -100,13 +100,13 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_p_previews_the_source()
+    public void Pressing_p_leaves_the_preview_to_follow_the_selection()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.P));
 
         // Assert
-        Assert.Equal(new TestPanelAction.PreviewSource(), action);
+        Assert.Null(action);
     }
 
     [Fact]

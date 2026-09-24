@@ -236,6 +236,16 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_leaves_previewing_out_of_the_tests()
+    {
+        // Act
+        var tests = CommandMenu.Sections().Single(section => section.Title == "Tests");
+
+        // Assert
+        Assert.DoesNotContain(tests.Entries, entry => entry.Keys == "p");
+    }
+
+    [Fact]
     public void It_lists_every_file_under_the_explorer()
     {
         // Act

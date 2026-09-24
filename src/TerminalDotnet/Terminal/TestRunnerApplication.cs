@@ -595,9 +595,6 @@ internal sealed class TestRunnerApplication(
             case TestPanelAction.OpenSource:
                 RequestTestSource(application);
                 return;
-            case TestPanelAction.PreviewSource:
-                OpenPanel(application, PanelKind.Preview);
-                return;
             case TestPanelAction.ShowOutput:
                 ShowTestOutput(application);
                 return;

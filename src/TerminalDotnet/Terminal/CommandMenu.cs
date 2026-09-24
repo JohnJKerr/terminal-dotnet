@@ -89,7 +89,6 @@ public static class CommandMenu
         new("c", "cancel the run"),
         new("o", "show the captured output"),
         new("e", "edit the test"),
-        new("p", "preview the test"),
         new("U", "show only updated tests"),
         new("F", "show only failing tests"),
         new("P", "show only passing tests"),

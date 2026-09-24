@@ -82,6 +82,16 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
+    public void It_leaves_previewing_out_of_the_tests()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), TestState(), EmptyComments());
+
+        // Assert
+        Assert.DoesNotContain("p preview", shortcuts);
+    }
+
+    [Fact]
     public void It_hides_test_output_before_tests_have_run()
     {
         // Arrange
