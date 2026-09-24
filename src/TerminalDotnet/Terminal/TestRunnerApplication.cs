@@ -371,14 +371,52 @@ internal sealed class TestRunnerApplication(
             lists[panel] = new ListPanel();
             shown.Add(lists[panel].View);
             shown.Add([.. lists[panel].Overlays]);
+            var chosen = panel;
+            lists[panel].RowChosen += row => ChooseRow(chosen, row);
+            lists[panel].View.HasFocusChanged += (_, _) => FollowTheFocus(chosen, lists[chosen].View.HasFocus);
         }
 
         preview = new PreviewPanel();
         shown.Add(preview.View);
         shown.Add([.. preview.Overlays]);
+        preview.View.HasFocusChanged += (_, _) => FollowTheFocus(PanelKind.Preview, preview.View.HasFocus);
         shown.ViewportChanged += (_, _) => ArrangePanels();
         return shown;
     }
+
+    /// <summary>A click gives a panel the focus without a key reaching the
+    /// shell, so the shell follows the focus to wherever it landed.</summary>
+    private void FollowTheFocus(PanelKind panel, bool focused)
+    {
+        if (!focused || openDialogs > 0 || shell.State.ActivePanel == panel || running is not { } application)
+        {
+            return;
+        }
+
+        OpenPanel(application, panel);
+    }
+
+    /// <summary>A row picked with the mouse moves the panel's own selection,
+    /// so the preview and the panel's keys follow it.</summary>
+    private void ChooseRow(PanelKind panel, int row) =>
+        panelWork.Track(ChooseRowAsync(panel, row));
+
+    private async Task ChooseRowAsync(PanelKind panel, int row)
+    {
+        await (panel switch
+        {
+            PanelKind.Explorer => ExplorerSession().DispatchAsync(new FileExplorerCommand.SelectIndex(row)),
+            PanelKind.Tests => session.DispatchAsync(new ExplorerCommand.SelectIndex(row)),
+            PanelKind.Changes => changesetSession.DispatchAsync(new ChangesetCommand.SelectIndex(row)),
+            PanelKind.Issues => issueSession.DispatchAsync(new IssueCommand.SelectIndex(IssueAtRow(row))),
+            _ => commentSession.DispatchAsync(new CommentCommand.SelectIndex(row))
+        });
+        running?.Invoke(Render);
+    }
+
+    private int IssueAtRow(int row) => IssuePanelLayout
+        .From(IssuePanelSnapshot.From(issueSession.State), lists[PanelKind.Issues].View.Viewport.Width)
+        .IssueAt(row);
 
     private void ArrangePanels()
     {

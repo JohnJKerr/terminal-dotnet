@@ -25,6 +25,7 @@ internal sealed class ListPanel
     private string listedMessage = "";
     private IReadOnlyList<Color?> foregrounds = [];
     private readonly PanelFrame frame;
+    private bool showing;
 
     public ListPanel()
     {
@@ -35,8 +36,13 @@ internal sealed class ListPanel
             KeystrokeNavigator = null
         };
         View.RowRender += (_, args) => ColorRow(args);
+        View.ValueChanged += (_, _) => ReportChosenRow();
         frame = new PanelFrame(View);
     }
+
+    /// <summary>A row the reader picked in the list itself, such as with a
+    /// click, rather than one the panel's session moved to.</summary>
+    public event Action<int>? RowChosen;
 
     public ListView View { get; }
 
@@ -56,17 +62,37 @@ internal sealed class ListPanel
         string emptyMessage)
     {
         frame.Show(title, footer);
-        if (!ReferenceEquals(listed, content) || listedMessage != emptyMessage)
+        showing = true;
+        try
         {
-            listed = content;
-            listedMessage = emptyMessage;
-            List(Shown(rows(), emptyMessage));
+            if (!ReferenceEquals(listed, content) || listedMessage != emptyMessage)
+            {
+                listed = content;
+                listedMessage = emptyMessage;
+                List(Shown(rows(), emptyMessage));
+            }
+
+            if (foregrounds.Count > 0 && emptyMessage.Length == 0)
+            {
+                View.SelectedItem = selectedIndex;
+            }
+        }
+        finally
+        {
+            showing = false;
+        }
+    }
+
+    /// <summary>The panel moves the selection itself while it shows its rows,
+    /// and an empty panel's message is not a row to choose.</summary>
+    private void ReportChosenRow()
+    {
+        if (showing || listedMessage.Length > 0 || View.SelectedItem is not { } row)
+        {
+            return;
         }
 
-        if (foregrounds.Count > 0 && emptyMessage.Length == 0)
-        {
-            View.SelectedItem = selectedIndex;
-        }
+        RowChosen?.Invoke(row);
     }
 
     public void Place(PanelArea area)
