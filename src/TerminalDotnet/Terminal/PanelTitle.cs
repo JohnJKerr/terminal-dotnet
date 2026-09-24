@@ -16,13 +16,21 @@ public static class PanelTitle
         " ",
         [
             $"[{PanelKeys.For(panel)}]─{panel}",
-            .. filters.Select(chip => focused || chip.IsActive ? chip.Text : KeyOf(chip)),
+            .. filters.Select(chip => ChipText(chip, focused)),
             .. searchQuery.Length == 0 ? Array.Empty<string>() : [$"─ /{searchQuery}"]
         ]);
 
     public static string Footer(int selectedIndex, int rowCount) => rowCount == 0
         ? "0 of 0"
         : $"{selectedIndex + 1} of {rowCount}";
+
+    /// <summary>A filter in use is marked and named on every panel, so the
+    /// reader can tell what a panel is hiding without moving to it.</summary>
+    private static string ChipText(FilterChip chip, bool focused) => chip.IsActive
+        ? $"{ActiveMark}{chip.Text}"
+        : focused ? chip.Text : KeyOf(chip);
+
+    private const string ActiveMark = "●";
 
     private static string KeyOf(FilterChip chip) => chip.Text.Split(' ')[0];
 }

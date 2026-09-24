@@ -46,7 +46,21 @@ public sealed class WhenTitlingAPanel
             focused: false);
 
         // Assert
-        Assert.Equal("[1]─Explorer A U Updated", title);
+        Assert.Equal("[1]─Explorer A ●U Updated", title);
+    }
+
+    [Fact]
+    public void It_marks_the_filter_in_use_on_the_focused_panel()
+    {
+        // Act
+        var title = PanelTitle.For(
+            PanelKind.Explorer,
+            [new FilterChip("A All files", true), new FilterChip("U Updated", false)],
+            "",
+            focused: true);
+
+        // Assert
+        Assert.Equal("[1]─Explorer ●A All files U Updated", title);
     }
 
     [Fact]
