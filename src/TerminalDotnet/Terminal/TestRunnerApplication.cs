@@ -30,6 +30,8 @@ internal sealed class TestRunnerApplication(
     private const int ContentInset = 1;
     private const int SegmentGap = 2;
     private const int MaxStatusSegments = 4;
+    private const int MaxFilterChips = 5;
+    private const int FilterGap = 2;
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int SearchRow = StatusRow + 1;
     private const int ClearChoice = 0;
@@ -61,6 +63,8 @@ internal sealed class TestRunnerApplication(
 
     private Label? testStatus;
     private IReadOnlyList<Label> segmentLabels = [];
+    private IReadOnlyList<Label> filterLabels = [];
+    private IReadOnlyList<FilterChip> filterChips = [];
     private IReadOnlyList<FileStatusSegment> statusSegments = [];
     private Label? shortcuts;
     private IReadOnlyList<string> shortcutSegments = [];
@@ -142,11 +146,13 @@ internal sealed class TestRunnerApplication(
             args.Handled = true;
         };
         segmentLabels = StatusSegmentLabels();
+        filterLabels = FilterLabels();
         shortcuts = Shortcuts();
         shortcuts.ViewportChanged += (_, _) => ShowShortcuts();
 
         window.Add(workspace, search, testStatus, shortcuts);
         window.Add([.. segmentLabels]);
+        window.Add([.. filterLabels]);
         toast = Toast();
         window.Add(toast);
         search.ValueChanged += async (_, _) =>
@@ -279,10 +285,52 @@ internal sealed class TestRunnerApplication(
         Title = "Search",
         X = ContentInset,
         Y = Pos.AnchorEnd(SearchRow),
-        Width = Dim.Fill(ContentInset),
+        Width = Dim.Percent(40),
         Height = 1,
         TabStop = TabBehavior.NoStop
     };
+
+    /// <summary>The focused panel's filters sit beside the search, the one in
+    /// use picked out, so what the panel is hiding is always in view.</summary>
+    private IReadOnlyList<Label> FilterLabels() => [.. Enumerable
+        .Range(0, MaxFilterChips)
+        .Select(FilterLabel)];
+
+    private Label FilterLabel(int index)
+    {
+        var label = new Label
+        {
+            Y = Pos.AnchorEnd(SearchRow),
+            Height = 1,
+            Visible = false
+        };
+        label.GettingAttributeForRole += (_, args) =>
+        {
+            args.Result = new global::Terminal.Gui.Drawing.Attribute(
+                FilterAppearance.ForegroundFor(index < filterChips.Count && filterChips[index].IsActive),
+                args.Result?.Background ?? Color.Black);
+            args.Handled = true;
+        };
+        return label;
+    }
+
+    private void ShowFilters(IReadOnlyList<FilterChip> chips)
+    {
+        filterChips = chips;
+        var columns = StatusSegmentLayout.ColumnsFor([.. chips.Select(chip => chip.Text)], 0, FilterGap);
+        foreach (var (label, index) in filterLabels.Select((label, index) => (label, index)))
+        {
+            label.Visible = index < chips.Count;
+            if (!label.Visible)
+            {
+                continue;
+            }
+
+            label.X = Pos.Right(search) + FilterGap + columns[index];
+            label.Width = chips[index].Text.Length;
+            label.Text = chips[index].Text;
+        }
+    }
 
     /// <summary>Every panel is on the screen at once, laid out again whenever
     /// the room they share changes size.</summary>
@@ -1423,6 +1471,11 @@ internal sealed class TestRunnerApplication(
         RenderChanges();
         RenderIssues();
         RenderComments();
+        if (shell.State.ActivePanel == PanelKind.Preview)
+        {
+            ShowFilters([]);
+        }
+
         FollowTheSelection();
     }
 
@@ -1717,6 +1770,7 @@ internal sealed class TestRunnerApplication(
 
         search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
         search.Text = searchQuery;
+        ShowFilters(filters);
     }
 
     /// <summary>Where the selection stands among what the panel lists. The
