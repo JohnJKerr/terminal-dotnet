@@ -802,12 +802,6 @@ internal sealed class TestRunnerApplication(
             RequestOpen(application, edit.Path, edit.Line);
             return;
         }
-        if (action is IssuePanelAction.Preview)
-        {
-            key.Handled = true;
-            OpenPanel(application, PanelKind.Preview);
-            return;
-        }
         var command = action switch
         {
             IssuePanelAction.Copy => new IssueCommand.CopySelected(),

@@ -48,6 +48,19 @@ public sealed class WhenPressingAKeyInTheIssuePanel
         Assert.Null(action);
     }
 
+    [Fact]
+    public void Pressing_p_leaves_the_preview_to_follow_the_selection()
+    {
+        // Arrange
+        var issue = new CompilationIssue("/repo/Order.cs", "Order.cs", 3, 1, "CS0103", "missing", IssueSeverity.Error);
+
+        // Act
+        var action = IssuePanelKeyBindings.ActionFor(new Key(KeyCode.P), issue, searchActive: false);
+
+        // Assert
+        Assert.Null(action);
+    }
+
     private static IssuePanelAction? ActionFor(Key key) =>
         IssuePanelKeyBindings.ActionFor(key, null, searchActive: false);
 }

@@ -308,6 +308,24 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
+    public void It_leaves_previewing_out_of_the_issues()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Issues,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments(),
+            issueState: new IssueState([
+                new CompilationIssue("/repo/Order.cs", "Order.cs", 3, 1, "CS0103", "missing", IssueSeverity.Error)
+            ]));
+
+        // Assert
+        Assert.DoesNotContain("p preview", shortcuts);
+    }
+
+    [Fact]
     public void It_offers_the_flags_filter_in_the_issues()
     {
         // Act

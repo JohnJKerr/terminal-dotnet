@@ -109,7 +109,6 @@ public static class CommandMenu
     [
         .. Navigation,
         new("Enter/e", "edit the issue's file"),
-        new("p", "preview the issue's file"),
         new("y", "copy the issue"),
         new("X", "filter errors"),
         new("W", "filter warnings"),

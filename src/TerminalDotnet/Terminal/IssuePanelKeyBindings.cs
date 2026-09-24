@@ -7,7 +7,6 @@ namespace TerminalDotnet.Terminal;
 public abstract record IssuePanelAction
 {
     public sealed record Edit(string Path, int Line) : IssuePanelAction;
-    public sealed record Preview(string Path, int Line) : IssuePanelAction;
     public sealed record Copy : IssuePanelAction;
     public sealed record Dispatch(IssueCommand Command) : IssuePanelAction;
 }
@@ -22,7 +21,6 @@ public static class IssuePanelKeyBindings
         return key.NoShift.KeyCode switch
         {
             KeyCode.Enter or KeyCode.E when !key.IsShift => new IssuePanelAction.Edit(issue.Path, issue.Line),
-            KeyCode.P when !key.IsShift => new IssuePanelAction.Preview(issue.Path, issue.Line),
             KeyCode.Y when !key.IsShift => new IssuePanelAction.Copy(),
             _ => null
         };
