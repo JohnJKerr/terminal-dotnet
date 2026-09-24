@@ -85,7 +85,7 @@ public sealed class WhenARunFailsAfterAnEarlierRun
         var snapshot = TestPanelSnapshot.From(session.State, "/repo/Shop.sln");
 
         // Assert
-        Assert.Equal("0 Failed, 1 Passed, 0 Skipped", snapshot.StatusLine);
+        Assert.Equal("0 Failed, 1 Passed, 0 Skipped, 1 Total", snapshot.StatusLine);
     }
 
     [Fact]

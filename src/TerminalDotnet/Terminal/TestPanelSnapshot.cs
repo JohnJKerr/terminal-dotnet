@@ -67,7 +67,8 @@ public sealed record TestPanelSnapshot(
         }
 
         var summary = state.LastRun.Summary;
-        return $"{summary.Failed} Failed, {summary.Passed} Passed, {summary.Skipped} Skipped";
+        return $"{summary.Failed} Failed, {summary.Passed} Passed, {summary.Skipped} Skipped, " +
+            $"{state.DiscoveredTestCount} Total";
     }
 
     private static string BreadcrumbFrom(ExplorerState state, string target)
