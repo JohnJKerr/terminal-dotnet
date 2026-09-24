@@ -226,6 +226,16 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_leaves_previewing_out_of_the_explorer()
+    {
+        // Act
+        var explorer = CommandMenu.Sections().Single(section => section.Title == "Explorer");
+
+        // Assert
+        Assert.DoesNotContain(explorer.Entries, entry => entry.Keys == "p");
+    }
+
+    [Fact]
     public void It_lists_every_file_under_the_explorer()
     {
         // Act

@@ -698,13 +698,6 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (action is FilePanelAction.PreviewFile)
-        {
-            key.Handled = true;
-            OpenPanel(application, PanelKind.Preview);
-            return;
-        }
-
         var command = FileCommandFor(key, fileExplorer.State.SearchQuery);
         if (command is null)
         {

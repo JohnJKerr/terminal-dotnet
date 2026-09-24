@@ -24,7 +24,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/e edit", "p preview", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/e edit", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 

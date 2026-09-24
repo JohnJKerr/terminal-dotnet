@@ -73,7 +73,6 @@ public static class CommandMenu
         new("Space/Enter", "fold or unfold a folder"),
         new("z", "fold or unfold every folder"),
         new("Enter/e", "edit the file"),
-        new("p", "preview the file"),
         new("A", "show every file"),
         new("U", "show only updated files")
     ];

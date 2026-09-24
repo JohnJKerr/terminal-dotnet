@@ -69,7 +69,7 @@ public static class PanelShortcuts
 
         var navigation = Navigation();
         IReadOnlyList<string> selection = state.VisibleNodes[state.SelectedIndex].Kind == FileNodeKind.File
-            ? [.. navigation, "Enter/e edit", "p preview"]
+            ? [.. navigation, "Enter/e edit"]
             : [.. navigation, "Space/Enter fold"];
         return [.. selection, .. FoldAllShortcut(state.HasGroups, state.HasExpandedGroups)];
     }
