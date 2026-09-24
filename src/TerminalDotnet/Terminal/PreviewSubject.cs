@@ -26,7 +26,10 @@ public abstract record PreviewSubject
     public sealed record SelectedTest(VisibleTestNode Node) : PreviewSubject;
     public sealed record ChangeDiff(string Path) : PreviewSubject;
 
-    public static PreviewSubject For(PanelKind list, PanelStates panels) => list switch
+    public static PreviewSubject For(
+        PanelKind list,
+        PanelStates panels,
+        bool previewsChangedFile = false) => list switch
     {
         PanelKind.Explorer => Selected(panels.Files.VisibleNodes, panels.Files.SelectedIndex) is
             { Kind: FileNodeKind.File } node
@@ -36,7 +39,7 @@ public abstract record PreviewSubject
             ? new SelectedTest(test)
             : new Nothing(),
         PanelKind.Changes => Selected(panels.Changes.Files, panels.Changes.SelectedIndex) is { } change
-            ? new ChangeDiff(change.Path)
+            ? Changed(change, previewsChangedFile)
             : new Nothing(),
         PanelKind.Issues => Selected(panels.Issues.Issues, panels.Issues.SelectedIndex) is { } issue
             ? new SourceFile(issue.Path, issue.Line)
@@ -46,6 +49,12 @@ public abstract record PreviewSubject
             : new Nothing(),
         _ => new Nothing()
     };
+
+    /// <summary>A deleted file has nothing left to read but its diff.</summary>
+    private static PreviewSubject Changed(ChangedFile change, bool previewsFile) =>
+        previewsFile && change.Kind != ChangeKind.Deleted
+            ? new SourceFile(change.Path, 1)
+            : new ChangeDiff(change.Path);
 
     private static T? Selected<T>(IReadOnlyList<T> rows, int index) where T : class =>
         index >= 0 && index < rows.Count ? rows[index] : null;

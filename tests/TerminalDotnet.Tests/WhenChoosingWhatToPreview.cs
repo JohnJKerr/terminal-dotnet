@@ -61,6 +61,32 @@ public sealed class WhenChoosingWhatToPreview
     }
 
     [Fact]
+    public void It_previews_the_changed_file_when_asked_to()
+    {
+        // Arrange
+        var changes = new ChangesetState([new ChangedFile("/repo/Order.cs", "Order.cs", ChangeKind.Modified)]);
+
+        // Act
+        var subject = PreviewSubject.For(PanelKind.Changes, Panels() with { Changes = changes }, previewsChangedFile: true);
+
+        // Assert
+        Assert.Equal(new PreviewSubject.SourceFile("/repo/Order.cs", 1), subject);
+    }
+
+    [Fact]
+    public void It_previews_a_deleted_file_as_its_diff_even_when_asked_for_the_file()
+    {
+        // Arrange
+        var changes = new ChangesetState([new ChangedFile("/repo/Order.cs", "Order.cs", ChangeKind.Deleted)]);
+
+        // Act
+        var subject = PreviewSubject.For(PanelKind.Changes, Panels() with { Changes = changes }, previewsChangedFile: true);
+
+        // Assert
+        Assert.Equal(new PreviewSubject.ChangeDiff("/repo/Order.cs"), subject);
+    }
+
+    [Fact]
     public void It_previews_the_line_an_issue_reports()
     {
         // Arrange

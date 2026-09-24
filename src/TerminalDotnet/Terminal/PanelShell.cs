@@ -24,6 +24,10 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
     /// preview keeps it on the list the reader came from.</summary>
     public PanelKind PreviewedList { get; init; } = PanelKind.Explorer;
 
+    /// <summary>A change is previewed as its diff until the reader asks to
+    /// read the file as it now stands.</summary>
+    public bool PreviewsChangedFile { get; init; }
+
     /// <summary>Tab walks the lists on the left, then the preview beside
     /// them, then the panels beneath it.</summary>
     private static readonly PanelKind[] TabOrder =
@@ -57,6 +61,10 @@ public sealed class PanelShell
             PreviewedList = panel == PanelKind.Preview ? State.PreviewedList : panel
         };
     }
+
+    public void PreviewChangedFile() => State = State with { PreviewsChangedFile = true };
+
+    public void PreviewChangeDiff() => State = State with { PreviewsChangedFile = false };
 
     public void ToggleAllFiles() => State = State with { ShowsAllFiles = !State.ShowsAllFiles };
 

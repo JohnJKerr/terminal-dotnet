@@ -204,4 +204,44 @@ public sealed class WhenUsingThePanelShell
         // Assert
         Assert.Equal(PanelKind.Tests, shell.State.PreviewedList);
     }
+
+    [Fact]
+    public void It_previews_a_change_as_its_diff_at_first()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.False(state.PreviewsChangedFile);
+    }
+
+    [Fact]
+    public void It_previews_the_changed_file_once_asked_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.PreviewChangedFile();
+
+        // Assert
+        Assert.True(shell.State.PreviewsChangedFile);
+    }
+
+    [Fact]
+    public void It_returns_to_the_diff_once_asked_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.PreviewChangedFile();
+
+        // Act
+        shell.PreviewChangeDiff();
+
+        // Assert
+        Assert.False(shell.State.PreviewsChangedFile);
+    }
 }
