@@ -39,9 +39,7 @@ internal sealed class PreviewPanel
         };
         code.GettingAttributeForRole += (_, args) =>
         {
-            args.Result = new Attribute(
-                PreviewCodeAppearance.ForegroundFor(args.Role),
-                args.Result?.Background ?? Color.Black);
+            args.Result = new Attribute(PreviewCodeAppearance.ForegroundFor(args.Role), Background);
             args.Handled = true;
         };
         code.ViewportChanged += (_, _) => ShowHighlight();
@@ -51,6 +49,11 @@ internal sealed class PreviewPanel
             Height = Dim.Fill(),
             CanFocus = false,
             Visible = false
+        };
+        diff.GettingAttributeForRole += (_, args) =>
+        {
+            args.Result = new Attribute(args.Result?.Foreground ?? Color.White, Background);
+            args.Handled = true;
         };
         highlight = Highlight();
         details = Details();
@@ -69,6 +72,10 @@ internal sealed class PreviewPanel
     public int PageHeight => ShowingDiff ? diff.Viewport.Height : code.Viewport.Height;
 
     private bool ShowingDiff => diff.Visible;
+
+    /// <summary>The preview is drawn on the same ground as the lists beside
+    /// it, rather than the lighter one a text view brings with it.</summary>
+    private Color Background => View.GetAttributeForRole(VisualRole.Normal).Background;
 
     public void ShowNothing(string title)
     {
@@ -108,7 +115,7 @@ internal sealed class PreviewPanel
         details.Visible = false;
         diff.Visible = true;
         diff.Load(lines
-            .Select(line => Cell.ToCellList(line.Text, new Attribute(DiffAppearance.ForegroundFor(line.Tone), Color.Black)))
+            .Select(line => Cell.ToCellList(line.Text, new Attribute(DiffAppearance.ForegroundFor(line.Tone), Background)))
             .ToList());
     }
 
