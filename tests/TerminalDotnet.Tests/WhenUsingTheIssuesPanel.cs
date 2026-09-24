@@ -144,6 +144,34 @@ public sealed class WhenUsingTheIssuesPanel
         Assert.StartsWith("src/Risky.cs", layout.Rows[layout.SelectedRowIndex].Text);
     }
 
+    [Fact]
+    public void It_finds_the_issue_behind_a_wrapped_row()
+    {
+        // Arrange
+        var state = new IssueState(Issues()) { Loading = false };
+        var layout = IssuePanelLayout.From(IssuePanelSnapshot.From(state), 20);
+
+        // Act
+        var issue = layout.IssueAt(layout.Rows.Count - 1);
+
+        // Assert
+        Assert.Equal(1, issue);
+    }
+
+    [Fact]
+    public void It_finds_the_issue_above_the_gap_between_two()
+    {
+        // Arrange
+        var state = new IssueState(Issues()) { Loading = false };
+        var layout = IssuePanelLayout.From(IssuePanelSnapshot.From(state), 200);
+
+        // Act
+        var issue = layout.IssueAt(1);
+
+        // Assert
+        Assert.Equal(0, issue);
+    }
+
     private static IssueSession Session(ICommentClipboard? clipboard = null) =>
         new(new FixedBackend(Issues()), clipboard ?? new RememberingClipboard());
 

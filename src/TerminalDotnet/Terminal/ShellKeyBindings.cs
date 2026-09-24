@@ -9,10 +9,9 @@ public abstract record ShellAction
     public sealed record ClearSearch : ShellAction;
     public sealed record LeaveSearch : ShellAction;
     public sealed record FocusSearch : ShellAction;
-    public sealed record FocusPanels : ShellAction;
-    public sealed record FocusRows : ShellAction;
     public sealed record SelectPanel(PanelKind Panel) : ShellAction;
-    public sealed record SelectFocusedPanel : ShellAction;
+    public sealed record SelectNextPanel : ShellAction;
+    public sealed record SelectPreviousPanel : ShellAction;
     public sealed record ShowCommands : ShellAction;
     public sealed record Refresh : ShellAction;
     public sealed record Quit : ShellAction;
@@ -20,6 +19,11 @@ public abstract record ShellAction
     /// <summary>Escape with nothing left to close. It is taken so that it
     /// cannot reach the terminal framework, which would quit on it.</summary>
     public sealed record Dismiss : ShellAction;
+
+    /// <summary>A sideways arrow. Panels are reached by number and Tab, so
+    /// the arrows are kept from the terminal framework, which would otherwise
+    /// move the focus behind the shell's back.</summary>
+    public sealed record HoldFocus : ShellAction;
 }
 
 public static class ShellKeyBindings
@@ -27,7 +31,6 @@ public static class ShellKeyBindings
     public static ShellAction? ActionFor(
         Key key,
         bool searchFocused,
-        bool panelsFocused,
         bool searchActive = false)
     {
         if (Is(key, (KeyCode)'?'))
@@ -53,6 +56,11 @@ public static class ShellKeyBindings
             return new ShellAction.SelectPanel(panel);
         }
 
+        if (key.NoShift.KeyCode == KeyCode.Tab)
+        {
+            return key.IsShift ? new ShellAction.SelectPreviousPanel() : new ShellAction.SelectNextPanel();
+        }
+
         if (Is(key, KeyCode.Esc))
         {
             return searchActive ? new ShellAction.ClearSearch() : new ShellAction.Dismiss();
@@ -63,33 +71,16 @@ public static class ShellKeyBindings
             return new ShellAction.Quit();
         }
 
-        if (Is(key, KeyCode.S))
+        if (Is(key, KeyCode.CursorLeft) || Is(key, KeyCode.CursorRight))
         {
-            return new ShellAction.FocusSearch();
+            return new ShellAction.HoldFocus();
         }
 
-        if (Is(key, KeyCode.CursorLeft))
-        {
-            return panelsFocused ? null : new ShellAction.FocusPanels();
-        }
-
-        if (!panelsFocused)
-        {
-            return null;
-        }
-
-        if (Is(key, KeyCode.CursorRight))
-        {
-            return new ShellAction.FocusRows();
-        }
-
-        return Is(key, KeyCode.Enter) ? new ShellAction.SelectFocusedPanel() : null;
+        return Is(key, (KeyCode)'/') ? new ShellAction.FocusSearch() : null;
     }
 
     private static PanelKind? PanelFor(Key key) =>
-        key.IsShift ? PanelKeys.For(LetterOf(key)) : null;
-
-    private static string LetterOf(Key key) => ((char)key.NoShift.KeyCode).ToString();
+        key.IsShift || key.IsCtrl || key.IsAlt ? null : PanelKeys.For(((char)key.KeyCode).ToString());
 
     private static ShellAction SearchActionFor(Key key)
     {

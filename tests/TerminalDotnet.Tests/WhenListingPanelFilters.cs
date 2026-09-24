@@ -7,13 +7,13 @@ namespace TerminalDotnet.Tests.Explorer;
 public sealed class WhenListingPanelFilters
 {
     [Fact]
-    public void It_numbers_the_updated_filter_first()
+    public void It_names_the_updated_filter_by_its_key()
     {
         // Act
         var chips = PanelFilters.Chips(active: null);
 
         // Assert
-        Assert.Equal(["1. Updated"], chips.Select(chip => chip.Text));
+        Assert.Equal(["U Updated"], chips.Select(chip => chip.Text));
     }
 
     [Fact]
@@ -40,21 +40,21 @@ public sealed class WhenListingPanelFilters
     public void It_has_no_filter_beyond_the_ones_it_offers()
     {
         // Act
-        var filter = PanelFilters.Numbered(9);
+        var filter = PanelFilters.Lettered("F");
 
         // Assert
         Assert.Null(filter);
     }
 
     [Fact]
-    public void The_test_panel_numbers_its_run_filters_after_updated()
+    public void The_test_panel_names_its_run_filters_after_updated()
     {
         // Act
         var chips = PanelFilters.TestChips(active: null);
 
         // Assert
         Assert.Equal(
-            ["1. Updated", "2. Failing", "3. Passing", "4. Last run", "5. Not run"],
+            ["U Updated", "F Failing", "P Passing", "L Last run", "N Not run"],
             chips.Select(chip => chip.Text));
     }
 }

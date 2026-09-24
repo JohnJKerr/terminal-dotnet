@@ -18,19 +18,15 @@ public static class PanelFilters
     private static IReadOnlyList<FilterChip> Chips(
         ExplorerFilter? active,
         IReadOnlyList<ExplorerFilter> offered) => offered
-        .Select((filter, index) => new FilterChip(
-            $"{index + 1}. {filter.DisplayName()}",
-            filter == active))
+        .Select(filter => new FilterChip($"{filter.Key()} {filter.DisplayName()}", filter == active))
         .ToArray();
 
-    public static ExplorerFilter? Numbered(int number) => Numbered(number, FileFilters);
+    public static ExplorerFilter? Lettered(string letter) => Lettered(letter, FileFilters);
 
-    public static ExplorerFilter? NumberedTest(int number) => Numbered(number, TestFilters);
+    public static ExplorerFilter? LetteredTest(string letter) => Lettered(letter, TestFilters);
 
-    private static ExplorerFilter? Numbered(int number, IReadOnlyList<ExplorerFilter> offered) =>
-        number >= 1 && number <= offered.Count
-        ? offered[number - 1]
-        : null;
+    private static ExplorerFilter? Lettered(string letter, IReadOnlyList<ExplorerFilter> offered) =>
+        offered.Cast<ExplorerFilter?>().FirstOrDefault(filter => filter!.Value.Key() == letter);
 }
 
 public static class FilterAppearance

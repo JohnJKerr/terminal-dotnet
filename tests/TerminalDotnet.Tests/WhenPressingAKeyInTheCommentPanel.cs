@@ -99,13 +99,13 @@ public sealed class WhenPressingAKeyInTheCommentPanel
     }
 
     [Fact]
-    public void Pressing_p_previews_the_file_the_note_is_against()
+    public void Pressing_p_leaves_the_preview_to_follow_the_selection()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.P));
 
         // Assert
-        Assert.Equal(new CommentAction.PreviewFile("/repo/src/Order.cs"), action);
+        Assert.Null(action);
     }
 
     private static CommentAction? ActionFor(Key key, bool searchActive = false) =>

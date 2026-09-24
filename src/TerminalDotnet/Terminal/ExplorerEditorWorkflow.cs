@@ -1,6 +1,5 @@
 using TerminalDotnet.Changes;
 using TerminalDotnet.Files;
-using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 
 namespace TerminalDotnet.Terminal;
@@ -16,10 +15,9 @@ public sealed class ExplorerEditorWorkflow(
     ChangesetSession changes,
     IFileOpener editor,
     string target,
-    FlagSession? flags = null,
     IssueSession? issues = null)
 {
-    private readonly PanelReload reload = new(explorers, changes, target, flags, issues);
+    private readonly PanelReload reload = new(explorers, changes, target, issues);
 
     public Task OpenAsync(string path, int line, CancellationToken cancellationToken = default) =>
         editor.OpenAsync(path, line, cancellationToken);

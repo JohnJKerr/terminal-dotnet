@@ -2,56 +2,73 @@ namespace TerminalDotnet.Terminal;
 
 public enum PanelKind
 {
+    Preview,
     Explorer,
-    Files,
     Tests,
-    Issues,
     Changes,
-    Comments,
-    Flags
+    Issues,
+    Comments
 }
-
-public sealed record PanelLabel(string Key, string Name);
-
-public sealed record PanelCounts(int? Issues, int? Comments, int? Flags);
 
 public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind ActivePanel)
 {
-    public int ActiveIndex => (int)ActivePanel;
+    /// <summary>The Explorer lists the projects' files until the reader asks
+    /// for every file beneath the launch folder.</summary>
+    public bool ShowsAllFiles { get; init; }
 
-    public IReadOnlyList<PanelLabel> KeyedPanels =>
-        [.. Panels.Select((name, index) => new PanelLabel(PanelKeys.For((PanelKind)index), name))];
+    /// <summary>The list on the left the reader was last in, which stretches
+    /// to show more of its rows while they work elsewhere.</summary>
+    public PanelKind ExpandedList { get; init; } = PanelKind.Explorer;
 
-    public IReadOnlyList<PanelLabel> KeyedPanelsWith(PanelCounts counts) =>
-        [.. KeyedPanels.Select(panel => panel with { Name = CountedName(panel.Name, counts) })];
+    /// <summary>The list whose selection the preview shows. Moving into the
+    /// preview keeps it on the list the reader came from.</summary>
+    public PanelKind PreviewedList { get; init; } = PanelKind.Explorer;
 
-    private static string CountedName(string name, PanelCounts counts) => name switch
+    /// <summary>A change is previewed as its diff until the reader asks to
+    /// read the file as it now stands.</summary>
+    public bool PreviewsChangedFile { get; init; }
+
+    /// <summary>Tab walks the lists on the left, then the preview beside
+    /// them, then the panels beneath it.</summary>
+    private static readonly PanelKind[] TabOrder =
+    [
+        PanelKind.Explorer, PanelKind.Tests, PanelKind.Changes,
+        PanelKind.Preview, PanelKind.Issues, PanelKind.Comments
+    ];
+
+    public PanelKind Stepped(int step)
     {
-        "Issues" => $"Issues ({Shown(counts.Issues)})",
-        "Comments" => $"Comments ({Shown(counts.Comments)})",
-        "Flags" => $"Flags ({Shown(counts.Flags)})",
-        _ => name
-    };
+        var index = Array.IndexOf(TabOrder, ActivePanel) + step;
+        return TabOrder[(index % TabOrder.Length + TabOrder.Length) % TabOrder.Length];
+    }
 
-    private static string Shown(int? count) => count?.ToString() ?? "-";
+    public int ActiveIndex => (int)ActivePanel;
 }
 
 public sealed class PanelShell
 {
     public PanelShellState State { get; private set; } =
-        new(["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"], PanelKind.Explorer);
+        new(["Preview", "Explorer", "Tests", "Changes", "Issues", "Comments"], PanelKind.Explorer);
 
-    public void Select(int index)
+    public void Select(PanelKind panel)
     {
         State = State with
         {
-            ActivePanel = (PanelKind)Math.Clamp(index, 0, State.Panels.Count - 1)
+            ActivePanel = panel,
+            ExpandedList = panel is PanelKind.Explorer or PanelKind.Tests or PanelKind.Changes
+                ? panel
+                : State.ExpandedList,
+            PreviewedList = panel == PanelKind.Preview ? State.PreviewedList : panel
         };
     }
 
-    public void SelectPrevious() => Select(Wrapped(State.ActiveIndex - 1));
+    public void PreviewChangedFile() => State = State with { PreviewsChangedFile = true };
 
-    public void SelectNext() => Select(Wrapped(State.ActiveIndex + 1));
+    public void PreviewChangeDiff() => State = State with { PreviewsChangedFile = false };
 
-    private int Wrapped(int index) => (index + State.Panels.Count) % State.Panels.Count;
+    public void ToggleAllFiles() => State = State with { ShowsAllFiles = !State.ShowsAllFiles };
+
+    public void SelectPrevious() => Select(State.Stepped(-1));
+
+    public void SelectNext() => Select(State.Stepped(1));
 }

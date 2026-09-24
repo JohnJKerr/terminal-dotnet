@@ -17,7 +17,7 @@ public sealed class WhenMovingBetweenPanels
         shell.SelectNext();
 
         // Assert
-        Assert.Equal(PanelKind.Files, shell.State.ActivePanel);
+        Assert.Equal(PanelKind.Tests, shell.State.ActivePanel);
     }
 
     [Fact]
@@ -25,7 +25,7 @@ public sealed class WhenMovingBetweenPanels
     {
         // Arrange
         var shell = new PanelShell();
-        shell.Select(3);
+        shell.Select(PanelKind.Changes);
 
         // Act
         shell.SelectPrevious();
@@ -39,7 +39,7 @@ public sealed class WhenMovingBetweenPanels
     {
         // Arrange
         var shell = new PanelShell();
-        shell.Select(6);
+        shell.Select(PanelKind.Comments);
 
         // Act
         shell.SelectNext();
@@ -58,67 +58,135 @@ public sealed class WhenMovingBetweenPanels
         shell.SelectPrevious();
 
         // Assert
-        Assert.Equal(PanelKind.Flags, shell.State.ActivePanel);
+        Assert.Equal(PanelKind.Comments, shell.State.ActivePanel);
     }
 
     [Fact]
-    public void Pressing_capital_E_goes_to_the_explorer()
+    public void It_moves_from_the_changes_to_the_preview()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select(PanelKind.Changes);
+
+        // Act
+        shell.SelectNext();
+
+        // Assert
+        Assert.Equal(PanelKind.Preview, shell.State.ActivePanel);
+    }
+
+    [Fact]
+    public void It_moves_from_the_preview_to_the_issues()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select(PanelKind.Preview);
+
+        // Act
+        shell.SelectNext();
+
+        // Assert
+        Assert.Equal(PanelKind.Issues, shell.State.ActivePanel);
+    }
+
+    [Fact]
+    public void Pressing_0_goes_to_the_preview()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.E | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.D0));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Preview), action);
+    }
+
+    [Fact]
+    public void Pressing_1_goes_to_the_explorer()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D1));
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Explorer), action);
     }
 
     [Fact]
-    public void Pressing_capital_F_goes_to_the_files()
+    public void Pressing_2_goes_to_the_tests()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.F | KeyCode.ShiftMask));
-
-        // Assert
-        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Files), action);
-    }
-
-    [Fact]
-    public void Pressing_capital_T_goes_to_the_tests()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.T | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.D2));
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Tests), action);
     }
 
     [Fact]
-    public void Pressing_capital_I_goes_to_the_issues()
+    public void Pressing_3_goes_to_the_changes()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.I | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.D3));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Changes), action);
+    }
+
+    [Fact]
+    public void Pressing_4_goes_to_the_issues()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D4));
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Issues), action);
     }
 
     [Fact]
-    public void Pressing_capital_C_goes_to_the_comments()
+    public void Pressing_5_goes_to_the_comments()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.C | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.D5));
 
         // Assert
         Assert.Equal(new ShellAction.SelectPanel(PanelKind.Comments), action);
     }
 
     [Fact]
-    public void Pressing_capital_G_goes_to_the_changes()
+    public void Pressing_tab_goes_to_the_next_panel()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.G | KeyCode.ShiftMask));
+        var action = ActionFor(new Key(KeyCode.Tab));
 
         // Assert
-        Assert.Equal(new ShellAction.SelectPanel(PanelKind.Changes), action);
+        Assert.Equal(new ShellAction.SelectNextPanel(), action);
+    }
+
+    [Fact]
+    public void Pressing_shift_tab_goes_to_the_previous_panel()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Tab | KeyCode.ShiftMask));
+
+        // Assert
+        Assert.Equal(new ShellAction.SelectPreviousPanel(), action);
+    }
+
+    [Fact]
+    public void Pressing_capital_E_goes_to_no_panel()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.E | KeyCode.ShiftMask));
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_6_goes_to_no_panel()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D6));
+
+        // Assert
+        Assert.Null(action);
     }
 
     [Fact]
@@ -152,10 +220,10 @@ public sealed class WhenMovingBetweenPanels
     }
 
     [Fact]
-    public void Pressing_capital_T_in_the_search_types_it()
+    public void Pressing_2_in_the_search_types_it()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.T | KeyCode.ShiftMask), searchFocused: true);
+        var action = ActionFor(new Key(KeyCode.D2), searchFocused: true);
 
         // Assert
         Assert.Equal(new ShellAction.TypeIntoSearch(), action);
@@ -166,16 +234,6 @@ public sealed class WhenMovingBetweenPanels
     {
         // Act
         var action = ActionFor(new Key(KeyCode.Q | KeyCode.ShiftMask));
-
-        // Assert
-        Assert.Null(action);
-    }
-
-    [Fact]
-    public void Pressing_a_number_still_reaches_the_panel_filters()
-    {
-        // Act
-        var action = ActionFor(new Key(KeyCode.D1));
 
         // Assert
         Assert.Null(action);
@@ -193,7 +251,6 @@ public sealed class WhenMovingBetweenPanels
 
     private static ShellAction? ActionFor(
         Key key,
-        bool searchFocused = false,
-        bool panelsFocused = false) =>
-        ShellKeyBindings.ActionFor(key, searchFocused, panelsFocused);
+        bool searchFocused = false) =>
+        ShellKeyBindings.ActionFor(key, searchFocused);
 }

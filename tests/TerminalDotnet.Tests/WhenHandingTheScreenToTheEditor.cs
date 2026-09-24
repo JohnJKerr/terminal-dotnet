@@ -32,17 +32,17 @@ public sealed class WhenHandingTheScreenToTheEditor
     {
         // Arrange
         var flagBackend = new GrowingFlagBackend();
-        var flags = new FlagSession(flagBackend);
-        await flags.LoadAsync("App.csproj");
+        var issues = new IssueSession(new GrowingIssueBackend(), new UnusedClipboard(), flagBackend);
+        await issues.LoadFlagsAsync("App.csproj");
         var editor = new InMemoryFileOpener(() => flagBackend.Flagged = true);
-        var workflow = Workflow(new FileExplorerSession(Unchanging), editor, flags: flags);
+        var workflow = Workflow(new FileExplorerSession(Unchanging), editor, issues: issues);
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
         await workflow.RefreshAsync(() => Task.CompletedTask);
 
         // Assert
-        Assert.Single(flags.State.Flags);
+        Assert.Contains(issues.State.Issues, issue => issue.Severity == IssueSeverity.Flag);
     }
 
     [Fact]
@@ -71,8 +71,7 @@ public sealed class WhenHandingTheScreenToTheEditor
         var workflow = Workflow(
             new FileExplorerSession(Unchanging),
             new InMemoryFileOpener(() => { }),
-            flags: new FlagSession(new GrowingFlagBackend()),
-            issues: new IssueSession(new GrowingIssueBackend(), new UnusedClipboard()));
+            issues: new IssueSession(new GrowingIssueBackend(), new UnusedClipboard(), new GrowingFlagBackend()));
 
         // Act
         await workflow.RefreshAsync(() =>
@@ -94,13 +93,11 @@ public sealed class WhenHandingTheScreenToTheEditor
     private static ExplorerEditorWorkflow Workflow(
         FileExplorerSession explorer,
         IFileOpener editor,
-        FlagSession? flags = null,
         IssueSession? issues = null) =>
         new([explorer],
             new ChangesetSession(new EmptyChangesetBackend()),
             editor,
             "App.csproj",
-            flags,
             issues);
 
     private sealed class GrowingFlagBackend : IFlagBackend

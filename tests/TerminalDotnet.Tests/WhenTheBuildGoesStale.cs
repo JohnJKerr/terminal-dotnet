@@ -16,7 +16,7 @@ public sealed class WhenTheBuildGoesStale
         var edits = new EditsSinceTheBuild();
 
         // Act
-        var worth = edits.WorthRebuildingOnOpening(PanelKind.Files, PanelKind.Tests);
+        var worth = edits.WorthRebuildingOnOpening(PanelKind.Explorer, PanelKind.Tests);
 
         // Assert
         Assert.False(worth);
@@ -30,7 +30,7 @@ public sealed class WhenTheBuildGoesStale
         edits.Noticed("src/Order.cs");
 
         // Act
-        var worth = edits.WorthRebuildingOnOpening(PanelKind.Files, PanelKind.Tests);
+        var worth = edits.WorthRebuildingOnOpening(PanelKind.Explorer, PanelKind.Tests);
 
         // Assert
         Assert.True(worth);
@@ -86,7 +86,7 @@ public sealed class WhenTheBuildGoesStale
         edits.Noticed("src/obj/Debug/Order.g.cs");
 
         // Act
-        var worth = edits.WorthRebuildingOnOpening(PanelKind.Files, PanelKind.Tests);
+        var worth = edits.WorthRebuildingOnOpening(PanelKind.Explorer, PanelKind.Tests);
 
         // Assert
         Assert.False(worth);
@@ -100,7 +100,7 @@ public sealed class WhenTheBuildGoesStale
         edits.Noticed();
 
         // Act
-        var worth = edits.WorthRebuildingOnOpening(PanelKind.Files, PanelKind.Issues);
+        var worth = edits.WorthRebuildingOnOpening(PanelKind.Explorer, PanelKind.Issues);
 
         // Assert
         Assert.True(worth);
@@ -115,7 +115,7 @@ public sealed class WhenTheBuildGoesStale
         edits.Built();
 
         // Act
-        var worth = edits.WorthRebuildingOnOpening(PanelKind.Files, PanelKind.Tests);
+        var worth = edits.WorthRebuildingOnOpening(PanelKind.Explorer, PanelKind.Tests);
 
         // Assert
         Assert.False(worth);
@@ -131,7 +131,7 @@ public sealed class WhenTheBuildGoesStale
         edits.Noticed("src/Basket.cs");
 
         // Act
-        var worth = edits.WorthRebuildingOnOpening(PanelKind.Files, PanelKind.Tests);
+        var worth = edits.WorthRebuildingOnOpening(PanelKind.Explorer, PanelKind.Tests);
 
         // Assert
         Assert.True(worth);

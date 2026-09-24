@@ -27,6 +27,19 @@ public sealed class WhenUsingTheTestExplorer
     }
 
     [Fact]
+    public async Task It_counts_every_test_it_discovers()
+    {
+        // Arrange
+        var session = SessionWithCartTests();
+
+        // Act
+        await session.LoadAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal(2, session.State.DiscoveredTestCount);
+    }
+
+    [Fact]
     public async Task It_produces_a_project_class_and_test_tree_when_loaded()
     {
         // Arrange

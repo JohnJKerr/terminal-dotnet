@@ -16,14 +16,14 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_offers_a_section_for_every_panel_the_preview_and_the_diff()
+    public void It_offers_a_section_for_every_panel()
     {
         // Act
         var titles = CommandMenu.Sections().Select(section => section.Title);
 
         // Assert
         Assert.Equal(
-            ["Anywhere", "Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags", "Preview", "Diff"],
+            ["Anywhere", "Explorer", "Tests", "Changes", "Issues", "Comments", "Preview"],
             titles);
     }
 
@@ -35,7 +35,7 @@ public sealed class WhenListingEveryCommand
 
         // Assert
         Assert.Equal(
-            ["↑/k", "↓/j", "Enter/e", "p", "y", "1", "2"],
+            ["↑/k", "↓/j", "Enter/e", "y", "X", "W", "F"],
             issues.Entries.Select(entry => entry.Keys));
     }
 
@@ -68,7 +68,7 @@ public sealed class WhenListingEveryCommand
         // Assert
         Assert.Contains(
             anywhere.Entries,
-            entry => entry.Keys == "C" && entry.Description == "go to the Comments");
+            entry => entry.Keys == "5" && entry.Description == "go to the Comments");
     }
 
     [Fact]
@@ -80,7 +80,41 @@ public sealed class WhenListingEveryCommand
         // Assert
         Assert.Contains(
             anywhere.Entries,
-            entry => entry.Keys == "G" && entry.Description == "go to the Changes");
+            entry => entry.Keys == "3" && entry.Description == "go to the Changes");
+    }
+
+    [Fact]
+    public void It_names_the_keys_that_step_between_the_panels()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(
+            anywhere.Entries,
+            entry => entry.Keys == "Tab/Shift+Tab" && entry.Description == "go to the next or previous panel");
+    }
+
+    [Fact]
+    public void It_names_the_key_that_reaches_the_preview()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(
+            anywhere.Entries,
+            entry => entry.Keys == "0" && entry.Description == "go to the Preview");
+    }
+
+    [Fact]
+    public void It_names_the_key_that_searches()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(anywhere.Entries, entry => entry.Keys == "/" && entry.Description == "search the active panel");
     }
 
     [Fact]
@@ -92,7 +126,7 @@ public sealed class WhenListingEveryCommand
         // Assert
         Assert.Contains(
             anywhere.Entries,
-            entry => entry.Keys == "I" && entry.Description == "go to the Issues");
+            entry => entry.Keys == "4" && entry.Description == "go to the Issues");
     }
 
     [Fact]
@@ -108,27 +142,23 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_lists_stepping_to_the_next_file_under_the_diff()
+    public void It_lists_commenting_under_the_preview()
     {
         // Act
-        var diff = CommandMenu.Sections().Single(section => section.Title == "Diff");
+        var preview = CommandMenu.Sections().Single(section => section.Title == "Preview");
 
         // Assert
-        Assert.Contains(
-            diff.Entries,
-            entry => entry.Keys == "n" && entry.Description == "show the next file's diff");
+        Assert.Contains(preview.Entries, entry => entry.Keys == "c" && entry.Description == "comment on the file");
     }
 
     [Fact]
-    public void It_lists_commenting_under_the_diff()
+    public void It_leaves_the_preview_open_on_escape()
     {
         // Act
-        var diff = CommandMenu.Sections().Single(section => section.Title == "Diff");
+        var preview = CommandMenu.Sections().Single(section => section.Title == "Preview");
 
         // Assert
-        Assert.Contains(
-            diff.Entries,
-            entry => entry.Keys == "c" && entry.Description == "comment on the file");
+        Assert.DoesNotContain(preview.Entries, entry => entry.Keys == "Esc");
     }
 
     [Fact]
@@ -164,6 +194,18 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_lists_the_test_filters_under_tests()
+    {
+        // Act
+        var tests = CommandMenu.Sections().Single(section => section.Title == "Tests");
+
+        // Assert
+        Assert.Equal(
+            ["U", "F", "P", "L", "N"],
+            tests.Entries.Select(entry => entry.Keys).Where(keys => keys.All(char.IsUpper)));
+    }
+
+    [Fact]
     public void It_heads_each_section_with_its_title()
     {
         // Act
@@ -174,23 +216,63 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_names_the_key_that_reaches_the_files()
+    public void It_lists_the_file_commands_under_the_explorer()
     {
         // Act
-        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+        var explorer = CommandMenu.Sections().Single(section => section.Title == "Explorer");
 
         // Assert
-        Assert.Contains(anywhere.Entries, entry => entry.Keys == "F");
+        Assert.Contains(explorer.Entries, entry => entry.Description == "edit the file");
     }
 
     [Fact]
-    public void It_lists_the_file_commands_under_the_files()
+    public void It_leaves_previewing_out_of_the_explorer()
     {
         // Act
-        var files = CommandMenu.Sections().Single(section => section.Title == "Files");
+        var explorer = CommandMenu.Sections().Single(section => section.Title == "Explorer");
 
         // Assert
-        Assert.Contains(files.Entries, entry => entry.Description == "edit the file");
+        Assert.DoesNotContain(explorer.Entries, entry => entry.Keys == "p");
+    }
+
+    [Fact]
+    public void It_leaves_previewing_out_of_the_tests()
+    {
+        // Act
+        var tests = CommandMenu.Sections().Single(section => section.Title == "Tests");
+
+        // Assert
+        Assert.DoesNotContain(tests.Entries, entry => entry.Keys == "p");
+    }
+
+    [Fact]
+    public void It_leaves_previewing_out_of_the_comments()
+    {
+        // Act
+        var comments = CommandMenu.Sections().Single(section => section.Title == "Comments");
+
+        // Assert
+        Assert.DoesNotContain(comments.Entries, entry => entry.Keys == "p");
+    }
+
+    [Fact]
+    public void It_lists_previewing_the_file_under_the_changes()
+    {
+        // Act
+        var changes = CommandMenu.Sections().Single(section => section.Title == "Changes");
+
+        // Assert
+        Assert.Contains(changes.Entries, entry => entry.Keys == "p" && entry.Description == "preview the file instead of the diff");
+    }
+
+    [Fact]
+    public void It_lists_every_file_under_the_explorer()
+    {
+        // Act
+        var explorer = CommandMenu.Sections().Single(section => section.Title == "Explorer");
+
+        // Assert
+        Assert.Contains(explorer.Entries, entry => entry.Keys == "A" && entry.Description == "show every file");
     }
 
     [Fact]

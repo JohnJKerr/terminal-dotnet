@@ -1,11 +1,21 @@
 using TerminalDotnet.Comments;
+using TerminalDotnet.Flags;
 using TerminalDotnet.Search;
 
 namespace TerminalDotnet.Issues;
 
-public sealed class IssueSession(IIssueBackend backend, ICommentClipboard clipboard)
+/// <summary>
+/// What the build reported and what the source flags for attention, read as
+/// one list. The two are loaded apart: a flag is found by reading the tree, so
+/// it answers an edit at once, while a build issue waits for the next build.
+/// </summary>
+public sealed class IssueSession(
+    IIssueBackend backend,
+    ICommentClipboard clipboard,
+    IFlagBackend? flagBackend = null)
 {
-    private IReadOnlyList<CompilationIssue> discovered = [];
+    private IReadOnlyList<CompilationIssue> built = [];
+    private IReadOnlyList<CompilationIssue> flagged = [];
     public IssueState State { get; private set; } = new([]);
 
     /// <summary>Stands the panel back up as building. The issues the last build
@@ -19,15 +29,55 @@ public sealed class IssueSession(IIssueBackend backend, ICommentClipboard clipbo
         try
         {
             var standingOn = Selected();
-            discovered = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
+            built = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
             State = State with { Issues = Matching(), Loading = false, Notice = "" };
             State = State with { SelectedIndex = RowFor(standingOn) };
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            State = State with { Issues = [], SelectedIndex = 0, Loading = false, Notice = exception.Message };
+            built = [];
+            State = State with { Issues = Matching(), SelectedIndex = 0, Loading = false, Notice = exception.Message };
         }
     }
+
+    /// <summary>A tree that cannot be read has no flags to offer, which is no
+    /// reason to take the build's issues away with them.</summary>
+    public async Task LoadFlagsAsync(string target, CancellationToken cancellationToken = default)
+    {
+        if (flagBackend is null)
+        {
+            State = State with { FlagsLoading = false };
+            return;
+        }
+
+        var standingOn = Selected();
+        try
+        {
+            flagged = Snapshot.Of(FlagIssues(await flagBackend.DiscoverAsync(target, cancellationToken)));
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            flagged = [];
+        }
+
+        State = State with { Issues = Matching(), FlagsLoading = false };
+        State = State with { SelectedIndex = RowFor(standingOn) };
+    }
+
+    private static IEnumerable<CompilationIssue> FlagIssues(IReadOnlyList<Flag> flags) => flags
+        .OrderBy(flag => flag.Kind)
+        .ThenBy(flag => flag.DisplayPath, StringComparer.Ordinal)
+        .ThenBy(flag => flag.Line)
+        .Select(FlagIssue);
+
+    private static CompilationIssue FlagIssue(Flag flag) => new(
+        flag.Path,
+        flag.DisplayPath,
+        flag.Line,
+        0,
+        flag.Heading,
+        flag.Comment,
+        IssueSeverity.Flag);
 
     private CompilationIssue? Selected() => State.SelectedIndex < State.Issues.Count
         ? State.Issues[State.SelectedIndex]
@@ -63,7 +113,7 @@ public sealed class IssueSession(IIssueBackend backend, ICommentClipboard clipbo
         var last = Math.Max(0, visible.Count - 1);
         var index = command switch
         {
-            IssueCommand.Search or IssueCommand.ClearSearch or IssueCommand.ToggleErrors or IssueCommand.ToggleWarnings => 0,
+            IssueCommand.Search or IssueCommand.ClearSearch or IssueCommand.ToggleErrors or IssueCommand.ToggleWarnings or IssueCommand.ToggleFlags => 0,
             IssueCommand.SelectIndex select => Math.Clamp(select.Index, 0, last),
             IssueCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
             IssueCommand.MoveDown => Math.Min(last, State.SelectedIndex + 1),
@@ -81,12 +131,13 @@ public sealed class IssueSession(IIssueBackend backend, ICommentClipboard clipbo
     {
         IssueCommand.ToggleErrors => Toggled(IssueFilter.Errors),
         IssueCommand.ToggleWarnings => Toggled(IssueFilter.Warnings),
+        IssueCommand.ToggleFlags => Toggled(IssueFilter.Flags),
         _ => State.ActiveFilter
     };
 
     private IssueFilter? Toggled(IssueFilter filter) => State.ActiveFilter == filter ? null : filter;
 
-    private IReadOnlyList<CompilationIssue> Matching() => [.. discovered.Where(issue =>
+    private IReadOnlyList<CompilationIssue> Matching() => [.. built.Concat(flagged).Where(issue =>
         MatchesFilter(issue) &&
         (State.SearchQuery.Length == 0 || SearchMatch.Matches(issue.Details, State.SearchQuery)))];
 
@@ -94,6 +145,7 @@ public sealed class IssueSession(IIssueBackend backend, ICommentClipboard clipbo
     {
         IssueFilter.Errors => issue.Severity == IssueSeverity.Error,
         IssueFilter.Warnings => issue.Severity == IssueSeverity.Warning,
+        IssueFilter.Flags => issue.Severity == IssueSeverity.Flag,
         _ => true
     };
 }

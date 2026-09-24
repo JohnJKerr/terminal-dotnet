@@ -16,7 +16,7 @@ public sealed class WhenUsingThePanelShell
 
         // Assert
         Assert.Equal(
-            ["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"],
+            ["Preview", "Explorer", "Tests", "Changes", "Issues", "Comments"],
             state.Panels);
     }
 
@@ -34,26 +34,13 @@ public sealed class WhenUsingThePanelShell
     }
 
     [Fact]
-    public void It_changes_the_active_panel_when_the_files_are_selected()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        shell.Select(1);
-
-        // Assert
-        Assert.Equal(PanelKind.Files, shell.State.ActivePanel);
-    }
-
-    [Fact]
     public void It_changes_the_active_panel_when_tests_is_selected()
     {
         // Arrange
         var shell = new PanelShell();
 
         // Act
-        shell.Select(2);
+        shell.Select(PanelKind.Tests);
 
         // Assert
         Assert.Equal(PanelKind.Tests, shell.State.ActivePanel);
@@ -66,7 +53,7 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(3);
+        shell.Select(PanelKind.Issues);
 
         // Assert
         Assert.Equal(PanelKind.Issues, shell.State.ActivePanel);
@@ -79,68 +66,10 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(4);
+        shell.Select(PanelKind.Changes);
 
         // Assert
         Assert.Equal(PanelKind.Changes, shell.State.ActivePanel);
-    }
-
-    [Fact]
-    public void It_labels_each_panel_with_the_key_that_reaches_it()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var panels = shell.State.KeyedPanels;
-
-        // Assert
-        Assert.Equal(["E", "F", "T", "I", "G", "C", "L"], panels.Select(panel => panel.Key));
-    }
-
-    [Fact]
-    public void It_names_each_panel_beside_its_key()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var panels = shell.State.KeyedPanels;
-
-        // Assert
-        Assert.Equal(
-            ["Explorer", "Files", "Tests", "Issues", "Changes", "Comments", "Flags"],
-            panels.Select(panel => panel.Name));
-    }
-
-    [Fact]
-    public void It_shows_the_item_counts_beside_the_content_panels_that_need_them()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var panels = shell.State.KeyedPanelsWith(new PanelCounts(3, 2, 5));
-
-        // Assert
-        Assert.Equal(
-            ["Explorer", "Files", "Tests", "Issues (3)", "Changes", "Comments (2)", "Flags (5)"],
-            panels.Select(panel => panel.Name));
-    }
-
-    [Fact]
-    public void It_shows_a_dash_when_a_panel_count_is_not_known_yet()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var panels = shell.State.KeyedPanelsWith(new PanelCounts(null, 0, null));
-
-        // Assert
-        Assert.Equal(
-            ["Explorer", "Files", "Tests", "Issues (-)", "Changes", "Comments (0)", "Flags (-)"],
-            panels.Select(panel => panel.Name));
     }
 
     [Fact]
@@ -150,9 +79,169 @@ public sealed class WhenUsingThePanelShell
         var shell = new PanelShell();
 
         // Act
-        shell.Select(5);
+        shell.Select(PanelKind.Comments);
 
         // Assert
         Assert.Equal(PanelKind.Comments, shell.State.ActivePanel);
+    }
+
+    [Fact]
+    public void It_starts_the_explorer_on_the_project_files()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.False(state.ShowsAllFiles);
+    }
+
+    [Fact]
+    public void It_shows_every_file_in_the_explorer_once_asked_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.ToggleAllFiles();
+
+        // Assert
+        Assert.True(shell.State.ShowsAllFiles);
+    }
+
+    [Fact]
+    public void It_returns_the_explorer_to_the_project_files_when_asked_again()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.ToggleAllFiles();
+
+        // Act
+        shell.ToggleAllFiles();
+
+        // Assert
+        Assert.False(shell.State.ShowsAllFiles);
+    }
+
+    [Fact]
+    public void It_expands_the_explorer_at_first()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.Equal(PanelKind.Explorer, state.ExpandedList);
+    }
+
+    [Fact]
+    public void It_expands_the_list_the_reader_moves_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.Select(PanelKind.Tests);
+
+        // Assert
+        Assert.Equal(PanelKind.Tests, shell.State.ExpandedList);
+    }
+
+    [Fact]
+    public void It_keeps_the_last_list_expanded_while_the_reader_is_in_the_issues()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select(PanelKind.Changes);
+
+        // Act
+        shell.Select(PanelKind.Issues);
+
+        // Assert
+        Assert.Equal(PanelKind.Changes, shell.State.ExpandedList);
+    }
+
+    [Fact]
+    public void It_previews_the_explorer_at_first()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.Equal(PanelKind.Explorer, state.PreviewedList);
+    }
+
+    [Fact]
+    public void It_previews_the_list_the_reader_moves_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.Select(PanelKind.Issues);
+
+        // Assert
+        Assert.Equal(PanelKind.Issues, shell.State.PreviewedList);
+    }
+
+    [Fact]
+    public void It_keeps_previewing_the_last_list_from_inside_the_preview()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select(PanelKind.Tests);
+
+        // Act
+        shell.Select(PanelKind.Preview);
+
+        // Assert
+        Assert.Equal(PanelKind.Tests, shell.State.PreviewedList);
+    }
+
+    [Fact]
+    public void It_previews_a_change_as_its_diff_at_first()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var state = shell.State;
+
+        // Assert
+        Assert.False(state.PreviewsChangedFile);
+    }
+
+    [Fact]
+    public void It_previews_the_changed_file_once_asked_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        shell.PreviewChangedFile();
+
+        // Assert
+        Assert.True(shell.State.PreviewsChangedFile);
+    }
+
+    [Fact]
+    public void It_returns_to_the_diff_once_asked_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.PreviewChangedFile();
+
+        // Act
+        shell.PreviewChangeDiff();
+
+        // Assert
+        Assert.False(shell.State.PreviewsChangedFile);
     }
 }

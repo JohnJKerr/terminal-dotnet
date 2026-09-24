@@ -63,6 +63,10 @@ public sealed record ExplorerState(
     }
 
     public int VisibleTestCount => content.Tests;
+
+    /// <summary>Every test discovery found, whatever the search and the
+    /// filter leave in view.</summary>
+    public int DiscoveredTestCount { get; init; }
     public bool HasGroups => content.Groups;
     public bool HasExpandedGroups => content.Expanded;
 

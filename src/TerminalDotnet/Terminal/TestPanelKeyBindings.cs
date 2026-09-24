@@ -9,7 +9,6 @@ public abstract record TestPanelAction
     public sealed record Dispatch(ExplorerCommand Command) : TestPanelAction;
     public sealed record CancelRun : TestPanelAction;
     public sealed record OpenSource : TestPanelAction;
-    public sealed record PreviewSource : TestPanelAction;
     public sealed record ShowOutput : TestPanelAction;
 }
 
@@ -38,11 +37,6 @@ public static class TestPanelKeyBindings
         if (Is(key, KeyCode.E))
         {
             return new TestPanelAction.OpenSource();
-        }
-
-        if (Is(key, KeyCode.P))
-        {
-            return new TestPanelAction.PreviewSource();
         }
 
         return Is(key, KeyCode.O) ? new TestPanelAction.ShowOutput() : null;

@@ -2,7 +2,6 @@ using TerminalDotnet.Changes;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
-using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 
 namespace TerminalDotnet.Terminal;
@@ -16,18 +15,22 @@ public static class PanelShortcuts
         ExplorerState testState,
         CommentsState commentState,
         bool searchFocused = false,
-        FlagState? flagState = null,
         IssueState? issueState = null) => searchFocused
         ? SearchingShortcuts
         :
         [
             "Tab pane",
-            "s search",
-            .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, flagState, issueState),
+            .. panel == PanelKind.Preview ? Array.Empty<string>() : ["/ search"],
+            .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, issueState),
             "^R refresh",
             "? commands",
             "q quit"
         ];
+
+    /// <summary>The preview has nothing to search; it scrolls what it shows
+    /// and steps the list it follows.</summary>
+    private static readonly IReadOnlyList<string> PreviewShortcuts =
+        [.. Navigation(), "PgUp/PgDn page", "n/N next/previous row", "e edit", "c comment"];
 
     /// <summary>Every letter types into the search box, so the line offers only
     /// the two ways out of it and the commands that still answer.</summary>
@@ -40,25 +43,22 @@ public static class PanelShortcuts
         ChangesetState changesetState,
         ExplorerState testState,
         CommentsState commentState,
-        FlagState? flagState,
         IssueState? issueState) => panel switch
     {
-        PanelKind.Explorer or PanelKind.Files => ExplorerShortcuts(fileState),
+        PanelKind.Explorer => ExplorerShortcuts(fileState),
         PanelKind.Changes => ChangesetShortcuts(changesetState),
         PanelKind.Issues => issueState is { Issues.Count: > 0 }
-            ? [.. Navigation(), "Enter/e edit", "p preview", "y copy", "1 errors", "2 warnings"]
-            : ["1 errors", "2 warnings"],
+            ? [.. Navigation(), "Enter/e edit", "y copy", "X errors", "W warnings", "F flags"]
+            : ["X errors", "W warnings", "F flags"],
         PanelKind.Comments => CommentShortcuts(commentState),
-        PanelKind.Flags => flagState is { Flags.Count: > 0 }
-            ? [.. Navigation(), "Enter/e edit", "p preview"]
-            : [],
+        PanelKind.Preview => PreviewShortcuts,
         _ => TestShortcuts(testState)
     };
 
     private static IReadOnlyList<string> CommentShortcuts(CommentsState state) =>
         state.Comments.Count == 0
             ? []
-            : [.. Navigation(), "Enter/v view", "e edit", "p preview", "d delete", "y copy", "w save", "x clear all"];
+            : [.. Navigation(), "Enter/v view", "e edit", "d delete", "y copy", "w save", "x clear all"];
 
     private static IReadOnlyList<string> ExplorerShortcuts(FileExplorerState state)
     {
@@ -69,7 +69,7 @@ public static class PanelShortcuts
 
         var navigation = Navigation();
         IReadOnlyList<string> selection = state.VisibleNodes[state.SelectedIndex].Kind == FileNodeKind.File
-            ? [.. navigation, "Enter/e edit", "p preview"]
+            ? [.. navigation, "Enter/e edit"]
             : [.. navigation, "Space/Enter fold"];
         return [.. selection, .. FoldAllShortcut(state.HasGroups, state.HasExpandedGroups)];
     }
@@ -84,7 +84,7 @@ public static class PanelShortcuts
         IReadOnlyList<string> navigation = [.. Navigation(), "Enter/d diff"];
         return state.Files[state.SelectedIndex].Kind == ChangeKind.Deleted
             ? [.. navigation, "r restore"]
-            : [.. navigation, "e edit", "p preview"];
+            : [.. navigation, "p file", "e edit"];
     }
 
     private static IReadOnlyList<string> TestShortcuts(ExplorerState state) =>
@@ -110,7 +110,6 @@ public static class PanelShortcuts
         }
 
         shortcuts.Add("e edit");
-        shortcuts.Add("p preview");
         return shortcuts;
     }
 

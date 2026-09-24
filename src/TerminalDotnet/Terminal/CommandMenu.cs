@@ -20,14 +20,11 @@ public static class CommandMenu
     [
         new("Anywhere", Anywhere),
         new("Explorer", FileTree),
-        new("Files", FileTree),
         new("Tests", Tests),
-        new("Issues", Issues),
         new("Changes", Changes),
+        new("Issues", Issues),
         new("Comments", Comments),
-        new("Flags", Flags),
-        new("Preview", Preview),
-        new("Diff", Diff)
+        new("Preview", Preview)
     ];
 
     public static IReadOnlyList<CommandMenuRow> Rows()
@@ -55,17 +52,14 @@ public static class CommandMenu
 
     private static readonly IReadOnlyList<CommandMenuEntry> Anywhere =
     [
-        new("E", "go to the Explorer"),
-        new("F", "go to the Files"),
-        new("T", "go to the Tests"),
-        new("I", "go to the Issues"),
-        new("G", "go to the Changes"),
-        new("C", "go to the Comments"),
-        new("L", "go to the Flags"),
-        new("Tab", "move between search, panels and rows"),
-        new("←", "focus the panel list"),
-        new("→", "focus the rows"),
-        new("s", "search the active panel"),
+        new("0", "go to the Preview"),
+        new("1", "go to the Explorer"),
+        new("2", "go to the Tests"),
+        new("3", "go to the Changes"),
+        new("4", "go to the Issues"),
+        new("5", "go to the Comments"),
+        new("Tab/Shift+Tab", "go to the next or previous panel"),
+        new("/", "search the active panel"),
         new("Enter", "leave the search, keeping it"),
         new("Esc", "close what is open, or clear the search"),
         new("Ctrl+R", "refresh and rebuild the workspace"),
@@ -73,16 +67,14 @@ public static class CommandMenu
         new("q", "quit, asking first if comments would be lost")
     ];
 
-    /// <summary>The Explorer and the Files browse the same kind of tree, so
-    /// they answer to the same keys.</summary>
     private static readonly IReadOnlyList<CommandMenuEntry> FileTree =
     [
         .. Navigation,
         new("Space/Enter", "fold or unfold a folder"),
         new("z", "fold or unfold every folder"),
         new("Enter/e", "edit the file"),
-        new("p", "preview the file"),
-        new("1", "show only updated files")
+        new("A", "show every file"),
+        new("U", "show only updated files")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Tests =
@@ -97,16 +89,19 @@ public static class CommandMenu
         new("c", "cancel the run"),
         new("o", "show the captured output"),
         new("e", "edit the test"),
-        new("p", "preview the test"),
-        new("1", "show only updated tests")
+        new("U", "show only updated tests"),
+        new("F", "show only failing tests"),
+        new("P", "show only passing tests"),
+        new("L", "show only the last run"),
+        new("N", "show only tests not yet run")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Changes =
     [
         .. Navigation,
-        new("Enter/d", "show the diff"),
+        new("Enter/d", "preview the diff"),
+        new("p", "preview the file instead of the diff"),
         new("e", "edit the file"),
-        new("p", "preview the file"),
         new("r", "restore a deleted file")
     ];
 
@@ -114,10 +109,10 @@ public static class CommandMenu
     [
         .. Navigation,
         new("Enter/e", "edit the issue's file"),
-        new("p", "preview the issue's file"),
         new("y", "copy the issue"),
-        new("1", "filter errors"),
-        new("2", "filter warnings")
+        new("X", "filter errors"),
+        new("W", "filter warnings"),
+        new("F", "filter flags")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Comments =
@@ -125,19 +120,10 @@ public static class CommandMenu
         .. Navigation,
         new("Enter/v", "read the comment"),
         new("e", "edit the comment"),
-        new("p", "preview the file it is against"),
         new("d", "delete the comment"),
         new("y", "copy every comment to the clipboard"),
         new("w", "save every comment to a file"),
         new("x", "clear every comment")
-    ];
-
-    private static readonly IReadOnlyList<CommandMenuEntry> Flags =
-    [
-        .. Navigation,
-        new("Enter/e", "edit the flag's file"),
-        new("p", "preview the flag's file"),
-        new("1/2/3/4", "filter Tasks, Review, Warning or Improve")
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Preview =
@@ -148,17 +134,7 @@ public static class CommandMenu
         new("n", "preview the next row of the panel"),
         new("N", "preview the previous row of the panel"),
         new("e", "edit the file"),
-        new("c", "comment on the file"),
-        new("Esc", "close the preview")
-    ];
-
-    private static readonly IReadOnlyList<CommandMenuEntry> Diff =
-    [
-        .. Navigation,
-        new("n", "show the next file's diff"),
-        new("N", "show the previous file's diff"),
-        new("c", "comment on the file"),
-        new("Esc", "close the diff")
+        new("c", "comment on the file")
     ];
 
     private static IReadOnlyList<CommandMenuEntry> Navigation =>

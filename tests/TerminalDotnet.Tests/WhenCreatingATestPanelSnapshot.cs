@@ -170,13 +170,13 @@ public class WhenCreatingATestPanelSnapshot
             [new VisibleTestNode(0, TestNodeKind.Project, "Shop.Tests", [passed, failed, skipped])],
             0,
             "Finished",
-            run);
+            run) { DiscoveredTestCount = 12 };
 
         // Act
         var snapshot = TestPanelSnapshot.From(state, "Shop.slnx");
 
         // Assert
-        Assert.Equal("1 Failed, 1 Passed, 1 Skipped", snapshot.StatusLine);
+        Assert.Equal("1 Failed, 1 Passed, 1 Skipped, 12 Total", snapshot.StatusLine);
     }
 
     [Fact]

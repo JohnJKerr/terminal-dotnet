@@ -37,7 +37,7 @@ public sealed class WhenOpeningAFile
     }
 
     [Fact]
-    public void Pressing_p_previews_it()
+    public void Pressing_p_leaves_the_preview_to_follow_the_selection()
     {
         // Arrange
         var file = new FileEntry("App.csproj", "Order.cs", FileGitStatus.Unchanged);
@@ -47,6 +47,6 @@ public sealed class WhenOpeningAFile
         var action = FilePanelKeyBindings.ActionFor(new Key(KeyCode.P), selected, searchActive: false);
 
         // Assert
-        Assert.Equal(new FilePanelAction.PreviewFile("Order.cs"), action);
+        Assert.Null(action);
     }
 }

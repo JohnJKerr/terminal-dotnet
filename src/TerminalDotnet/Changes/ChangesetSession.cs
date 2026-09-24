@@ -74,12 +74,6 @@ public sealed class ChangesetSession(IChangesetBackend backend)
             return;
         }
 
-        if (command is ChangesetCommand.StepDiff step)
-        {
-            await ShowSteppedDiffAsync(step.Step, cancellationToken);
-            return;
-        }
-
         if (command is ChangesetCommand.RestoreSelected &&
             Selected() is { Kind: ChangeKind.Deleted } deleted)
         {
@@ -102,24 +96,6 @@ public sealed class ChangesetSession(IChangesetBackend backend)
                 ChangesetCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
                 _ => State.SelectedIndex
             }
-        };
-    }
-
-    /// <summary>The files are walked as a ring, so the last one leads back to
-    /// the first rather than stopping the reader at the end of the changeset.
-    /// </summary>
-    private async Task ShowSteppedDiffAsync(int step, CancellationToken cancellationToken)
-    {
-        if (RowRing.From(State.Files.Count, State.SelectedIndex, step) is not [var next, ..])
-        {
-            return;
-        }
-
-        var stepped = State.Files[next];
-        State = State with
-        {
-            SelectedIndex = next,
-            Diff = await DiffOfAsync(stepped, cancellationToken)
         };
     }
 

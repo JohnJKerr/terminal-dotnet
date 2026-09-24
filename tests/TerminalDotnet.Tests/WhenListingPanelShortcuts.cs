@@ -2,6 +2,7 @@ using TerminalDotnet.Changes;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
+using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using Xunit;
@@ -23,7 +24,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/e edit", "p preview", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/e edit", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -40,7 +41,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -78,6 +79,16 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Contains("z fold all", shortcuts);
+    }
+
+    [Fact]
+    public void It_leaves_previewing_out_of_the_tests()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), TestState(), EmptyComments());
+
+        // Assert
+        Assert.DoesNotContain("p preview", shortcuts);
     }
 
     [Fact]
@@ -206,7 +217,7 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
-    public void It_offers_diff_edit_and_preview_for_a_changed_file()
+    public void It_offers_the_diff_the_file_and_editing_for_a_changed_file()
     {
         // Arrange
         var changed = new ChangedFile("/repo/src/Order.cs", "Order.cs", ChangeKind.Modified);
@@ -221,7 +232,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/d diff", "e edit", "p preview", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "p file", "e edit", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -241,24 +252,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/d diff", "r restore", "^R refresh", "? commands", "q quit"],
-            shortcuts);
-    }
-
-    [Fact]
-    public void It_offers_the_files_panel_the_same_actions_as_the_explorer()
-    {
-        // Arrange
-        var file = new FileEntry("/repo", "/repo/scripts/build.sh", FileGitStatus.Unchanged);
-        var fileState = new FileExplorerState(
-            [new VisibleFileNode(1, FileNodeKind.File, "build.sh", [file])]);
-
-        // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Files, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
-
-        // Assert
-        Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/e edit", "p preview", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "r restore", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -271,7 +265,7 @@ public sealed class WhenListingPanelShortcuts
             [new VisibleFileNode(0, FileNodeKind.Folder, "scripts", [file])]);
 
         // Act
-        var shortcuts = PanelShortcuts.For(PanelKind.Files, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
+        var shortcuts = PanelShortcuts.For(PanelKind.Explorer, fileState, EmptyChangeset(), EmptyTestState(), EmptyComments());
 
         // Assert
         Assert.Contains("Space/Enter fold", shortcuts);
@@ -294,7 +288,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "s search", "↑/k up", "↓/j down", "Enter/v view", "e edit", "p preview", "d delete", "y copy", "w save", "x clear all", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/v view", "e edit", "d delete", "y copy", "w save", "x clear all", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -310,7 +304,58 @@ public sealed class WhenListingPanelShortcuts
             EmptyComments());
 
         // Assert
-        Assert.Equal(["Tab pane", "s search", "^R refresh", "? commands", "q quit"], shortcuts);
+        Assert.Equal(["Tab pane", "/ search", "^R refresh", "? commands", "q quit"], shortcuts);
+    }
+
+    [Fact]
+    public void It_leaves_previewing_out_of_the_issues()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Issues,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments(),
+            issueState: new IssueState([
+                new CompilationIssue("/repo/Order.cs", "Order.cs", 3, 1, "CS0103", "missing", IssueSeverity.Error)
+            ]));
+
+        // Assert
+        Assert.DoesNotContain("p preview", shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_the_flags_filter_in_the_issues()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Issues,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments(),
+            issueState: new IssueState([]));
+
+        // Assert
+        Assert.Contains("F flags", shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_the_preview_commands_in_the_preview()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Preview,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            TestState(),
+            EmptyComments());
+
+        // Assert
+        Assert.Equal(
+            ["Tab pane", "↑/k up", "↓/j down", "PgUp/PgDn page", "n/N next/previous row", "e edit", "c comment", "^R refresh", "? commands", "q quit"],
+            shortcuts);
     }
 
     private static CommentsState EmptyComments() => new([]);

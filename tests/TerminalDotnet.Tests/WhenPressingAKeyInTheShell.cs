@@ -18,43 +18,53 @@ public sealed class WhenPressingAKeyInTheShell
     }
 
     [Fact]
-    public void Pressing_s_moves_to_the_search()
+    public void Pressing_slash_moves_to_the_search()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.S));
+        var action = ActionFor(new Key((KeyCode)'/'));
 
         // Assert
         Assert.Equal(new ShellAction.FocusSearch(), action);
     }
 
     [Fact]
-    public void Pressing_the_left_arrow_moves_to_the_panels()
+    public void Pressing_s_leaves_the_key_to_the_panel()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.S));
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_the_left_arrow_keeps_the_focus_on_the_panel()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.CursorLeft));
 
         // Assert
-        Assert.Equal(new ShellAction.FocusPanels(), action);
+        Assert.Equal(new ShellAction.HoldFocus(), action);
     }
 
     [Fact]
-    public void Pressing_the_right_arrow_in_the_panels_moves_to_the_rows()
+    public void Pressing_the_right_arrow_keeps_the_focus_on_the_panel()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.CursorRight), panelsFocused: true);
+        var action = ActionFor(new Key(KeyCode.CursorRight));
 
         // Assert
-        Assert.Equal(new ShellAction.FocusRows(), action);
+        Assert.Equal(new ShellAction.HoldFocus(), action);
     }
 
     [Fact]
-    public void Pressing_enter_in_the_panels_selects_the_panel()
+    public void Pressing_the_left_arrow_in_the_search_moves_through_the_text()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.Enter), panelsFocused: true);
+        var action = ActionFor(new Key(KeyCode.CursorLeft), searchFocused: true);
 
         // Assert
-        Assert.Equal(new ShellAction.SelectFocusedPanel(), action);
+        Assert.Equal(new ShellAction.TypeIntoSearch(), action);
     }
 
     [Fact]
@@ -180,7 +190,6 @@ public sealed class WhenPressingAKeyInTheShell
     private static ShellAction? ActionFor(
         Key key,
         bool searchFocused = false,
-        bool panelsFocused = false,
         bool searchActive = false) =>
-        ShellKeyBindings.ActionFor(key, searchFocused, panelsFocused, searchActive);
+        ShellKeyBindings.ActionFor(key, searchFocused, searchActive);
 }

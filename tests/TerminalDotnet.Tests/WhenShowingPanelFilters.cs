@@ -18,7 +18,7 @@ public sealed class WhenShowingPanelFilters
         var snapshot = FilePanelSnapshot.From(state);
 
         // Assert
-        Assert.Equal(["1. Updated"], snapshot.Filters.Select(chip => chip.Text));
+        Assert.Equal(["A All files", "U Updated"], snapshot.Filters.Select(chip => chip.Text));
     }
 
     [Fact]
@@ -31,7 +31,20 @@ public sealed class WhenShowingPanelFilters
         var snapshot = FilePanelSnapshot.From(state);
 
         // Assert
-        Assert.True(snapshot.Filters.Single().IsActive);
+        Assert.True(snapshot.Filters[1].IsActive);
+    }
+
+    [Fact]
+    public void The_explorer_marks_every_file_while_it_shows_them()
+    {
+        // Arrange
+        var state = new FileExplorerState([]);
+
+        // Act
+        var snapshot = FilePanelSnapshot.From(state, showsAllFiles: true);
+
+        // Assert
+        Assert.True(snapshot.Filters[0].IsActive);
     }
 
     [Fact]
@@ -45,7 +58,7 @@ public sealed class WhenShowingPanelFilters
 
         // Assert
         Assert.Equal(
-            ["1. Updated", "2. Failing", "3. Passing", "4. Last run", "5. Not run"],
+            ["U Updated", "F Failing", "P Passing", "L Last run", "N Not run"],
             snapshot.Filters.Select(chip => chip.Text));
     }
 
@@ -64,7 +77,7 @@ public sealed class WhenShowingPanelFilters
         var snapshot = TestPanelSnapshot.From(state, "App.slnx");
 
         // Assert
-        Assert.True(snapshot.Filters.Single(chip => chip.IsActive).Text == "1. Updated");
+        Assert.True(snapshot.Filters.Single(chip => chip.IsActive).Text == "U Updated");
     }
 
     [Fact]

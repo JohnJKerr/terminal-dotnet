@@ -100,13 +100,13 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_p_previews_the_source()
+    public void Pressing_p_leaves_the_preview_to_follow_the_selection()
     {
         // Act
         var action = ActionFor(new Key(KeyCode.P));
 
         // Assert
-        Assert.Equal(new TestPanelAction.PreviewSource(), action);
+        Assert.Null(action);
     }
 
     [Fact]
@@ -160,10 +160,10 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_1_toggles_the_updated_filter()
+    public void Pressing_capital_U_toggles_the_updated_filter()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.D1));
+        var action = ActionFor(Shifted(KeyCode.U));
 
         // Assert
         Assert.Equal(
@@ -172,10 +172,22 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_5_toggles_the_not_run_filter()
+    public void Pressing_capital_F_toggles_the_failing_filter()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.D5));
+        var action = ActionFor(Shifted(KeyCode.F));
+
+        // Assert
+        Assert.Equal(
+            new TestPanelAction.Dispatch(new ExplorerCommand.ToggleFilter(ExplorerFilter.Failing)),
+            action);
+    }
+
+    [Fact]
+    public void Pressing_capital_N_toggles_the_not_run_filter()
+    {
+        // Act
+        var action = ActionFor(Shifted(KeyCode.N));
 
         // Assert
         Assert.Equal(
@@ -184,10 +196,20 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_1_without_focus_does_nothing()
+    public void Pressing_1_toggles_no_filter()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.D1), hasFocus: false);
+        var action = ActionFor(new Key(KeyCode.D1));
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_capital_U_without_focus_does_nothing()
+    {
+        // Act
+        var action = ActionFor(Shifted(KeyCode.U), hasFocus: false);
 
         // Assert
         Assert.Null(action);
