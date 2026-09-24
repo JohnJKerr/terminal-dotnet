@@ -62,6 +62,6 @@ public sealed class WhenReportingTheVersion
         var version = VersionNumber.Current;
 
         // Assert
-        Assert.StartsWith("0.2.", version.ToString());
+        Assert.StartsWith("0.3.", version.ToString());
     }
 }
