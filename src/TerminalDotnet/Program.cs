@@ -15,12 +15,13 @@ if (launchTarget is not LaunchTarget.Found { Path: var target })
     return 1;
 }
 
+var launchFolder = Path.GetDirectoryName(Path.GetFullPath(target))!;
 var commandRunner = new ProcessCommandRunner();
 
 // The panels build the solution as soon as they start, and building runs code
 // the solution defines, so nothing starts until the folder is trusted.
 var trust = new WorkspaceTrust(WorkspaceTrust.DefaultStorePath(), commandRunner);
-var decision = await trust.CheckAsync(Path.GetDirectoryName(Path.GetFullPath(target))!);
+var decision = await trust.CheckAsync(launchFolder);
 var remembered = true;
 if (!decision.Trusted)
 {
@@ -33,14 +34,13 @@ if (!decision.Trusted)
     remembered = await trust.TryTrustAsync(decision.Folder);
 }
 
-var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandRunner));
+var clipboard = new CommandClipboard(commandRunner, launchFolder);
 var folderBackend = new LaunchFolderBackend(commandRunner);
+var changesetBackend = new GitChangesetBackend(commandRunner);
+var fileSession = new FileExplorerSession(new FileSystemExplorerBackend(commandRunner));
 var folderSession = new FileExplorerSession(folderBackend, FileGrouping.Folder);
-var changesetSession = new ChangesetSession(new GitChangesetBackend(commandRunner));
-var commentSession = new CommentSession(
-    new CommandClipboard(commandRunner, Path.GetDirectoryName(Path.GetFullPath(target))!),
-    new FileCommentStore());
-var clipboard = new CommandClipboard(commandRunner, Path.GetDirectoryName(Path.GetFullPath(target))!);
+var changesetSession = new ChangesetSession(changesetBackend);
+var commentSession = new CommentSession(clipboard, new FileCommentStore());
 var issueSession = new IssueSession(
     new DotnetBuildIssueBackend(commandRunner),
     clipboard,
@@ -48,7 +48,7 @@ var issueSession = new IssueSession(
 var session = new TestExplorerSession(
     new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
     new FileTestSourceLocator(),
-    new ChangesetUpdatedSourceProvider(new GitChangesetBackend(commandRunner)));
+    new ChangesetUpdatedSourceProvider(changesetBackend));
 
 var editor = EditorLauncher.Configured(
     Environment.GetEnvironmentVariable("VISUAL"),
