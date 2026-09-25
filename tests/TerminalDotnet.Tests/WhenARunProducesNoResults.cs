@@ -1,4 +1,5 @@
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -81,18 +82,6 @@ public sealed class WhenARunProducesNoResults
 
         public Task<string> ReadAsync(string path, CancellationToken cancellationToken = default) =>
             Task.FromException<string>(new FileNotFoundException("No results were written.", path));
-
-        public void Discard(string path)
-        {
-        }
-    }
-
-    private sealed class InMemoryTestResultStore(string contents) : ITestResultStore
-    {
-        public string CreatePath() => "/tmp/terminal-dotnet.trx";
-
-        public Task<string> ReadAsync(string path, CancellationToken cancellationToken = default) =>
-            Task.FromResult(contents);
 
         public void Discard(string path)
         {

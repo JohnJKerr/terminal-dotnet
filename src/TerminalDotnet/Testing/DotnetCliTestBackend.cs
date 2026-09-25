@@ -3,7 +3,9 @@ using System.Xml.Linq;
 
 namespace TerminalDotnet.Testing;
 
-public sealed partial class DotnetCliTestBackend : ITestBackend
+public sealed partial class DotnetCliTestBackend(
+    ICommandRunner commandRunner,
+    ITestResultStore resultStore) : ITestBackend
 {
     /// <summary>Windows caps a command line at 32,767 characters, and the
     /// filter reaches vstest.console on its command line whichever way it is
@@ -11,15 +13,6 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     /// into runs whose filters do, leaving room for the paths and switches
     /// the test task adds around it.</summary>
     private const int FilterBudget = 20_000;
-
-    private readonly ICommandRunner commandRunner;
-    private readonly ITestResultStore resultStore;
-
-    public DotnetCliTestBackend(ICommandRunner commandRunner, ITestResultStore? resultStore = null)
-    {
-        this.commandRunner = commandRunner;
-        this.resultStore = resultStore ?? new TemporaryTrxResultStore();
-    }
 
     public async Task<IReadOnlyList<TestCase>> DiscoverAsync(
         string target,

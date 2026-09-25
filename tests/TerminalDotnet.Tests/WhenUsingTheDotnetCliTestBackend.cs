@@ -1,4 +1,5 @@
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -10,7 +11,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = ListingCartTests();
-        var backend = new DotnetCliTestBackend(runner);
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         await backend.DiscoverAsync("/repo/Shop.sln");
@@ -25,7 +26,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_returns_the_reported_tests_when_discovering()
     {
         // Arrange
-        var backend = new DotnetCliTestBackend(ListingCartTests());
+        var backend = new DotnetCliTestBackend(ListingCartTests(), new InMemoryTestResultStore());
 
         // Act
         var tests = await backend.DiscoverAsync("/repo/Shop.sln");
@@ -41,7 +42,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, "", ""));
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         await backend.RunAsync([new TestCase(@"Shop.Box<A,B>.Odd|Name=(x)&!~\y", "Odd", "/repo/Shop.sln")]);
@@ -57,7 +58,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         var run = await backend.RunAsync(
@@ -86,7 +87,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new QueuedCommandRunner();
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         await backend.RunAsync(ManyLongNamedTests());
@@ -100,7 +101,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new QueuedCommandRunner();
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
         var tests = ManyLongNamedTests();
 
         // Act
@@ -117,7 +118,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new QueuedCommandRunner(new CommandResult(0, "", ""), new CommandResult(1, "", ""));
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         var run = await backend.RunAsync(ManyLongNamedTests());
@@ -147,7 +148,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new QueuedCommandRunner();
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         await backend.RunAsync(ManyLongNamedTests());
@@ -161,7 +162,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         var run = await backend.RunAsync([AddsItem()]);
@@ -175,7 +176,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         var run = await backend.RunAsync([AddsItem()]);
@@ -281,7 +282,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             The following Tests are available:
                 Shop.Order.Tests.OrderTests.Submits_order
             """, ""));
-        var backend = new DotnetCliTestBackend(runner);
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
@@ -305,7 +306,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
                 Shop.Cart.Tests.CartTests.Adds_item(value: 1)
                 Shop.Cart.Tests.CartTests.Adds_item(value: 2)
             """, ""));
-        var backend = new DotnetCliTestBackend(runner);
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         var tests = await backend.DiscoverAsync("/repo/Shop.sln");
@@ -331,7 +332,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             The following Tests are available:
                 {reportedName}
             """, ""));
-        var backend = new DotnetCliTestBackend(runner);
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
         var test = (await backend.DiscoverAsync("/repo/Shop.sln")).Single();
@@ -351,7 +352,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
                     Shop.Cart.Tests.CartTests.Adds_item
                 """, ""),
             new CommandResult(0, "1 test passed", ""));
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
         var test = (await backend.DiscoverAsync(TestPaths.In("Shop.sln"))).Single();
 
         // Act
@@ -457,28 +458,28 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_discards_the_results_file_once_it_has_been_read()
     {
         // Arrange
-        var store = new InMemoryTestResultStore("<TestRun />");
+        var store = new InMemoryTestResultStore();
         var backend = new DotnetCliTestBackend(new QueuedCommandRunner(), store);
 
         // Act
         await backend.RunAsync([AddsItem()]);
 
         // Assert
-        Assert.Equal(["/tmp/terminal-dotnet.trx"], store.Discarded);
+        Assert.Equal([InMemoryTestResultStore.ResultPath], store.Discarded);
     }
 
     [Fact]
     public async Task It_discards_the_results_file_of_a_cancelled_run()
     {
         // Arrange
-        var store = new InMemoryTestResultStore("<TestRun />");
+        var store = new InMemoryTestResultStore();
         var backend = new DotnetCliTestBackend(new CancelledCommandRunner(), store);
 
         // Act
         await Cancelled(backend.RunAsync([AddsItem()]));
 
         // Assert
-        Assert.Equal(["/tmp/terminal-dotnet.trx"], store.Discarded);
+        Assert.Equal([InMemoryTestResultStore.ResultPath], store.Discarded);
     }
 
     private static async Task Cancelled(Task run)
@@ -507,18 +508,6 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             LastRequest = request;
             return Task.FromResult(result);
         }
-    }
-
-    private sealed class InMemoryTestResultStore(string contents) : ITestResultStore
-    {
-        public string CreatePath() => "/tmp/terminal-dotnet.trx";
-
-        public List<string> Discarded { get; } = [];
-
-        public Task<string> ReadAsync(string path, CancellationToken cancellationToken = default) =>
-            Task.FromResult(contents);
-
-        public void Discard(string path) => Discarded.Add(path);
     }
 
     private sealed class QueuedCommandRunner(params CommandResult[] results) : ICommandRunner
