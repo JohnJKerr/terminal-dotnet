@@ -1,4 +1,5 @@
 using TerminalDotnet.Comments;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Comments;
@@ -9,7 +10,7 @@ public sealed class WhenCommentingOnAFile
     public async Task It_keeps_the_comment_against_the_file()
     {
         // Arrange
-        var session = new CommentSession();
+        var session = GivenA.CommentSession().Build();
 
         // Act
         await session.DispatchAsync(
@@ -25,9 +26,7 @@ public sealed class WhenCommentingOnAFile
     public async Task It_keeps_one_comment_against_a_file_that_is_commented_twice()
     {
         // Arrange
-        var session = new CommentSession();
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
+        var session = await GivenA.CommentSession().WithNote("src/Order.cs", "needs a guard").BuildAsync();
 
         // Act
         await session.DispatchAsync(
@@ -43,7 +42,7 @@ public sealed class WhenCommentingOnAFile
     public async Task It_leaves_no_comment_when_nothing_was_written()
     {
         // Arrange
-        var session = new CommentSession();
+        var session = GivenA.CommentSession().Build();
 
         // Act
         await session.DispatchAsync(
@@ -57,9 +56,7 @@ public sealed class WhenCommentingOnAFile
     public async Task It_lists_the_commented_files_in_path_order()
     {
         // Arrange
-        var session = new CommentSession();
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
+        var session = await GivenA.CommentSession().WithNote("src/Order.cs", "needs a guard").BuildAsync();
 
         // Act
         await session.DispatchAsync(
@@ -75,9 +72,7 @@ public sealed class WhenCommentingOnAFile
     public async Task It_finds_the_note_already_left_against_a_file()
     {
         // Arrange
-        var session = new CommentSession();
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
+        var session = await GivenA.CommentSession().WithNote("src/Order.cs", "needs a guard").BuildAsync();
 
         // Act
         var existing = session.Against("/repo/src/Order.cs");
@@ -90,9 +85,7 @@ public sealed class WhenCommentingOnAFile
     public async Task It_finds_nothing_against_a_file_nobody_has_commented_on()
     {
         // Arrange
-        var session = new CommentSession();
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
+        var session = await GivenA.CommentSession().WithNote("src/Order.cs", "needs a guard").BuildAsync();
 
         // Act
         var existing = session.Against("/repo/src/Customer.cs");

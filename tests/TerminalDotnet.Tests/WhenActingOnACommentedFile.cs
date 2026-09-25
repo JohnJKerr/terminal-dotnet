@@ -1,4 +1,5 @@
 using TerminalDotnet.Comments;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Comments;
@@ -9,7 +10,7 @@ public sealed class WhenActingOnACommentedFile
     public async Task It_rewrites_the_note_against_the_selected_file()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
         await session.DispatchAsync(new CommentCommand.MoveDown());
 
         // Act
@@ -23,7 +24,7 @@ public sealed class WhenActingOnACommentedFile
     public async Task It_leaves_the_other_notes_alone_when_one_is_rewritten()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
         await session.DispatchAsync(new CommentCommand.MoveDown());
 
         // Act
@@ -37,7 +38,7 @@ public sealed class WhenActingOnACommentedFile
     public async Task It_drops_the_note_against_the_selected_file_when_it_is_deleted()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
 
         // Act
         await session.DispatchAsync(new CommentCommand.DeleteSelected());
@@ -52,7 +53,7 @@ public sealed class WhenActingOnACommentedFile
     public async Task It_steps_back_onto_the_last_note_when_the_bottom_one_is_deleted()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
         await session.DispatchAsync(new CommentCommand.MoveDown());
 
         // Act
@@ -66,7 +67,7 @@ public sealed class WhenActingOnACommentedFile
     public async Task It_drops_the_note_altogether_when_it_is_rewritten_to_nothing()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
 
         // Act
         await session.DispatchAsync(new CommentCommand.RewriteSelected("   "));
@@ -75,15 +76,5 @@ public sealed class WhenActingOnACommentedFile
         Assert.Equal(
             ["src/Order.cs"],
             session.State.Comments.Select(comment => comment.DisplayPath));
-    }
-
-    private static async Task<CommentSession> SessionWithTwoComments()
-    {
-        var session = new CommentSession();
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Customer.cs", "src/Customer.cs", "rename this"));
-        return session;
     }
 }

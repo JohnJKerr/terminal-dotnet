@@ -1,4 +1,5 @@
 using TerminalDotnet.Comments;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Comments;
@@ -9,7 +10,7 @@ public sealed class WhenSearchingTheComments
     public async Task It_shows_only_the_files_whose_path_matches()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
 
         // Act
         await session.DispatchAsync(new CommentCommand.Search("order"));
@@ -24,7 +25,7 @@ public sealed class WhenSearchingTheComments
     public async Task It_shows_the_files_whose_note_matches()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
 
         // Act
         await session.DispatchAsync(new CommentCommand.Search("rename"));
@@ -39,7 +40,7 @@ public sealed class WhenSearchingTheComments
     public async Task It_remembers_what_was_searched_for()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
 
         // Act
         await session.DispatchAsync(new CommentCommand.Search("rename"));
@@ -52,7 +53,7 @@ public sealed class WhenSearchingTheComments
     public async Task It_returns_to_the_first_row_when_the_search_changes()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
         await session.DispatchAsync(new CommentCommand.MoveDown());
 
         // Act
@@ -66,7 +67,7 @@ public sealed class WhenSearchingTheComments
     public async Task It_brings_every_note_back_when_the_search_is_cleared()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
         await session.DispatchAsync(new CommentCommand.Search("order"));
 
         // Act
@@ -80,7 +81,7 @@ public sealed class WhenSearchingTheComments
     public async Task It_keeps_a_new_note_out_of_a_search_it_does_not_match()
     {
         // Arrange
-        var session = await SessionWithTwoComments();
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
         await session.DispatchAsync(new CommentCommand.Search("order"));
 
         // Act
@@ -91,15 +92,5 @@ public sealed class WhenSearchingTheComments
         Assert.Equal(
             ["src/Order.cs"],
             session.State.Comments.Select(comment => comment.DisplayPath));
-    }
-
-    private static async Task<CommentSession> SessionWithTwoComments()
-    {
-        var session = new CommentSession();
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Customer.cs", "src/Customer.cs", "rename this"));
-        return session;
     }
 }

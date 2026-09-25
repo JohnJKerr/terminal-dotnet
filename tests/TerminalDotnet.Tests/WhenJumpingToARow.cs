@@ -3,6 +3,7 @@ using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
@@ -84,11 +85,7 @@ public sealed class WhenJumpingToARow
     public async Task It_selects_the_commented_file_it_was_sent_to()
     {
         // Arrange
-        var session = new CommentSession();
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Customer.cs", "src/Customer.cs", "rename this"));
+        var session = await GivenA.CommentSession().WithTwoNotes().BuildAsync();
 
         // Act
         await session.DispatchAsync(new CommentCommand.SelectIndex(1));
@@ -103,9 +100,7 @@ public sealed class WhenJumpingToARow
     public async Task It_stays_on_the_last_commented_file_when_sent_past_the_end()
     {
         // Arrange
-        var session = new CommentSession();
-        await session.DispatchAsync(
-            new CommentCommand.Add("/repo/src/Order.cs", "src/Order.cs", "needs a guard"));
+        var session = await GivenA.CommentSession().WithNote("src/Order.cs", "needs a guard").BuildAsync();
 
         // Act
         await session.DispatchAsync(new CommentCommand.SelectIndex(9));

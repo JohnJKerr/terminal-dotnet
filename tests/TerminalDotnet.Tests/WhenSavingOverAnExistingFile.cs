@@ -1,4 +1,6 @@
 using TerminalDotnet.Comments;
+using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Comments;
@@ -9,7 +11,7 @@ public sealed class WhenSavingOverAnExistingFile
     public async Task It_says_a_path_that_already_holds_something_does()
     {
         // Arrange
-        var session = new CommentSession(store: new InMemoryCommentStore("comments.md"));
+        var session = GivenA.CommentSession().WithStore(new RecordingCommentStore("comments.md")).Build();
 
         // Act
         var holds = await session.HoldsSomethingAtAsync("comments.md");
@@ -22,7 +24,7 @@ public sealed class WhenSavingOverAnExistingFile
     public async Task It_says_an_untouched_path_holds_nothing()
     {
         // Arrange
-        var session = new CommentSession(store: new InMemoryCommentStore("comments.md"));
+        var session = GivenA.CommentSession().WithStore(new RecordingCommentStore("comments.md")).Build();
 
         // Act
         var holds = await session.HoldsSomethingAtAsync("notes.md");
@@ -42,22 +44,5 @@ public sealed class WhenSavingOverAnExistingFile
 
         // Assert
         Assert.False(holds);
-    }
-
-    private sealed class InMemoryCommentStore(params string[] paths) : ICommentStore
-    {
-        private readonly HashSet<string> written = [.. paths];
-
-        public Task<bool> ExistsAsync(string path, CancellationToken cancellationToken = default) =>
-            Task.FromResult(written.Contains(path));
-
-        public Task<bool> TryWriteAsync(
-            string path,
-            string text,
-            CancellationToken cancellationToken = default)
-        {
-            written.Add(path);
-            return Task.FromResult(true);
-        }
     }
 }
