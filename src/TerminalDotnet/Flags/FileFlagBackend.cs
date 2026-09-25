@@ -35,8 +35,7 @@ public sealed partial class FileFlagBackend(IFileExplorerBackend files) : IFlagB
         {
             return (FileText.ReadLinesWithin(path) ?? [])
                 .Select((line, index) => FlagIn(path, root, index + 1, line))
-                .Where(flag => flag is not null)
-                .Cast<Flag>()
+                .OfType<Flag>()
                 .ToArray();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)

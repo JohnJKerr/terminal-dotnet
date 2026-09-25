@@ -57,8 +57,12 @@ public sealed record IssuePanelLayout(
 }
 
 public sealed record IssuePanelSnapshot(
-    IReadOnlyList<CompilationIssue> Issues, int SelectedIndex, string SearchQuery,
-    IReadOnlyList<StatusSegment> StatusSegments, IReadOnlyList<FilterChip> Filters, string EmptyMessage)
+    IReadOnlyList<CompilationIssue> Issues,
+    int SelectedIndex,
+    string SearchQuery,
+    IReadOnlyList<StatusSegment> StatusSegments,
+    IReadOnlyList<FilterChip> Filters,
+    string EmptyMessage)
 {
     public string SelectedDetails => SelectedIndex < Issues.Count ? Issues[SelectedIndex].Details : "";
 
@@ -73,13 +77,28 @@ public sealed record IssuePanelSnapshot(
     };
 
     public static IssuePanelSnapshot From(IssueState state) => new(
-        state.Issues, state.SelectedIndex, state.SearchQuery,
-        [new(CountedNoun.Of(state.Issues.Count(x => x.Severity == IssueSeverity.Error), "Error"), RowTone.Deleted),
-         new(CountedNoun.Of(state.Issues.Count(x => x.Severity == IssueSeverity.Warning), "Warning"), RowTone.Warning),
-         new(CountedNoun.Of(state.Issues.Count(x => x.Severity == IssueSeverity.Flag), "Flag"), RowTone.Neutral),
-         .. state.Notice.Length == 0 ? [] : new[] { new StatusSegment(state.Notice, RowTone.Neutral) }],
-        [new("X Errors", state.ActiveFilter == IssueFilter.Errors),
-         new("W Warnings", state.ActiveFilter == IssueFilter.Warnings),
-         new("F Flags", state.ActiveFilter == IssueFilter.Flags)],
+        state.Issues,
+        state.SelectedIndex,
+        state.SearchQuery,
+        StatusSegmentsFrom(state),
+        FiltersFrom(state.ActiveFilter),
         state.Loading ? "" : PanelEmptyState.For("issues", state.Issues.Count, state.SearchQuery));
+
+    private static IReadOnlyList<StatusSegment> StatusSegmentsFrom(IssueState state) =>
+    [
+        Counted(state, IssueSeverity.Error, "Error", RowTone.Deleted),
+        Counted(state, IssueSeverity.Warning, "Warning", RowTone.Warning),
+        Counted(state, IssueSeverity.Flag, "Flag", RowTone.Neutral),
+        .. state.Notice.Length == 0 ? Array.Empty<StatusSegment>() : [new StatusSegment(state.Notice, RowTone.Neutral)]
+    ];
+
+    private static StatusSegment Counted(IssueState state, IssueSeverity severity, string noun, RowTone tone) =>
+        new(CountedNoun.Of(state.Issues.Count(issue => issue.Severity == severity), noun), tone);
+
+    private static IReadOnlyList<FilterChip> FiltersFrom(IssueFilter? active) =>
+    [
+        new("X Errors", active == IssueFilter.Errors),
+        new("W Warnings", active == IssueFilter.Warnings),
+        new("F Flags", active == IssueFilter.Flags)
+    ];
 }
