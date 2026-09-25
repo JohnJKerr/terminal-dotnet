@@ -12,7 +12,7 @@ namespace TerminalDotnet.Issues;
 public sealed class IssueSession(
     IIssueBackend backend,
     ICommentClipboard clipboard,
-    IFlagBackend? flagBackend = null)
+    IFlagBackend flagBackend)
 {
     private IReadOnlyList<CompilationIssue> built = [];
     private IReadOnlyList<CompilationIssue> flagged = [];
@@ -44,12 +44,6 @@ public sealed class IssueSession(
     /// reason to take the build's issues away with them.</summary>
     public async Task LoadFlagsAsync(string target, CancellationToken cancellationToken = default)
     {
-        if (flagBackend is null)
-        {
-            State = State with { FlagsLoading = false };
-            return;
-        }
-
         var standingOn = Selected();
         try
         {

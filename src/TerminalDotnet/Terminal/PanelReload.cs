@@ -15,7 +15,7 @@ public sealed class PanelReload(
     IReadOnlyList<FileExplorerSession> explorers,
     ChangesetSession changes,
     string target,
-    IssueSession? issues = null)
+    IssueSession issues)
 {
     private delegate Task PanelLoad(CancellationToken cancellationToken);
 
@@ -50,12 +50,8 @@ public sealed class PanelReload(
         .. explorers.Select<FileExplorerSession, PanelLoad>(
             explorer => token => explorer.LoadAsync(target, token)),
         token => changes.LoadAsync(target, token),
-        .. Present(issues, token => issues!.LoadFlagsAsync(target, token))
+        token => issues.LoadFlagsAsync(target, token)
     ];
 
-    private IEnumerable<PanelLoad> BuildingPanels() =>
-        Present(issues, token => issues!.LoadAsync(target, token));
-
-    private static IEnumerable<PanelLoad> Present<TSession>(TSession? panel, PanelLoad load)
-        where TSession : class => panel is null ? [] : [load];
+    private IEnumerable<PanelLoad> BuildingPanels() => [token => issues.LoadAsync(target, token)];
 }

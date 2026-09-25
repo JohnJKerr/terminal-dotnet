@@ -272,7 +272,7 @@ internal sealed class TestRunnerApplication(
             changesetSession,
             session,
             target,
-            issues: issueSession).LoadPendingAsync(
+            issueSession).LoadPendingAsync(
             () =>
             {
                 application.Invoke(() => Render());
@@ -1300,13 +1300,13 @@ internal sealed class TestRunnerApplication(
         changesetSession,
         editorLauncher!,
         target,
-        issues: issueSession);
+        issueSession);
 
     private PanelReload PanelReload() => new(
         [fileSession, folderSession],
         changesetSession,
         target,
-        issues: issueSession);
+        issueSession);
 
     /// <summary>
     /// Asks on every frame rather than reloading as the edits land, because a
