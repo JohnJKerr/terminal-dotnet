@@ -423,7 +423,8 @@ internal sealed class TestRunnerApplication(
         var layout = PanelLayout.For(
             workspace.Viewport.Width,
             workspace.Viewport.Height,
-            shell.State.ExpandedList);
+            shell.State.ExpandedList,
+            shell.State.FullScreenPanel);
         foreach (var (panel, shown) in lists)
         {
             shown.Place(layout[panel]);
@@ -564,6 +565,13 @@ internal sealed class TestRunnerApplication(
             case ShellAction.Refresh:
                 ReloadWhatIsOnDisk(application);
                 Rebuild(application, askedFor: true);
+                return;
+            case ShellAction.ToggleFullScreen:
+                shell.ToggleFullScreen();
+                ShowActivePanel();
+                return;
+            case ShellAction.Dismiss when shell.LeaveFullScreen():
+                ShowActivePanel();
                 return;
             case ShellAction.Dismiss:
             case ShellAction.HoldFocus:

@@ -14,6 +14,10 @@ public abstract record ShellAction
     public sealed record SelectPreviousPanel : ShellAction;
     public sealed record ShowCommands : ShellAction;
     public sealed record Refresh : ShellAction;
+
+    /// <summary>Shows the active panel over the whole screen, or returns
+    /// it to its tile.</summary>
+    public sealed record ToggleFullScreen : ShellAction;
     public sealed record Quit : ShellAction;
 
     /// <summary>Escape with nothing left to close. It is taken so that it
@@ -69,6 +73,11 @@ public static class ShellKeyBindings
         if (Is(key, KeyCode.Q))
         {
             return new ShellAction.Quit();
+        }
+
+        if (Is(key, (KeyCode)'+'))
+        {
+            return new ShellAction.ToggleFullScreen();
         }
 
         if (Is(key, KeyCode.CursorLeft) || Is(key, KeyCode.CursorRight))

@@ -187,6 +187,26 @@ public sealed class WhenPressingAKeyInTheShell
         Assert.Equal(new ShellAction.Quit(), action);
     }
 
+    [Fact]
+    public void Pressing_plus_toggles_the_panel_full_screen()
+    {
+        // Act
+        var action = ActionFor(new Key((KeyCode)'+'));
+
+        // Assert
+        Assert.Equal(new ShellAction.ToggleFullScreen(), action);
+    }
+
+    [Fact]
+    public void Pressing_plus_in_the_search_types_it()
+    {
+        // Act
+        var action = ActionFor(new Key((KeyCode)'+'), searchFocused: true);
+
+        // Assert
+        Assert.Equal(new ShellAction.TypeIntoSearch(), action);
+    }
+
     private static ShellAction? ActionFor(
         Key key,
         bool searchFocused = false,

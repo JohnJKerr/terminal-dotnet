@@ -80,6 +80,7 @@ internal sealed class PanelFrame
             column += text.Length;
         }
 
+        Footer.Visible = area != PanelLayout.Hidden;
         Footer.Width = Footer.Text.Length;
         Footer.X = Math.Max(area.X, right - Footer.Text.Length - 1);
         Footer.Y = area.Y + area.Height - 1;
