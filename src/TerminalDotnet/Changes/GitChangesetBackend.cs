@@ -13,7 +13,8 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         CancellationToken cancellationToken = default)
     {
         scopeDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
-        repositoryRoot = await RepositoryRootAsync(cancellationToken).ConfigureAwait(false);
+        repositoryRoot = await GitRepository.RootAsync(commandRunner, scopeDirectory, cancellationToken)
+            .ConfigureAwait(false);
         if (repositoryRoot is null)
         {
             return [];
@@ -120,14 +121,6 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
     /// named `*.cs` would otherwise sweep up every sibling it matches. The
     /// literal prefix keeps an operation to the file the panel selected.</summary>
     private static string Pathspec(ChangedFile file) => $":(literal){file.Path}";
-
-    private async Task<string?> RepositoryRootAsync(CancellationToken cancellationToken)
-    {
-        var result = await commandRunner.RunAsync(
-            GitRequest.For(["rev-parse", "--show-toplevel"], scopeDirectory),
-            cancellationToken).ConfigureAwait(false);
-        return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
-    }
 
     private Task<CommandResult> GitAsync(
         IReadOnlyList<string> arguments,

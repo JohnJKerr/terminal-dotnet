@@ -64,15 +64,9 @@ public sealed class WorkspaceTrust(string storePath, ICommandRunner commandRunne
         }
     }
 
-    private async Task<string> FolderToTrustAsync(string launchFolder, CancellationToken cancellationToken)
-    {
-        var root = await commandRunner.RunAsync(
-            GitRequest.For(["rev-parse", "--show-toplevel"], launchFolder),
-            cancellationToken).ConfigureAwait(false);
-        return Normalized(root.ExitCode == 0 && root.StandardOutput.Trim() is { Length: > 0 } top
-            ? top
-            : launchFolder);
-    }
+    private async Task<string> FolderToTrustAsync(string launchFolder, CancellationToken cancellationToken) =>
+        Normalized(await GitRepository.RootAsync(commandRunner, launchFolder, cancellationToken).ConfigureAwait(false)
+            ?? launchFolder);
 
     private IReadOnlyList<string> TrustedFolders()
     {

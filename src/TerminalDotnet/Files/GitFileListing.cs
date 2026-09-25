@@ -7,16 +7,8 @@ namespace TerminalDotnet.Files;
 /// starts, which files it holds, and what has changed inside it.</summary>
 internal sealed class GitFileListing(ICommandRunner commandRunner)
 {
-    public async Task<string?> RootAsync(
-        string workingDirectory,
-        CancellationToken cancellationToken)
-    {
-        var result = await commandRunner.RunAsync(
-            GitRequest.For(["rev-parse", "--show-toplevel"], workingDirectory),
-            cancellationToken).ConfigureAwait(false);
-
-        return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
-    }
+    public Task<string?> RootAsync(string workingDirectory, CancellationToken cancellationToken) =>
+        GitRepository.RootAsync(commandRunner, workingDirectory, cancellationToken);
 
     /// <summary>Nothing counts as changed outside a repository, which is why
     /// the root is allowed to be missing.</summary>
