@@ -177,14 +177,13 @@ public sealed class CommentSession(ICommentClipboard clipboard, ICommentStore st
 
     private int SelectionAfter(CommentCommand command, int count)
     {
-        var lastIndex = Math.Max(0, count - 1);
         return command switch
         {
             CommentCommand.Search or CommentCommand.ClearSearch => 0,
-            CommentCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
-            CommentCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-            CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
-            _ => Math.Min(State.SelectedIndex, lastIndex)
+            CommentCommand.SelectIndex jump => RowSelection.At(jump.Index, count),
+            CommentCommand.MoveUp => RowSelection.Up(State.SelectedIndex),
+            CommentCommand.MoveDown => RowSelection.Down(State.SelectedIndex, count),
+            _ => RowSelection.Kept(State.SelectedIndex, count)
         };
     }
 }

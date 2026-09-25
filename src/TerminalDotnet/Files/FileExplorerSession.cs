@@ -42,7 +42,7 @@ public sealed class FileExplorerSession(
         return State with
         {
             VisibleNodes = VisibleNodesOf(unfolded),
-            SelectedIndex = RowFor(standingOn, unfolded),
+            SelectedIndex = RowSelection.FoundAgain(unfolded, node => node.Key == standingOn, State.SelectedIndex),
             Changes = SummaryFrom(files),
             Loading = false,
             Notice = ""
@@ -55,15 +55,6 @@ public sealed class FileExplorerSession(
         Unfolded() is { } unfolded && State.SelectedIndex < unfolded.Count
             ? unfolded[State.SelectedIndex]
             : null;
-
-    /// <summary>The row the reader was on, wherever it has moved to. A row that
-    /// the edit took away leaves them where they were standing instead.
-    /// </summary>
-    private int RowFor(string? key, IReadOnlyList<FileTreeNode> unfolded)
-    {
-        var moved = key is null ? -1 : unfolded.Select(node => node.Key).ToList().IndexOf(key);
-        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, unfolded.Count - 1));
-    }
 
     public Task DispatchAsync(FileExplorerCommand command)
     {
@@ -138,7 +129,7 @@ public sealed class FileExplorerSession(
         State = State with
         {
             VisibleNodes = nodes,
-            SelectedIndex = Math.Min(State.SelectedIndex, Math.Max(0, nodes.Count - 1))
+            SelectedIndex = RowSelection.Kept(State.SelectedIndex, nodes.Count)
         };
     }
 
@@ -157,14 +148,14 @@ public sealed class FileExplorerSession(
 
     private void MoveSelection(FileExplorerCommand command)
     {
-        var lastIndex = Math.Max(0, State.VisibleNodes.Count - 1);
+        var rowCount = State.VisibleNodes.Count;
         State = State with
         {
             SelectedIndex = command switch
             {
-                FileExplorerCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
-                FileExplorerCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-                FileExplorerCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+                FileExplorerCommand.SelectIndex jump => RowSelection.At(jump.Index, rowCount),
+                FileExplorerCommand.MoveUp => RowSelection.Up(State.SelectedIndex),
+                FileExplorerCommand.MoveDown => RowSelection.Down(State.SelectedIndex, rowCount),
                 _ => State.SelectedIndex
             }
         };

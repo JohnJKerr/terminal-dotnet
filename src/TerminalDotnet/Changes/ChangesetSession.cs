@@ -36,18 +36,11 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         changedFiles = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
         var matching = Matching(State.SearchQuery);
 
-        return new ChangesetState(matching, RowFor(standingOn, matching), State.SearchQuery)
+        var selected = RowSelection.FoundAgain(matching, file => file.DisplayPath == standingOn, State.SelectedIndex);
+        return new ChangesetState(matching, selected, State.SearchQuery)
         {
             Summary = SummaryFrom(changedFiles)
         };
-    }
-
-    private int RowFor(string? displayPath, IReadOnlyList<ChangedFile> files)
-    {
-        var moved = displayPath is null
-            ? -1
-            : files.ToList().FindIndex(file => file.DisplayPath == displayPath);
-        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, files.Count - 1));
     }
 
     public async Task DispatchAsync(
@@ -89,14 +82,14 @@ public sealed class ChangesetSession(IChangesetBackend backend)
             return;
         }
 
-        var lastIndex = Math.Max(0, State.Files.Count - 1);
+        var rowCount = State.Files.Count;
         State = State with
         {
             SelectedIndex = command switch
             {
-                ChangesetCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
-                ChangesetCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-                ChangesetCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+                ChangesetCommand.SelectIndex jump => RowSelection.At(jump.Index, rowCount),
+                ChangesetCommand.MoveUp => RowSelection.Up(State.SelectedIndex),
+                ChangesetCommand.MoveDown => RowSelection.Down(State.SelectedIndex, rowCount),
                 _ => State.SelectedIndex
             }
         };
