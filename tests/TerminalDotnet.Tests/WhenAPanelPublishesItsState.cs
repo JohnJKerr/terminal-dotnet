@@ -2,6 +2,7 @@ using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
@@ -71,8 +72,9 @@ public sealed class WhenAPanelPublishesItsState
     {
         // Arrange
         var discovered = new List<TestCase> { AddsItem };
-        var session = new TestExplorerSession(new MutableTestBackend(discovered));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new MutableTestBackend(discovered))
+            .LoadedAsync();
 
         // Act
         discovered.Clear();
@@ -85,8 +87,9 @@ public sealed class WhenAPanelPublishesItsState
     public async Task It_publishes_test_membership_that_cannot_be_replaced()
     {
         // Arrange
-        var session = new TestExplorerSession(new MutableTestBackend([AddsItem]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new MutableTestBackend([AddsItem]))
+            .LoadedAsync();
 
         // Act
         var tests = (IList<TestCase>)session.State.VisibleNodes[0].Tests;
@@ -100,8 +103,9 @@ public sealed class WhenAPanelPublishesItsState
     {
         // Arrange
         var run = new TestRun(true, "Passed", [PassedResult]);
-        var session = new TestExplorerSession(new MutableTestBackend([AddsItem], run));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new MutableTestBackend([AddsItem], run))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
 
         // Act

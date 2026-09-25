@@ -1,5 +1,6 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
@@ -42,8 +43,9 @@ public sealed class WhenARunReportsNoOutcomes
 
     private static async Task<TestExplorerSession> SessionRunningOneTestAsync(TestRun run)
     {
-        var session = new TestExplorerSession(new ResultlessTestBackend(CartTest, run));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new ResultlessTestBackend(CartTest, run))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         return session;

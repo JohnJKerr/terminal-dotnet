@@ -1,5 +1,6 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -11,8 +12,9 @@ public sealed class WhenSearchingDuringARun
     {
         // Arrange
         var backend = new HeldTestBackend(AddsItem);
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         var active = session.DispatchAsync(new ExplorerCommand.RunSelected());
         await backend.Started.Task.WaitAsync(TimeSpan.FromSeconds(1));

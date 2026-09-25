@@ -1,5 +1,6 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -34,7 +35,7 @@ public sealed class WhenAFailedTestSourceIsMissing
 
     private static async Task<TestExplorerSession> SessionWithAFailureInAMissingFileAsync()
     {
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
         var failure = new TestResult(
             test,
             TestOutcome.Failed,
@@ -43,9 +44,9 @@ public sealed class WhenAFailedTestSourceIsMissing
             null,
             Path.Combine(Path.GetTempPath(), $"terminal-dotnet-gone-{Guid.NewGuid():N}.cs"),
             42);
-        var session = new TestExplorerSession(
-            new SingleRunBackend(test, new TestRun(false, "1 test failed", [failure])));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new SingleRunBackend(test, new TestRun(false, "1 test failed", [failure])))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.RunSelected());

@@ -1,5 +1,6 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -66,8 +67,9 @@ public sealed class WhenARunIsAlreadyActive
 
     private static async Task<TestExplorerSession> SessionRunningOneTestAsync(ITestBackend backend)
     {
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         return session;

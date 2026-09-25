@@ -1,5 +1,6 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -17,7 +18,9 @@ public sealed class WhenDiscoveryIsStillRunning
     {
         // Arrange
         var backend = new PausedTestBackend([Adds, Removes]);
-        var session = new TestExplorerSession(backend);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
         var load = session.LoadAsync("Shop.sln");
         await session.DispatchAsync(new ExplorerCommand.Search("Removes"));
 
@@ -34,7 +37,9 @@ public sealed class WhenDiscoveryIsStillRunning
     {
         // Arrange
         var backend = new PausedTestBackend([Adds, Removes]);
-        var session = new TestExplorerSession(backend);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
         var load = session.LoadAsync("Shop.sln");
         await session.DispatchAsync(new ExplorerCommand.Search("Removes"));
 

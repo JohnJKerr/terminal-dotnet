@@ -1,5 +1,6 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -57,8 +58,9 @@ public sealed class WhenRerunningPartOfASuite
             [AddsItem, RemovesItem],
             new TestRun(true, "Passed", [Result(AddsItem, TestOutcome.Passed), Result(RemovesItem, TestOutcome.Passed)]),
             new TestRun(false, "Failed", [Result(AddsItem, TestOutcome.Failed)]));
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());

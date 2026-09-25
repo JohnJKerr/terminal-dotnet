@@ -1,6 +1,7 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Filters;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -90,7 +91,9 @@ public sealed class WhenFilteringTestsByRun
 
     private static async Task<TestExplorerSession> LoadedSessionAsync()
     {
-        var session = new TestExplorerSession(new OutcomeBackend(Tests()));
+        var session = GivenA.TestExplorer()
+            .WithBackend(new OutcomeBackend(Tests()))
+            .Build();
         await session.LoadAsync(TestPaths.In("Shop.sln"));
         return session;
     }

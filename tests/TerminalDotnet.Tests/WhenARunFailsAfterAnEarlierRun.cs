@@ -1,6 +1,7 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -12,8 +13,9 @@ public sealed class WhenARunFailsAfterAnEarlierRun
     {
         // Arrange
         var pending = new TaskCompletionSource<TestRun>();
-        var session = new TestExplorerSession(new RetryingBackend(pending.Task));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new RetryingBackend(pending.Task))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
 
         // Act
@@ -119,8 +121,9 @@ public sealed class WhenARunFailsAfterAnEarlierRun
 
     private static async Task<TestExplorerSession> SessionAfterRunsAsync(params Func<TestRun>[] runs)
     {
-        var session = new TestExplorerSession(new ScriptedTestBackend(CartTest, runs));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new ScriptedTestBackend(CartTest, runs))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         foreach (var _ in runs)
