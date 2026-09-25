@@ -52,6 +52,19 @@ public sealed class WhenTakingTheCommentsAway
     }
 
     [Fact]
+    public async Task It_counts_a_single_copied_note_as_one()
+    {
+        // Arrange
+        var session = await GivenA.CommentSession().WithNote("src/Order.cs", "needs a guard").BuildAsync();
+
+        // Act
+        await session.DispatchAsync(new CommentCommand.CopyAll());
+
+        // Assert
+        Assert.Equal("Copied 1 comment", session.State.Notice);
+    }
+
+    [Fact]
     public async Task It_says_so_when_the_clipboard_would_not_take_them()
     {
         // Arrange
@@ -123,6 +136,19 @@ public sealed class WhenTakingTheCommentsAway
 
         // Assert
         Assert.Equal("Saved 2 comments to comments.md", session.State.Notice);
+    }
+
+    [Fact]
+    public async Task It_counts_a_single_saved_note_as_one()
+    {
+        // Arrange
+        var session = await GivenA.CommentSession().WithNote("src/Order.cs", "needs a guard").BuildAsync();
+
+        // Act
+        await session.DispatchAsync(new CommentCommand.SaveAll("comments.md"));
+
+        // Assert
+        Assert.Equal("Saved 1 comment to comments.md", session.State.Notice);
     }
 
     [Fact]

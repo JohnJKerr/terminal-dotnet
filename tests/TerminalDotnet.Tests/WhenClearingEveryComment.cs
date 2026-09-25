@@ -46,6 +46,19 @@ public sealed class WhenClearingEveryComment
     }
 
     [Fact]
+    public async Task It_counts_a_single_cleared_note_as_one()
+    {
+        // Arrange
+        var session = await GivenA.CommentSession().WithNote("src/Order.cs", "needs a guard").BuildAsync();
+
+        // Act
+        await session.DispatchAsync(new CommentCommand.ClearAll());
+
+        // Assert
+        Assert.Equal("Cleared 1 comment", session.State.Notice);
+    }
+
+    [Fact]
     public async Task It_clears_the_notes_a_search_has_hidden_as_well()
     {
         // Arrange

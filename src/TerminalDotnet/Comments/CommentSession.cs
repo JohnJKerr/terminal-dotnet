@@ -65,7 +65,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
     {
         var cleared = comments.Count;
         comments.Clear();
-        return cleared == 0 ? "" : $"Cleared {cleared} comments";
+        return cleared == 0 ? "" : $"Cleared {CountedNoun.Of(cleared, "comment")}";
     }
 
     /// <summary>Taking the comments away takes all of them, not only the ones
@@ -86,7 +86,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
                 CommentReport.From(InPathOrder()),
                 cancellationToken);
             takenAway |= copied;
-            return copied ? $"Copied {comments.Count} comments" : "Could not copy the comments";
+            return copied ? $"Copied {Counted()}" : "Could not copy the comments";
         }
 
         if (command is not CommentCommand.SaveAll save)
@@ -100,9 +100,11 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
             cancellationToken);
         takenAway |= saved;
         return saved
-            ? $"Saved {comments.Count} comments to {save.Path}"
+            ? $"Saved {Counted()} to {save.Path}"
             : $"Could not save the comments to {save.Path}";
     }
+
+    private string Counted() => CountedNoun.Of(comments.Count, "comment");
 
     private IReadOnlyList<FileComment> InPathOrder() => Matching("");
 
