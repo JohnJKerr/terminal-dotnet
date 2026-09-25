@@ -77,6 +77,9 @@ public sealed record FileExplorerState(
 
     public FileChangeSummary Changes { get; init; } = FileChangeSummary.Empty;
 
+    /// <summary>Why the files could not be read, when they could not.</summary>
+    public string Notice { get; init; } = "";
+
     /// <summary>Set while the first discovery is still running, so the panel
     /// does not claim there are no files before it has looked.</summary>
     public bool Loading { get; init; }

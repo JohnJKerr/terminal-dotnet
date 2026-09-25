@@ -33,6 +33,35 @@ public sealed class WhenAPanelCannotLoad
     }
 
     [Fact]
+    public async Task The_explorer_says_why_it_has_nothing_to_show()
+    {
+        // Arrange
+        var session = new FileExplorerSession(new FailingFileBackend());
+
+        // Act
+        await session.LoadAsync("App.csproj");
+
+        // Assert
+        Assert.Equal("Could not read the files: Could not start git.", session.State.Notice);
+    }
+
+    [Fact]
+    public async Task The_explorer_stops_saying_so_once_the_files_can_be_read()
+    {
+        // Arrange
+        var backend = new FailingFileBackend();
+        var session = new FileExplorerSession(backend);
+        await session.LoadAsync("App.csproj");
+        backend.Fails = false;
+
+        // Act
+        await session.LoadAsync("App.csproj");
+
+        // Assert
+        Assert.Equal("", session.State.Notice);
+    }
+
+    [Fact]
     public async Task The_changeset_stops_waiting_for_changes_that_will_never_arrive()
     {
         // Arrange
@@ -73,11 +102,13 @@ public sealed class WhenAPanelCannotLoad
 
     private sealed class FailingFileBackend : IFileExplorerBackend
     {
+        public bool Fails { get; set; } = true;
+
         public Task<IReadOnlyList<FileEntry>> DiscoverAsync(
             string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromException<IReadOnlyList<FileEntry>>(
-                new InvalidOperationException("Could not start git."));
+            CancellationToken cancellationToken = default) => Fails
+            ? Task.FromException<IReadOnlyList<FileEntry>>(new InvalidOperationException("Could not start git."))
+            : Task.FromResult<IReadOnlyList<FileEntry>>([]);
     }
 
     private sealed class FailingChangesetBackend : IChangesetBackend

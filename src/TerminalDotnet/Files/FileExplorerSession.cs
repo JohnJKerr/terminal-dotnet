@@ -21,7 +21,7 @@ public sealed class FileExplorerSession(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            State = new FileExplorerState([]);
+            State = new FileExplorerState([]) { Notice = $"Could not read the files: {exception.Message}" };
         }
     }
 
@@ -44,7 +44,8 @@ public sealed class FileExplorerSession(
             VisibleNodes = nodes,
             SelectedIndex = RowFor(standingOn, nodes.Count),
             Changes = SummaryFrom(files),
-            Loading = false
+            Loading = false,
+            Notice = ""
         };
     }
 

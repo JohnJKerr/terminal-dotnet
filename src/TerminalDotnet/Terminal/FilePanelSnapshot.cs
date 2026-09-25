@@ -88,7 +88,7 @@ public sealed record FilePanelSnapshot(
         state.SelectedIndex,
         state.SearchQuery,
         state.VisibleFileCount,
-        StatusSegmentsFrom(state.Changes),
+        StatusSegmentsFrom(state.Changes, state.Notice),
         [new FilterChip("A All files", showsAllFiles), .. PanelFilters.Chips(state.ActiveFilter)],
         EmptyMessageFrom(state));
 
@@ -100,12 +100,13 @@ public sealed record FilePanelSnapshot(
             state.SearchQuery,
             state.ActiveFilter);
 
-    private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(FileChangeSummary changes) =>
+    private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(FileChangeSummary changes, string notice) =>
     [
         new(CountedNoun.Of(changes.Total, "File"), FileRowTone.Neutral),
         new($"{changes.Added} Added", FileRowTone.New),
         new($"{changes.Edited} Edited", FileRowTone.Modified),
-        new($"{changes.Deleted} Deleted", FileRowTone.Deleted)
+        new($"{changes.Deleted} Deleted", FileRowTone.Deleted),
+        .. notice.Length > 0 ? new FileStatusSegment[] { new(notice, FileRowTone.Deleted) } : []
     ];
 
     private static FilePanelRow RowFrom(VisibleFileNode node) => new(

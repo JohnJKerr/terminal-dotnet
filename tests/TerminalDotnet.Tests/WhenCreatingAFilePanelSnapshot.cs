@@ -91,4 +91,19 @@ public sealed class WhenCreatingAFilePanelSnapshot
             [FileRowTone.Neutral, FileRowTone.New, FileRowTone.Modified, FileRowTone.Deleted],
             snapshot.StatusSegments.Select(segment => segment.Tone));
     }
+
+    [Fact]
+    public void It_says_why_the_files_could_not_be_read_after_the_counts()
+    {
+        // Arrange
+        var state = new FileExplorerState([]) { Notice = "Could not read the files: Could not start git." };
+
+        // Act
+        var snapshot = FilePanelSnapshot.From(state);
+
+        // Assert
+        Assert.Equal(
+            ["0 Files", "0 Added", "0 Edited", "0 Deleted", "Could not read the files: Could not start git."],
+            snapshot.StatusSegments.Select(segment => segment.Text));
+    }
 }
