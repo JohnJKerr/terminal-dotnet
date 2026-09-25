@@ -25,8 +25,8 @@ internal sealed class TestRunnerApplication(
     CommentSession commentSession,
     IssueSession issueSession,
     string target,
-    IFileOpener? editorLauncher = null,
-    IWorkspaceWatcher? workspaceWatcher = null)
+    IFileOpener editorLauncher,
+    IWorkspaceWatcher workspaceWatcher)
 {
     private const int ContentInset = 1;
     private const int SegmentGap = 2;
@@ -35,7 +35,13 @@ internal sealed class TestRunnerApplication(
     private const int FilterGap = 2;
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int SearchRow = StatusRow + 1;
+    private const int ToastPadding = 4;
+
+    /// <summary>The choices a message box offers, in the order it offers them.
+    /// It opens on its last button, so the safe choice goes last.</summary>
     private const int ClearChoice = 0;
+    private const int KeepChoice = 1;
+
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan EditPollInterval = TimeSpan.FromMilliseconds(250);
 
@@ -48,7 +54,6 @@ internal sealed class TestRunnerApplication(
     private readonly EditBurst outsideEdits = new();
     private readonly EditsSinceTheBuild editsSinceTheBuild = new();
     private readonly Stopwatch sinceRebuildStarted = new();
-    private const int ToastPadding = 4;
     private View? toast;
     private Label? toastText;
     private Toast? shownToast;
@@ -108,11 +113,6 @@ internal sealed class TestRunnerApplication(
     /// </summary>
     private void WatchTheWorkingTree()
     {
-        if (workspaceWatcher is null)
-        {
-            return;
-        }
-
         sinceWatching.Restart();
         workspaceWatcher.Watch(
             Path.GetDirectoryName(Path.GetFullPath(target))!,
@@ -599,8 +599,6 @@ internal sealed class TestRunnerApplication(
         }
     }
 
-    private const int KeepChoice = 1;
-
     /// <summary>Comments live only as long as the app, so quitting on notes
     /// that have not been copied or saved throws them away. Keeping them is
     /// offered last, because the box opens on its last button.</summary>
@@ -783,7 +781,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var command = FileCommandFor(key, fileExplorer.State.SearchQuery);
+        var command = FileCommandFor(key);
         if (command is null)
         {
             return;
@@ -798,7 +796,7 @@ internal sealed class TestRunnerApplication(
             ? null
             : fileExplorer.State.VisibleNodes[fileExplorer.State.SelectedIndex];
 
-    private static FileExplorerCommand? FileCommandFor(Key key, string searchQuery)
+    private static FileExplorerCommand? FileCommandFor(Key key)
     {
         if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
         {
@@ -869,7 +867,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var command = ChangesetCommandFor(key, changesetSession.State.SearchQuery);
+        var command = ChangesetCommandFor(key);
         if (command is null)
         {
             return;
@@ -1085,7 +1083,7 @@ internal sealed class TestRunnerApplication(
         Render();
     }
 
-    private static ChangesetCommand? ChangesetCommandFor(Key key, string searchQuery)
+    private static ChangesetCommand? ChangesetCommandFor(Key key)
     {
         if (Is(key, KeyCode.CursorUp) || Is(key, KeyCode.K))
         {
@@ -1287,7 +1285,7 @@ internal sealed class TestRunnerApplication(
     /// </summary>
     private void OpenRequestedFile()
     {
-        if (editorLauncher is null || openPath is null)
+        if (openPath is null)
         {
             return;
         }
@@ -1299,7 +1297,7 @@ internal sealed class TestRunnerApplication(
     private ExplorerEditorWorkflow EditorWorkflow() => new(
         [fileSession, folderSession],
         changesetSession,
-        editorLauncher!,
+        editorLauncher,
         target,
         issueSession);
 
@@ -1317,11 +1315,6 @@ internal sealed class TestRunnerApplication(
     private void ReloadWhenTheWorkingTreeSettles(
         IApplication application)
     {
-        if (workspaceWatcher is null)
-        {
-            return;
-        }
-
         application.AddTimeout(EditPollInterval, () =>
         {
             if (!reloadingWhatIsOnDisk && outsideEdits.SettledAt(sinceWatching.Elapsed))
@@ -1889,11 +1882,6 @@ internal sealed class TestRunnerApplication(
 
     private void RequestOpen(IApplication application, string path, int line)
     {
-        if (editorLauncher is null)
-        {
-            return;
-        }
-
         openPath = path;
         openLine = line;
         openSourceRequested = true;
