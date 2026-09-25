@@ -96,6 +96,53 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_asks_for_every_test_across_a_split_run()
+    {
+        // Arrange
+        var runner = new QueuedCommandRunner();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+        var tests = ManyLongNamedTests();
+
+        // Act
+        await backend.RunAsync(tests);
+
+        // Assert
+        Assert.Equal(
+            tests.Select(test => $"FullyQualifiedName={test.FullyQualifiedName}"),
+            runner.Requests.SelectMany(request => request.Arguments[3].Split('|')));
+    }
+
+    [Fact]
+    public async Task It_reports_a_failed_run_when_any_part_of_a_split_run_fails()
+    {
+        // Arrange
+        var runner = new QueuedCommandRunner(new CommandResult(0, "", ""), new CommandResult(1, "", ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+
+        // Act
+        var run = await backend.RunAsync(ManyLongNamedTests());
+
+        // Assert
+        Assert.False(run.Passed);
+    }
+
+    [Fact]
+    public async Task It_reads_the_results_of_every_part_of_a_split_run()
+    {
+        // Arrange
+        var tests = ManyLongNamedTests();
+        var backend = new DotnetCliTestBackend(
+            new QueuedCommandRunner(),
+            new InMemoryTestResultStore(PassingResultsFor(tests[0], tests[^1])));
+
+        // Act
+        var run = await backend.RunAsync(tests);
+
+        // Assert
+        Assert.Equal([tests[0], tests[^1]], run.Results.Select(result => result.Test));
+    }
+
+    [Fact]
     public async Task It_reports_a_passing_run_when_the_command_succeeds()
     {
         // Arrange
@@ -373,6 +420,18 @@ public sealed class WhenUsingTheDotnetCliTestBackend
                 $"It accepts order {index:D4}",
                 "/repo/Api.IntegrationTests.csproj"))
             .ToArray();
+
+    private static string PassingResultsFor(params TestCase[] tests)
+    {
+        var results = tests.Select((test, index) =>
+            $"""<UnitTestResult testId="test-{index}" testName="{test.FullyQualifiedName}" outcome="Passed" />""");
+        var definitions = tests.Select((test, index) =>
+        {
+            var method = test.FullyQualifiedName.LastIndexOf('.');
+            return $"""<UnitTest id="test-{index}"><TestMethod className="{test.FullyQualifiedName[..method]}" name="{test.FullyQualifiedName[(method + 1)..]}" /></UnitTest>""";
+        });
+        return $"<TestRun><Results>{string.Concat(results)}</Results><TestDefinitions>{string.Concat(definitions)}</TestDefinitions></TestRun>";
+    }
 
     private static int CommandLineLength(CommandRequest request) =>
         string.Join(' ', [request.FileName, .. request.Arguments.Select(argument => $"\"{argument}\"")]).Length;
