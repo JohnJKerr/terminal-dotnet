@@ -1,5 +1,7 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -10,12 +12,12 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_loads_the_selected_test_source_before_any_test_has_run()
     {
         // Arrange
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
         var source = new SourceLocation("CartTests.cs", 5);
-        var session = new TestExplorerSession(
-            new InMemoryTestBackend([test]),
-            testSourceLocator: new InMemoryTestSourceLocator(source));
-        await session.LoadAsync("Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(test)
+            .WithSourceAt(source)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
@@ -89,11 +91,9 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_stops_at_the_end_of_the_visible_tree_when_moving_down()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(GivenA.TestCase("Shop.Tests.CartTests.Adds_item"))
+            .LoadedAsync();
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
@@ -108,11 +108,9 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_selects_the_previous_visible_node_when_moving_up()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(GivenA.TestCase("Shop.Tests.CartTests.Adds_item"))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
@@ -127,12 +125,11 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_keeps_case_insensitive_search_matches_with_their_ancestors()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(
+                GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+                GivenA.TestCase("Shop.Tests.OrderTests.Submits_order"))
+            .LoadedAsync();
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.Search("ORDER"));
@@ -176,11 +173,9 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_exposes_the_active_search_query()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(GivenA.TestCase("Shop.Tests.CartTests.Adds_item"))
+            .LoadedAsync();
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.Search("cart"));
@@ -193,11 +188,9 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_matches_the_displayed_test_name_when_searching()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Empty_cart", "Empty cart has zero total", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(new TestCase("Shop.Tests.CartTests.Empty_cart", "Empty cart has zero total", "Shop.Tests.csproj"))
+            .LoadedAsync();
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.Search("zero total"));
@@ -210,14 +203,9 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_matches_a_run_of_characters_anywhere_in_the_test_name()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase(
-                "Shop.Tests.RefundPolicyTests.Rejects_after_window",
-                "Rejects after window",
-                "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(GivenA.TestCase("Shop.Tests.RefundPolicyTests.Rejects_after_window"))
+            .LoadedAsync();
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.Search("refundpolicy"));
@@ -230,14 +218,9 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_ignores_tests_that_only_scatter_the_query_across_their_name()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase(
-                "Shop.Tests.RefundPolicyTests.Rejects_after_window",
-                "Rejects after window",
-                "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(GivenA.TestCase("Shop.Tests.RefundPolicyTests.Rejects_after_window"))
+            .LoadedAsync();
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.Search("rfpt"));
@@ -250,12 +233,11 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_hides_a_classes_tests_when_collapsed()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(
+                GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+                GivenA.TestCase("Shop.Tests.OrderTests.Submits_order"))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
         // Act
@@ -275,11 +257,9 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_restores_a_classes_tests_when_expanded()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(GivenA.TestCase("Shop.Tests.CartTests.Adds_item"))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.ToggleExpanded());
 
@@ -296,12 +276,11 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_folds_every_project_and_class_when_told_to_fold_everything()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(
+                GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+                GivenA.TestCase("Shop.Tests.OrderTests.Submits_order"))
+            .LoadedAsync();
 
         // Act
         await session.DispatchAsync(new ExplorerCommand.ToggleAllExpanded());
@@ -316,12 +295,11 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_unfolds_every_project_and_class_when_everything_is_already_folded()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(
+                GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+                GivenA.TestCase("Shop.Tests.OrderTests.Submits_order"))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.ToggleAllExpanded());
 
         // Act
@@ -342,12 +320,11 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_folds_everything_while_part_of_the_tree_is_already_folded()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(
+                GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+                GivenA.TestCase("Shop.Tests.OrderTests.Submits_order"))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.ToggleExpanded());
 
@@ -364,11 +341,9 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_keeps_the_selection_on_a_visible_row_when_folding_everything()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(GivenA.TestCase("Shop.Tests.CartTests.Adds_item"))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
@@ -383,9 +358,10 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_restores_test_outcomes_when_a_class_is_expanded_after_a_run()
     {
         // Arrange
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var session = new TestExplorerSession(new InMemoryTestBackend([test]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
+        var session = await GivenA.TestExplorer()
+            .WithTests(test)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
         await session.DispatchAsync(new ExplorerCommand.ToggleExpanded());
@@ -403,12 +379,13 @@ public sealed class WhenUsingTheTestExplorer
         // Arrange
         var backend = new InMemoryTestBackend(
         [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+            GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+            GivenA.TestCase("Shop.Tests.CartTests.Removes_item"),
+            GivenA.TestCase("Shop.Tests.OrderTests.Submits_order")
         ]);
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
         // Act
@@ -433,12 +410,13 @@ public sealed class WhenUsingTheTestExplorer
         // Arrange
         var backend = new InMemoryTestBackend(
         [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
+            GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+            GivenA.TestCase("Shop.Tests.CartTests.Removes_item"),
+            GivenA.TestCase("Shop.Tests.OrderTests.Submits_order")
         ]);
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
         // Act
@@ -460,7 +438,7 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_retains_a_skipped_test_as_skipped_in_the_tree()
     {
         // Arrange
-        var test = new TestCase("Shop.Tests.CartTests.Skips_item", "Skips item", "Shop.Tests.csproj");
+        var test = GivenA.TestCase("Shop.Tests.CartTests.Skips_item");
         var skipped = new TestResult(
             test,
             TestOutcome.Skipped,
@@ -469,9 +447,9 @@ public sealed class WhenUsingTheTestExplorer
             null,
             null,
             null);
-        var session = new TestExplorerSession(
-            new InMemoryTestBackend([test], new TestRun(true, "Skipped: 1", [skipped])));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new InMemoryTestBackend([test], new TestRun(true, "Skipped: 1", [skipped])))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
@@ -486,7 +464,7 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_exposes_the_selected_tests_failure_details_after_a_failed_run()
     {
         // Arrange
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
         var failure = new TestResult(
             test,
             TestOutcome.Failed,
@@ -496,8 +474,9 @@ public sealed class WhenUsingTheTestExplorer
             "/repo/CartTests.cs",
             42);
         var backend = new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure]));
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
@@ -512,7 +491,7 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_marks_the_selected_test_as_failed_after_a_failed_run()
     {
         // Arrange
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
         var failure = new TestResult(
             test,
             TestOutcome.Failed,
@@ -521,9 +500,9 @@ public sealed class WhenUsingTheTestExplorer
             "at CartTests.Adds_item() in /repo/CartTests.cs:line 42",
             "/repo/CartTests.cs",
             42);
-        var session = new TestExplorerSession(
-            new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
@@ -538,7 +517,7 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_locates_the_failure_line_after_a_failed_run()
     {
         // Arrange
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
         var failure = new TestResult(
             test,
             TestOutcome.Failed,
@@ -547,9 +526,9 @@ public sealed class WhenUsingTheTestExplorer
             null,
             "/repo/CartTests.cs",
             42);
-        var session = new TestExplorerSession(
-            new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
@@ -564,15 +543,16 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_selects_the_first_failed_test_when_moving_to_the_next_failure()
     {
         // Arrange
-        var first = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var second = new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj");
+        var first = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
+        var second = GivenA.TestCase("Shop.Tests.CartTests.Removes_item");
         var run = new TestRun(false, "2 tests failed",
         [
             new TestResult(first, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null),
             new TestResult(second, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null)
         ]);
-        var session = new TestExplorerSession(new InMemoryTestBackend([first, second], run));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new InMemoryTestBackend([first, second], run))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
 
         // Act
@@ -586,15 +566,16 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_wraps_to_the_first_failure_when_moving_past_the_last_failure()
     {
         // Arrange
-        var first = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var second = new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj");
+        var first = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
+        var second = GivenA.TestCase("Shop.Tests.CartTests.Removes_item");
         var run = new TestRun(false, "2 tests failed",
         [
             new TestResult(first, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null),
             new TestResult(second, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null)
         ]);
-        var session = new TestExplorerSession(new InMemoryTestBackend([first, second], run));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(new InMemoryTestBackend([first, second], run))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
         await session.DispatchAsync(new ExplorerCommand.NextFailure());
         await session.DispatchAsync(new ExplorerCommand.NextFailure());
@@ -612,11 +593,12 @@ public sealed class WhenUsingTheTestExplorer
         // Arrange
         var backend = new InMemoryTestBackend(
         [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj")
+            GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+            GivenA.TestCase("Shop.Tests.CartTests.Removes_item")
         ]);
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
@@ -637,14 +619,15 @@ public sealed class WhenUsingTheTestExplorer
     public async Task It_runs_only_previously_failed_tests_when_rerunning_failures()
     {
         // Arrange
-        var failed = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var passed = new TestCase("Shop.Tests.CartTests.Removes_item", "Removes item", "Shop.Tests.csproj");
+        var failed = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
+        var passed = GivenA.TestCase("Shop.Tests.CartTests.Removes_item");
         var failure = new TestResult(failed, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null);
         var backend = new InMemoryTestBackend(
             [failed, passed],
             new TestRun(false, "1 test failed", [failure]));
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
 
@@ -699,30 +682,30 @@ public sealed class WhenUsingTheTestExplorer
         Assert.Equal(TestNodeOutcome.NotRun, session.State.VisibleNodes[2].Outcome);
     }
 
-    private static TestExplorerSession SessionWithCartTests() => new(new InMemoryTestBackend(
-    [
-        new TestCase("Shop.Tests.CartTests.Adding_item_updates_total", "Adding item updates total", "Shop.Tests.csproj"),
-        new TestCase("Shop.Tests.CartTests.Empty_cart_has_zero_total", "Empty cart has zero total", "Shop.Tests.csproj")
-    ]));
+    private static TestExplorerSession SessionWithCartTests() => GivenA.TestExplorer()
+        .WithTests(
+            GivenA.TestCase("Shop.Tests.CartTests.Adding_item_updates_total"),
+            GivenA.TestCase("Shop.Tests.CartTests.Empty_cart_has_zero_total"))
+        .Build();
 
     private static async Task<TestExplorerSession> SessionSearchingForNothingAsync()
     {
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-        [
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.OrderTests.Submits_order", "Submits order", "Shop.Tests.csproj")
-        ]));
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithTests(
+                GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+                GivenA.TestCase("Shop.Tests.OrderTests.Submits_order"))
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.Search("missing"));
         return session;
     }
 
     private static async Task<TestExplorerSession> CancelledRunAsync()
     {
-        var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
+        var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
         var backend = new CancellableTestBackend(test);
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
         using var cancellation = new CancellationTokenSource();
@@ -731,37 +714,6 @@ public sealed class WhenUsingTheTestExplorer
         await cancellation.CancelAsync();
         await activeRun;
         return session;
-    }
-
-    private sealed class InMemoryTestBackend(
-        IReadOnlyList<TestCase> tests,
-        TestRun? run = null) : ITestBackend
-    {
-        public IReadOnlyCollection<TestCase> LastRun { get; private set; } = [];
-        public List<IReadOnlyCollection<TestCase>> RunHistory { get; } = [];
-
-        public Task<IReadOnlyList<TestCase>> DiscoverAsync(string target, CancellationToken cancellationToken = default) =>
-            Task.FromResult(tests);
-
-        public Task<TestRun> RunAsync(IReadOnlyCollection<TestCase> tests, CancellationToken cancellationToken = default)
-        {
-            LastRun = tests;
-            RunHistory.Add(tests);
-            return Task.FromResult(run ?? PassingRun(tests));
-        }
-
-        private static TestRun PassingRun(IReadOnlyCollection<TestCase> tests) => new(
-            true,
-            "Passed",
-            [.. tests.Select(test =>
-                new TestResult(test, TestOutcome.Passed, TimeSpan.Zero, null, null, null, null))]);
-    }
-
-    private sealed class InMemoryTestSourceLocator(SourceLocation source) : ITestSourceLocator
-    {
-        public Task<SourceLocation?> LocateAsync(
-            TestCase test,
-            CancellationToken cancellationToken = default) => Task.FromResult<SourceLocation?>(source);
     }
 
     private sealed class CancellableTestBackend(TestCase test) : ITestBackend
