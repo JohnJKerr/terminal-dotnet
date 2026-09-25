@@ -1,6 +1,7 @@
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using TerminalDotnet.Changes;
+using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
 
@@ -38,7 +39,4 @@ public static class ChangesetPanelKeyBindings
 
         return Is(key, KeyCode.P) ? new ChangesetAction.PreviewFile(selected.Path) : null;
     }
-
-    private static bool Is(Key key, KeyCode keyCode) =>
-        !key.IsShift && key.NoShift.KeyCode == keyCode;
 }

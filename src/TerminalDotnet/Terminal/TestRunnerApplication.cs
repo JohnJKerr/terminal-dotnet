@@ -13,6 +13,7 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Filters;
 using TerminalDotnet.Search;
+using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
 
@@ -1903,7 +1904,4 @@ internal sealed class TestRunnerApplication(
         ExplorerCommand.RunSelected or
         ExplorerCommand.RerunLast or
         ExplorerCommand.RerunFailed;
-
-    private static bool Is(Key key, KeyCode keyCode) =>
-        !key.IsShift && key.NoShift.KeyCode == keyCode;
 }

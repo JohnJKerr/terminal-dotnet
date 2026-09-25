@@ -4,6 +4,7 @@ using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
+using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
 
@@ -76,7 +77,4 @@ internal static class CommentDialog
         var lines = text.Split('\n');
         return new Point(lines[^1].Length, lines.Length - 1);
     }
-
-    private static bool IsCtrl(Key key, KeyCode keyCode) =>
-        key.IsCtrl && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
 }

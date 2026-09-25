@@ -1,5 +1,6 @@
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
+using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
 
@@ -102,11 +103,4 @@ public static class ShellKeyBindings
             ? new ShellAction.LeaveSearch()
             : new ShellAction.TypeIntoSearch();
     }
-
-    private static bool Is(Key key, KeyCode keyCode) =>
-        !key.IsShift && key.NoShift.KeyCode == keyCode;
-
-    private static bool IsCtrl(Key key, KeyCode keyCode) =>
-        key.IsCtrl && key.NoShift.NoCtrl.NoAlt.KeyCode == keyCode;
-
 }
