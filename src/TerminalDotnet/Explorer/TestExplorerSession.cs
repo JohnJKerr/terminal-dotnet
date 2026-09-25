@@ -7,8 +7,8 @@ namespace TerminalDotnet.Explorer;
 
 public sealed class TestExplorerSession(
     ITestBackend backend,
-    ITestSourceLocator? testSourceLocator = null,
-    IUpdatedSourceProvider? updatedSourceProvider = null)
+    ITestSourceLocator testSourceLocator,
+    IUpdatedSourceProvider updatedSourceProvider)
 {
     private readonly HashSet<string> collapsedNodes = [];
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
@@ -123,7 +123,7 @@ public sealed class TestExplorerSession(
 
     private async Task LoadSelectedSourceAsync(CancellationToken cancellationToken)
     {
-        if (State.VisibleNodes.Count == 0 || testSourceLocator is null)
+        if (State.VisibleNodes.Count == 0)
         {
             return;
         }
@@ -137,11 +137,6 @@ public sealed class TestExplorerSession(
         string target,
         CancellationToken cancellationToken)
     {
-        if (updatedSourceProvider is null)
-        {
-            return new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
-        }
-
         var sources = await updatedSourceProvider.UpdatedSourcesAsync(target, cancellationToken);
         var projectDirectories = discoveredTests
             .Select(test => ProjectDirectoryOf(test.ProjectPath))
