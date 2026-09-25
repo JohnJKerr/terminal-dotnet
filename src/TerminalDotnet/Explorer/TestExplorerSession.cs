@@ -10,7 +10,7 @@ public sealed class TestExplorerSession(
     ITestSourceLocator testSourceLocator,
     IUpdatedSourceProvider updatedSourceProvider)
 {
-    private readonly HashSet<string> collapsedNodes = [];
+    private readonly FoldedGroups folded = new();
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
     private readonly HashSet<TestCase> activeTests = [];
     private IReadOnlyList<TestCase> discoveredTests = [];
@@ -207,20 +207,13 @@ public sealed class TestExplorerSession(
             return;
         }
 
-        SetExpanded(selected, !selected.IsExpanded);
+        folded.Toggle(NodeId(selected));
         State = State with { VisibleNodes = CurrentNodes() };
     }
 
     private void ToggleWholeTreeExpansion()
     {
-        var groupIds = GroupNodeIds(TestsMatching(State.SearchQuery, State.ActiveFilter));
-        var collapseAll = groupIds.Any(id => !collapsedNodes.Contains(id));
-        collapsedNodes.Clear();
-        if (collapseAll)
-        {
-            collapsedNodes.UnionWith(groupIds);
-        }
-
+        folded.ToggleAll(GroupNodeIds(TestsMatching(State.SearchQuery, State.ActiveFilter)));
         var nodes = CurrentNodes();
         State = State with
         {
@@ -242,17 +235,6 @@ public sealed class TestExplorerSession(
             .Distinct()
             .Select(testClass => NodeId(project.Key, TestNodeKind.Class, testClass))
     ];
-
-    private void SetExpanded(VisibleTestNode node, bool isExpanded)
-    {
-        if (isExpanded)
-        {
-            collapsedNodes.Remove(NodeId(node));
-            return;
-        }
-
-        collapsedNodes.Add(NodeId(node));
-    }
 
     private Task RunSelectedAsync(CancellationToken cancellationToken) => State.VisibleNodes.Count == 0
         ? Task.CompletedTask
@@ -491,7 +473,7 @@ public sealed class TestExplorerSession(
             TestNodeKind.Project,
             Path.GetFileNameWithoutExtension(project.Key),
             projectTests);
-        var projectCollapsed = collapsedNodes.Contains(NodeId(projectNode));
+        var projectCollapsed = !folded.IsExpanded(NodeId(projectNode));
         var classNodes = projectTests
             .GroupBy(test => test.TestClass)
             .OrderBy(testClass => testClass.Key, StringComparer.Ordinal)
@@ -511,7 +493,7 @@ public sealed class TestExplorerSession(
             classTests[0].ClassName,
             classTests,
             Update: UpdateOf(classTests[0]));
-        var classCollapsed = collapsedNodes.Contains(NodeId(classNode));
+        var classCollapsed = !folded.IsExpanded(NodeId(classNode));
         var testNodes = classTests
             .OrderBy(test => test.DisplayName)
             .Select(test => new VisibleTestNode(

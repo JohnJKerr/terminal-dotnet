@@ -9,7 +9,7 @@ public sealed class FileExplorerSession(
 {
     private IReadOnlyList<FileTreeNode> tree = [];
     private IReadOnlyList<FileEntry> discoveredFiles = [];
-    private readonly HashSet<string> collapsedNodes = [];
+    private readonly FoldedGroups folded = new();
 
     public FileExplorerState State { get; private set; } = new([]) { Loading = true };
 
@@ -111,20 +111,13 @@ public sealed class FileExplorerSession(
             return;
         }
 
-        ToggleCollapsed(selected.Key);
+        folded.Toggle(selected.Key);
         State = State with { VisibleNodes = VisibleNodes() };
     }
 
     private void ToggleWholeTreeExpansion()
     {
-        var groupKeys = GroupKeys();
-        var collapseAll = groupKeys.Any(key => !collapsedNodes.Contains(key));
-        collapsedNodes.Clear();
-        if (collapseAll)
-        {
-            collapsedNodes.UnionWith(groupKeys);
-        }
-
+        folded.ToggleAll(GroupKeys());
         var nodes = VisibleNodes();
         State = State with
         {
@@ -137,14 +130,6 @@ public sealed class FileExplorerSession(
         .Where(node => node.Node.Kind != FileNodeKind.File)
         .Select(node => node.Key)
         .ToArray();
-
-    private void ToggleCollapsed(string key)
-    {
-        if (!collapsedNodes.Add(key))
-        {
-            collapsedNodes.Remove(key);
-        }
-    }
 
     private void MoveSelection(FileExplorerCommand command)
     {
@@ -184,7 +169,7 @@ public sealed class FileExplorerSession(
         return visible;
     }
 
-    private bool IsExpanded(string key) => !collapsedNodes.Contains(key);
+    private bool IsExpanded(string key) => folded.IsExpanded(key);
 
     private IReadOnlyList<FileEntry> FilesMatching(string query, ExplorerFilter? filter) =>
         Snapshot.Of(discoveredFiles
