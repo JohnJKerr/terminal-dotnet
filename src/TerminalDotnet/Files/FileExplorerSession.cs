@@ -37,30 +37,32 @@ public sealed class FileExplorerSession(
         var files = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
         discoveredFiles = files;
         tree = TreeOf(FilesMatching(State.SearchQuery, State.ActiveFilter));
-        var nodes = VisibleNodes();
+        var unfolded = Unfolded();
 
         return State with
         {
-            VisibleNodes = nodes,
-            SelectedIndex = RowFor(standingOn, nodes.Count),
+            VisibleNodes = VisibleNodesOf(unfolded),
+            SelectedIndex = RowFor(standingOn, unfolded),
             Changes = SummaryFrom(files),
             Loading = false,
             Notice = ""
         };
     }
 
-    private string? SelectedKey() =>
-        VisibleKeys() is { } keys && State.SelectedIndex < keys.Count
-            ? keys[State.SelectedIndex]
+    private string? SelectedKey() => SelectedTreeNode()?.Key;
+
+    private FileTreeNode? SelectedTreeNode() =>
+        Unfolded() is { } unfolded && State.SelectedIndex < unfolded.Count
+            ? unfolded[State.SelectedIndex]
             : null;
 
     /// <summary>The row the reader was on, wherever it has moved to. A row that
     /// the edit took away leaves them where they were standing instead.
     /// </summary>
-    private int RowFor(string? key, int rowCount)
+    private int RowFor(string? key, IReadOnlyList<FileTreeNode> unfolded)
     {
-        var moved = key is null ? -1 : VisibleKeys().IndexOf(key);
-        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, rowCount - 1));
+        var moved = key is null ? -1 : unfolded.Select(node => node.Key).ToList().IndexOf(key);
+        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, unfolded.Count - 1));
     }
 
     public Task DispatchAsync(FileExplorerCommand command)
@@ -113,12 +115,12 @@ public sealed class FileExplorerSession(
 
     private void ToggleSelectedExpansion()
     {
-        if (State.VisibleNodes.Count == 0)
+        if (SelectedTreeNode() is not { } selected)
         {
             return;
         }
 
-        Collapse(VisibleKeys()[State.SelectedIndex]);
+        Collapse(selected.Key);
         State = State with { VisibleNodes = VisibleNodes() };
     }
 
@@ -168,11 +170,10 @@ public sealed class FileExplorerSession(
         };
     }
 
-    private IReadOnlyList<VisibleFileNode> VisibleNodes() => Snapshot.Of(
-        Unfolded().Select(node => node.Node with { IsExpanded = IsExpanded(node.Key) }));
+    private IReadOnlyList<VisibleFileNode> VisibleNodes() => VisibleNodesOf(Unfolded());
 
-    private List<string> VisibleKeys() =>
-        [.. Unfolded().Select(node => node.Key)];
+    private IReadOnlyList<VisibleFileNode> VisibleNodesOf(IReadOnlyList<FileTreeNode> unfolded) => Snapshot.Of(
+        unfolded.Select(node => node.Node with { IsExpanded = IsExpanded(node.Key) }));
 
     private IReadOnlyList<FileTreeNode> Unfolded()
     {
