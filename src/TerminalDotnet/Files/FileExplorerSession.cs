@@ -120,7 +120,7 @@ public sealed class FileExplorerSession(
             return;
         }
 
-        Collapse(selected.Key);
+        ToggleCollapsed(selected.Key);
         State = State with { VisibleNodes = VisibleNodes() };
     }
 
@@ -147,7 +147,7 @@ public sealed class FileExplorerSession(
         .Select(node => node.Key)
         .ToArray();
 
-    private void Collapse(string key)
+    private void ToggleCollapsed(string key)
     {
         if (!collapsedNodes.Add(key))
         {

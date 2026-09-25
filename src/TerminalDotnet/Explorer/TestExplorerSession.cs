@@ -20,10 +20,10 @@ public sealed class TestExplorerSession(
     private IReadOnlyDictionary<string, TestNodeUpdate> updatedSuites =
         new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
 
-    public ExplorerState State { get; private set; } =
-        new(ExplorerStatus.Loading, [], 0, "Discovering tests...");
-
     private const string DiscoveringMessage = "Discovering tests...";
+
+    public ExplorerState State { get; private set; } =
+        new(ExplorerStatus.Loading, [], 0, DiscoveringMessage);
 
     private ExplorerState? beforeRediscovery;
 
@@ -216,7 +216,7 @@ public sealed class TestExplorerSession(
             return;
         }
 
-        Collapse(selected, !selected.IsExpanded);
+        SetExpanded(selected, !selected.IsExpanded);
         State = State with { VisibleNodes = CurrentNodes() };
     }
 
@@ -252,7 +252,7 @@ public sealed class TestExplorerSession(
             .Select(testClass => NodeId(project.Key, TestNodeKind.Class, testClass))
     ];
 
-    private void Collapse(VisibleTestNode node, bool isExpanded)
+    private void SetExpanded(VisibleTestNode node, bool isExpanded)
     {
         if (isExpanded)
         {
@@ -422,26 +422,12 @@ public sealed class TestExplorerSession(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            activeTests.Clear();
-            State = State with
-            {
-                Status = ExplorerStatus.Ready,
-                VisibleNodes = CurrentNodes(),
-                Message = "Run cancelled",
-                Diagnostic = "Run cancelled"
-            };
+            EndRun(ExplorerStatus.Ready, "Run cancelled", "Run cancelled");
             return;
         }
         catch (Exception exception)
         {
-            activeTests.Clear();
-            State = State with
-            {
-                Status = ExplorerStatus.Failed,
-                VisibleNodes = CurrentNodes(),
-                Message = exception.Message,
-                Diagnostic = exception.Message
-            };
+            EndRun(ExplorerStatus.Failed, exception.Message, exception.Message);
             return;
         }
 
@@ -450,15 +436,19 @@ public sealed class TestExplorerSession(
             completedOutcomes[test] = outcome;
         }
 
+        EndRun(run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed, run.Output, run.Diagnostic);
+        State = State with { LastRun = run, SourceLocation = FailureSourceFrom(run) };
+    }
+
+    private void EndRun(ExplorerStatus status, string message, string? diagnostic)
+    {
         activeTests.Clear();
         State = State with
         {
-            Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
+            Status = status,
             VisibleNodes = CurrentNodes(),
-            Message = run.Output,
-            LastRun = run with { Results = Snapshot.Of(run.Results) },
-            SourceLocation = FailureSourceFrom(run),
-            Diagnostic = run.Diagnostic
+            Message = message,
+            Diagnostic = diagnostic
         };
     }
 
