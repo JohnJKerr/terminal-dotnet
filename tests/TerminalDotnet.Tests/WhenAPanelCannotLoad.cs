@@ -58,6 +58,19 @@ public sealed class WhenAPanelCannotLoad
         Assert.Empty(session.State.Files);
     }
 
+    [Fact]
+    public async Task The_changeset_says_why_it_has_nothing_to_show()
+    {
+        // Arrange
+        var session = new ChangesetSession(new FailingChangesetBackend());
+
+        // Act
+        await session.LoadAsync("App.csproj");
+
+        // Assert
+        Assert.Equal("Could not read the changes: Could not start git.", session.State.Notice);
+    }
+
     private sealed class FailingFileBackend : IFileExplorerBackend
     {
         public Task<IReadOnlyList<FileEntry>> DiscoverAsync(

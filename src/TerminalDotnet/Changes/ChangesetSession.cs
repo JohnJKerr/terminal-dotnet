@@ -18,7 +18,10 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            State = new ChangesetState([], 0, State.SearchQuery);
+            State = new ChangesetState([], 0, State.SearchQuery)
+            {
+                Notice = $"Could not read the changes: {exception.Message}"
+            };
         }
     }
 
