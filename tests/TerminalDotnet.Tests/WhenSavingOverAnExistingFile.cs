@@ -32,17 +32,4 @@ public sealed class WhenSavingOverAnExistingFile
         // Assert
         Assert.False(holds);
     }
-
-    [Fact]
-    public async Task It_says_nothing_is_there_when_there_is_no_store_to_ask()
-    {
-        // Arrange
-        var session = new CommentSession();
-
-        // Act
-        var holds = await session.HoldsSomethingAtAsync("comments.md");
-
-        // Assert
-        Assert.False(holds);
-    }
 }

@@ -7,10 +7,8 @@ namespace TerminalDotnet.Comments;
 /// so the reader can gather notes across the panels and take them away in one
 /// go rather than writing them down somewhere else.
 /// </summary>
-public sealed class CommentSession(ICommentClipboard? clipboard = null, ICommentStore? store = null)
+public sealed class CommentSession(ICommentClipboard clipboard, ICommentStore store)
 {
-    private readonly ICommentClipboard clipboard = clipboard ?? new UnreachableClipboard();
-    private readonly ICommentStore store = store ?? new UnreachableStore();
     private readonly List<FileComment> comments = [];
 
     /// <summary>Set once the notes have been copied or saved, and cleared the
@@ -188,24 +186,5 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
             CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
             _ => Math.Min(State.SelectedIndex, lastIndex)
         };
-    }
-
-    private sealed class UnreachableClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(
-            string text,
-            CancellationToken cancellationToken = default) => Task.FromResult(false);
-    }
-
-    private sealed class UnreachableStore : ICommentStore
-    {
-        public Task<bool> ExistsAsync(
-            string path,
-            CancellationToken cancellationToken = default) => Task.FromResult(false);
-
-        public Task<bool> TryWriteAsync(
-            string path,
-            string text,
-            CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 }
