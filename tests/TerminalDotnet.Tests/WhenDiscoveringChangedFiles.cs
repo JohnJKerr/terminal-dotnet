@@ -275,6 +275,54 @@ public sealed class WhenDiscoveringChangedFiles
         Assert.False(restored);
     }
 
+    [Fact]
+    public async Task It_diffs_a_file_it_is_handed_without_having_discovered_it()
+    {
+        // Arrange
+        var runner = new GitCommandRunner(TestPaths.Repo, "") { Diff = "@@ -1 +1 @@" };
+        var backend = new GitChangesetBackend(runner);
+
+        // Act
+        var diff = await backend.DiffAsync(
+            new ChangedFile(TestPaths.In("src", "Changed.cs"), "src/Changed.cs", ChangeKind.Modified));
+
+        // Assert
+        Assert.Equal("@@ -1 +1 @@", diff);
+    }
+
+    [Fact]
+    public async Task It_restores_a_file_it_is_handed_without_having_discovered_it()
+    {
+        // Arrange
+        var runner = new GitCommandRunner(TestPaths.Repo, "");
+        var backend = new GitChangesetBackend(runner);
+
+        // Act
+        var restored = await backend.RestoreAsync(
+            new ChangedFile(TestPaths.In("src", "Gone.cs"), "src/Gone.cs", ChangeKind.Deleted)
+            {
+                Unstaged = ChangeKind.Deleted
+            });
+
+        // Assert
+        Assert.True(restored);
+    }
+
+    [Fact]
+    public async Task It_asks_git_about_a_deleted_file_from_the_nearest_folder_still_on_disk()
+    {
+        // Arrange
+        var runner = new GitCommandRunner(TestPaths.Repo, "");
+        var backend = new GitChangesetBackend(runner);
+        var gone = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}", "Gone.cs");
+
+        // Act
+        await backend.RestoreAsync(new ChangedFile(gone, "Gone.cs", ChangeKind.Deleted));
+
+        // Assert
+        Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetTempPath()), runner.WorkingDirectories.Last());
+    }
+
     private sealed class GitCommandRunner(string root, string status) : ICommandRunner
     {
         public int RootExitCode { get; init; }
@@ -289,11 +337,14 @@ public sealed class WhenDiscoveringChangedFiles
         /// <summary>Each command's own arguments, after any `-c` settings.</summary>
         public List<IReadOnlyList<string>> Requests { get; } = [];
 
+        public List<string> WorkingDirectories { get; } = [];
+
         public Task<CommandResult> RunAsync(
             CommandRequest request,
             CancellationToken cancellationToken = default)
         {
             Invocations.Add(request.Arguments);
+            WorkingDirectories.Add(request.WorkingDirectory);
             var command = WithoutSettings(request.Arguments);
             Requests.Add(command);
             return Task.FromResult(command[0] switch
