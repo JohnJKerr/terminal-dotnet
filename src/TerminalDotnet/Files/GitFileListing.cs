@@ -60,13 +60,16 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
     /// folder does not pick up a change from somewhere else in the repository.</summary>
     public static bool IsUnder(string path, string folder) =>
         path.StartsWith(folder + Path.DirectorySeparatorChar, StringComparison.Ordinal) &&
-        IsSourceFile(path);
+        IsSourceFile(path, folder);
 
     /// <summary>Build output belongs to the compiler rather than the reader, so
-    /// it stays out of every listing.</summary>
-    public static bool IsSourceFile(string path)
+    /// it stays out of every listing. Only the folders below the one being
+    /// listed are judged: a repository can itself live under a folder named
+    /// bin.</summary>
+    private static bool IsSourceFile(string path, string folder)
     {
-        var segments = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var segments = Path.GetRelativePath(folder, path)
+            .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         return !segments.Contains("bin", StringComparer.OrdinalIgnoreCase) &&
             !segments.Contains("obj", StringComparer.OrdinalIgnoreCase);
     }
@@ -90,7 +93,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
         .Split('\0', StringSplitOptions.RemoveEmptyEntries)
         .Select(path => Path.GetFullPath(path, directory))
         .Where(File.Exists)
-        .Where(IsSourceFile)
+        .Where(path => IsSourceFile(path, directory))
         .OrderBy(path => path, StringComparer.Ordinal)
         .ToArray();
 

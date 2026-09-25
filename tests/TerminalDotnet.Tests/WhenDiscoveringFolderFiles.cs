@@ -197,6 +197,33 @@ public sealed class WhenDiscoveringFolderFiles
         Assert.DoesNotContain("App.dll", files.Select(file => Path.GetFileName(file.Path)));
     }
 
+    [Fact]
+    public async Task It_lists_a_folder_that_sits_beneath_a_folder_named_like_build_output()
+    {
+        // Arrange
+        using var folder = LaunchFolder.At("bin/repo/TerminalDotnet.slnx", "bin/repo/Order.cs");
+
+        // Act
+        var files = await folder.DiscoverAsync();
+
+        // Assert
+        Assert.Contains("Order.cs", files.Select(file => Path.GetFileName(file.Path)));
+    }
+
+    [Fact]
+    public async Task It_reports_a_deletion_in_a_folder_beneath_a_folder_named_like_build_output()
+    {
+        // Arrange
+        using var folder = LaunchFolder.At("obj/repo/TerminalDotnet.slnx")
+            .Changed(" D obj/repo/Gone.cs\0");
+
+        // Act
+        var files = await folder.DiscoverAsync();
+
+        // Assert
+        Assert.Contains(FileGitStatus.Deleted, files.Select(file => file.GitStatus));
+    }
+
     /// <summary>A repository on disk whose git answers are scripted, so the
     /// backend is exercised without launching git.</summary>
     private sealed class LaunchFolder : IDisposable
