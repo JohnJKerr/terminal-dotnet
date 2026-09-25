@@ -35,16 +35,12 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
     private static IEnumerable<FileEntry> ProjectEntries(
         string projectPath,
         IReadOnlyList<string>? tracked,
-        IReadOnlyDictionary<string, FileGitStatus> gitStatuses)
+        GitStatuses gitStatuses)
     {
         var projectDirectory = ProjectDirectoryOf(projectPath);
         var paths = tracked?.Where(path => GitFileListing.IsUnder(path, projectDirectory))
             ?? GitFileListing.FilesOnDisk(projectDirectory);
-        return
-        [
-            .. paths.Select(path => FileEntryFor(projectPath, path, gitStatuses)),
-            .. DeletedEntries(projectPath, projectDirectory, gitStatuses)
-        ];
+        return gitStatuses.EntriesFor(projectPath, projectDirectory, paths);
     }
 
     private static string ProjectDirectoryOf(string projectPath) => Path.GetDirectoryName(projectPath)!;
@@ -70,24 +66,6 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
     /// for something inside it.</summary>
     private static string WithTrailingSeparator(string folder) =>
         Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
-
-    private static FileEntry FileEntryFor(
-        string projectPath,
-        string path,
-        IReadOnlyDictionary<string, FileGitStatus> gitStatuses) => new(
-        projectPath,
-        path,
-        gitStatuses.GetValueOrDefault(Path.GetFullPath(path), FileGitStatus.Unchanged));
-
-    private static IEnumerable<FileEntry> DeletedEntries(
-        string projectPath,
-        string projectDirectory,
-        IReadOnlyDictionary<string, FileGitStatus> gitStatuses) => gitStatuses
-        .Where(status => status.Value == FileGitStatus.Deleted)
-        .Select(status => status.Key)
-        .Where(path => GitFileListing.IsUnder(path, projectDirectory))
-        .OrderBy(path => path, StringComparer.Ordinal)
-        .Select(path => new FileEntry(projectPath, path, FileGitStatus.Deleted));
 
     /// <summary>The solution is read like any other file from the repository,
     /// so one that is too large, or is not a file at all, lists no projects.

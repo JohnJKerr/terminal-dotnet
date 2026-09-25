@@ -7,9 +7,6 @@ namespace TerminalDotnet.Files;
 /// starts, which files it holds, and what has changed inside it.</summary>
 internal sealed class GitFileListing(ICommandRunner commandRunner)
 {
-    private static readonly IReadOnlyDictionary<string, FileGitStatus> Unchanged =
-        new Dictionary<string, FileGitStatus>();
-
     public async Task<string?> RootAsync(
         string workingDirectory,
         CancellationToken cancellationToken)
@@ -23,13 +20,13 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
 
     /// <summary>Nothing counts as changed outside a repository, which is why
     /// the root is allowed to be missing.</summary>
-    public async Task<IReadOnlyDictionary<string, FileGitStatus>> StatusesAsync(
+    public async Task<GitStatuses> StatusesAsync(
         string? repositoryRoot,
         CancellationToken cancellationToken)
     {
         if (repositoryRoot is null)
         {
-            return Unchanged;
+            return GitStatuses.None;
         }
 
         var result = await commandRunner.RunAsync(
@@ -38,7 +35,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
 
         return result.ExitCode == 0
             ? StatusesFrom(result.StandardOutput, repositoryRoot)
-            : Unchanged;
+            : GitStatuses.None;
     }
 
     /// <summary>Falls back to the files on disk when git cannot answer, so a
@@ -79,13 +76,11 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
             !segments.Contains("obj", StringComparer.OrdinalIgnoreCase);
     }
 
-    private static IReadOnlyDictionary<string, FileGitStatus> StatusesFrom(
-        string output,
-        string repositoryRoot) => GitStatusOutput.EntriesFrom(output)
-        .ToDictionary(
+    private static GitStatuses StatusesFrom(string output, string repositoryRoot) => new(
+        GitStatusOutput.EntriesFrom(output).ToDictionary(
             entry => Path.GetFullPath(entry.RelativePath, repositoryRoot),
             entry => StatusFrom(entry.Kind),
-            StringComparer.Ordinal);
+            StringComparer.Ordinal));
 
     private static FileGitStatus StatusFrom(GitChangeKind kind) => kind switch
     {
