@@ -15,29 +15,61 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         var workingDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
         var root = await listing.RootAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
         var gitStatuses = await listing.StatusesAsync(root, cancellationToken).ConfigureAwait(false);
-        var entries = new List<FileEntry>();
-        foreach (var projectPath in ProjectPaths(target))
-        {
-            entries.AddRange(
-                await ProjectEntriesAsync(projectPath, gitStatuses, cancellationToken).ConfigureAwait(false));
-        }
-
-        return entries;
+        var projectPaths = ProjectPaths(target);
+        var tracked = await TrackedFilesAsync(projectPaths, cancellationToken).ConfigureAwait(false);
+        return [.. projectPaths.SelectMany(projectPath => ProjectEntries(projectPath, tracked, gitStatuses))];
     }
 
-    private async Task<IReadOnlyList<FileEntry>> ProjectEntriesAsync(
+    /// <summary>Git is asked once, from the folder every project sits
+    /// beneath, rather than once per project: a solution of many projects
+    /// would otherwise start a process for each on every reload.</summary>
+    private async Task<IReadOnlyList<string>?> TrackedFilesAsync(
+        IReadOnlyList<string> projectPaths,
+        CancellationToken cancellationToken) =>
+        SharedFolderOf(projectPaths.Select(ProjectDirectoryOf).ToArray()) is { } shared
+            ? await listing.TrackedFilesUnderAsync(shared, cancellationToken).ConfigureAwait(false)
+            : null;
+
+    /// <summary>Outside git, each project's own folder is walked, rather than
+    /// whatever else sits in the folder the projects share.</summary>
+    private static IEnumerable<FileEntry> ProjectEntries(
         string projectPath,
-        IReadOnlyDictionary<string, FileGitStatus> gitStatuses,
-        CancellationToken cancellationToken)
+        IReadOnlyList<string>? tracked,
+        IReadOnlyDictionary<string, FileGitStatus> gitStatuses)
     {
-        var projectDirectory = Path.GetDirectoryName(projectPath)!;
-        var paths = await listing.FilesUnderAsync(projectDirectory, cancellationToken).ConfigureAwait(false);
+        var projectDirectory = ProjectDirectoryOf(projectPath);
+        var paths = tracked?.Where(path => GitFileListing.IsUnder(path, projectDirectory))
+            ?? GitFileListing.FilesOnDisk(projectDirectory);
         return
         [
             .. paths.Select(path => FileEntryFor(projectPath, path, gitStatuses)),
             .. DeletedEntries(projectPath, projectDirectory, gitStatuses)
         ];
     }
+
+    private static string ProjectDirectoryOf(string projectPath) => Path.GetDirectoryName(projectPath)!;
+
+    /// <returns>The deepest folder holding every one of the folders, or null
+    /// when they share none, such as projects on different drives.</returns>
+    private static string? SharedFolderOf(IReadOnlyList<string> folders)
+    {
+        var shared = folders.FirstOrDefault();
+        while (shared is not null && !folders.All(folder => IsWithin(folder, shared)))
+        {
+            shared = Path.GetDirectoryName(shared);
+        }
+
+        return shared;
+    }
+
+    private static bool IsWithin(string folder, string ancestor) =>
+        folder == ancestor || folder.StartsWith(WithTrailingSeparator(ancestor), StringComparison.Ordinal);
+
+    /// <summary>A drive's root already ends in a separator; every other folder
+    /// is given one, so a sibling sharing its name as a prefix is not taken
+    /// for something inside it.</summary>
+    private static string WithTrailingSeparator(string folder) =>
+        Path.EndsInDirectorySeparator(folder) ? folder : folder + Path.DirectorySeparatorChar;
 
     private static FileEntry FileEntryFor(
         string projectPath,

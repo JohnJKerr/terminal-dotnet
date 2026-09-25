@@ -231,6 +231,46 @@ public sealed class WhenDiscoveringProjectFiles
         Assert.Empty(files);
     }
 
+    [Fact]
+    public async Task It_asks_git_for_one_listing_however_many_projects_there_are()
+    {
+        // Arrange
+        using var workspace = TwoProjectSolution();
+        var git = new ListingGit(workspace.Root, "src/App/App.csproj", "src/App/Order.cs", "src/Api/Api.csproj");
+
+        // Act
+        await DiscoverAsync(workspace, git);
+
+        // Assert
+        Assert.Equal(1, git.Listings);
+    }
+
+    [Fact]
+    public async Task It_gives_each_project_the_files_beneath_it_from_that_listing()
+    {
+        // Arrange
+        using var workspace = TwoProjectSolution();
+        var git = new ListingGit(workspace.Root, "src/App/App.csproj", "src/App/Order.cs", "src/Api/Api.csproj");
+
+        // Act
+        var files = await DiscoverAsync(workspace, git);
+
+        // Assert
+        Assert.Equal(
+            [("Api.csproj", "Api.csproj"), ("App.csproj", "App.csproj"), ("App.csproj", "Order.cs")],
+            files
+                .Select(file => (Path.GetFileName(file.ProjectPath), Path.GetFileName(file.Path)))
+                .OrderBy(pair => pair));
+    }
+
+    private static TemporaryWorkspace TwoProjectSolution() => TemporaryWorkspace.Create()
+        .WithFile(
+            Solution,
+            "<Solution><Project Path=\"src/App/App.csproj\" /><Project Path=\"src/Api/Api.csproj\" /></Solution>")
+        .WithFile("src/App/App.csproj", "<Project />")
+        .WithFile("src/App/Order.cs", "namespace App;")
+        .WithFile("src/Api/Api.csproj", "<Project />");
+
     private static Task<IReadOnlyList<FileEntry>> DiscoverAsync(
         TemporaryWorkspace workspace,
         ICommandRunner runner) =>
@@ -252,6 +292,37 @@ public sealed class WhenDiscoveringProjectFiles
             }
 
             return request.Arguments.Contains("ls-files") ? listing : status;
+        }
+    }
+
+    /// <summary>Answers as git does: `ls-files` names only what lies under the
+    /// folder it runs in, relative to it.</summary>
+    private sealed class ListingGit(string root, params string[] trackedPaths) : ICommandRunner
+    {
+        public int Listings { get; private set; }
+
+        public Task<CommandResult> RunAsync(
+            CommandRequest request,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new CommandResult(0, OutputFor(request), ""));
+
+        private string OutputFor(CommandRequest request)
+        {
+            if (request.Arguments.Contains("--show-toplevel"))
+            {
+                return root;
+            }
+
+            return request.Arguments.Contains("ls-files") ? Listing(request.WorkingDirectory) : "";
+        }
+
+        private string Listing(string workingDirectory)
+        {
+            Listings++;
+            return string.Concat(trackedPaths
+                .Select(path => Path.Combine(root, path.Replace('/', Path.DirectorySeparatorChar)))
+                .Where(path => path.StartsWith(workingDirectory + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+                .Select(path => Path.GetRelativePath(workingDirectory, path) + '\0'));
         }
     }
 

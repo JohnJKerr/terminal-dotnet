@@ -45,15 +45,20 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
     /// directory outside a repository still fills the panel.</summary>
     public async Task<IReadOnlyList<string>> FilesUnderAsync(
         string directory,
+        CancellationToken cancellationToken) =>
+        await TrackedFilesUnderAsync(directory, cancellationToken).ConfigureAwait(false) ?? FilesOnDisk(directory);
+
+    /// <returns>The files git holds or would pick up beneath the folder, or
+    /// null when git cannot answer for it.</returns>
+    public async Task<IReadOnlyList<string>?> TrackedFilesUnderAsync(
+        string directory,
         CancellationToken cancellationToken)
     {
         var listing = await commandRunner.RunAsync(
             GitRequest.For(["ls-files", "-z", "--cached", "--others", "--exclude-standard"], directory),
             cancellationToken).ConfigureAwait(false);
 
-        return listing.ExitCode == 0
-            ? TrackedFiles(listing.StandardOutput, directory)
-            : FilesOnDisk(directory);
+        return listing.ExitCode == 0 ? TrackedFiles(listing.StandardOutput, directory) : null;
     }
 
     /// <summary>Whether the folder holds the file, so a listing scoped to one
@@ -97,7 +102,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
         .OrderBy(path => path, StringComparer.Ordinal)
         .ToArray();
 
-    private static IReadOnlyList<string> FilesOnDisk(string directory) => SourceTree
+    public static IReadOnlyList<string> FilesOnDisk(string directory) => SourceTree
         .FilesUnder(directory, "*")
         .OrderBy(path => path, StringComparer.Ordinal)
         .ToArray();
