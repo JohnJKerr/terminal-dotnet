@@ -10,7 +10,7 @@ public enum PanelKind
     Comments
 }
 
-public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind ActivePanel)
+public sealed record PanelShellState(PanelKind ActivePanel)
 {
     /// <summary>The Explorer lists the projects' files until the reader asks
     /// for every file beneath the launch folder.</summary>
@@ -48,14 +48,12 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
         var index = Array.IndexOf(TabOrder, ActivePanel) + step;
         return TabOrder[(index % TabOrder.Length + TabOrder.Length) % TabOrder.Length];
     }
-
-    public int ActiveIndex => (int)ActivePanel;
 }
 
 public sealed class PanelShell
 {
     public PanelShellState State { get; private set; } =
-        new(["Preview", "Explorer", "Tests", "Changes", "Issues", "Comments"], PanelKind.Explorer);
+        new(PanelKind.Explorer);
 
     public void Select(PanelKind panel)
     {

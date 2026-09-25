@@ -42,7 +42,6 @@ internal sealed class TestRunnerApplication(
     private CancellationTokenSource? loadCancellation;
     private readonly Stopwatch sinceLoadStarted = new();
     private readonly Stopwatch sincePanelsAppeared = new();
-    private IReadOnlyList<VisibleTestNode> testNodes = [];
     private readonly PanelShell shell = new();
     private readonly BackgroundWork panelWork = new();
     private readonly EditBurst outsideEdits = new();
@@ -571,10 +570,10 @@ internal sealed class TestRunnerApplication(
                 OpenPanel(application, selected.Panel);
                 return;
             case ShellAction.SelectNextPanel:
-                OpenPanel(application, SteppedPanel(1));
+                OpenPanel(application, panels => panels.SelectNext());
                 return;
             case ShellAction.SelectPreviousPanel:
-                OpenPanel(application, SteppedPanel(-1));
+                OpenPanel(application, panels => panels.SelectPrevious());
                 return;
             case ShellAction.ShowCommands:
                 ShowCommands(application);
@@ -628,18 +627,19 @@ internal sealed class TestRunnerApplication(
     /// <summary>The tests and the issues describe the last build, so opening
     /// either after the tree has been edited sets a rebuild off rather than
     /// showing the reader what the project used to be.</summary>
-    private void OpenPanel(IApplication application, PanelKind panel)
+    private void OpenPanel(IApplication application, PanelKind panel) =>
+        OpenPanel(application, panels => panels.Select(panel));
+
+    private void OpenPanel(IApplication application, Action<PanelShell> move)
     {
         var from = shell.State.ActivePanel;
-        shell.Select(panel);
+        move(shell);
         ShowActivePanel();
         if (editsSinceTheBuild.WorthRebuildingOnOpening(from, shell.State.ActivePanel))
         {
             Rebuild(application, askedFor: false);
         }
     }
-
-    private PanelKind SteppedPanel(int step) => shell.State.Stepped(step);
 
     /// <summary>Moving to a list on the left stretches it, so the panels are
     /// laid out again before the new one takes the keys.</summary>
@@ -1738,7 +1738,6 @@ internal sealed class TestRunnerApplication(
     private void RenderTests()
     {
         var snapshot = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
-        testNodes = snapshot.Tests;
         RenderPanel(
             PanelKind.Tests,
             snapshot.Filters,

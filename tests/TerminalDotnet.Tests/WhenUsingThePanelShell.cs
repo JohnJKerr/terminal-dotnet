@@ -6,21 +6,6 @@ namespace TerminalDotnet.Tests.Terminal;
 public sealed class WhenUsingThePanelShell
 {
     [Fact]
-    public void It_offers_every_panel()
-    {
-        // Arrange
-        var shell = new PanelShell();
-
-        // Act
-        var state = shell.State;
-
-        // Assert
-        Assert.Equal(
-            ["Preview", "Explorer", "Tests", "Changes", "Issues", "Comments"],
-            state.Panels);
-    }
-
-    [Fact]
     public void It_starts_on_the_explorer()
     {
         // Arrange
