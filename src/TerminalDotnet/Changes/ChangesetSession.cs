@@ -43,45 +43,52 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         };
     }
 
-    public async Task DispatchAsync(
+    public Task DispatchAsync(
         ChangesetCommand command,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default) => command switch
     {
-        if (command is ChangesetCommand.Search search)
+        ChangesetCommand.Search search => Applied(() => ShowMatching(search.Query)),
+        ChangesetCommand.ClearSearch => Applied(() => ShowMatching("")),
+        ChangesetCommand.LoadSelectedDiff => LoadSelectedDiffAsync(cancellationToken),
+        ChangesetCommand.RestoreSelected => RestoreSelectedAsync(cancellationToken),
+        _ => Applied(() => MoveSelection(command))
+    };
+
+    private static Task Applied(Action change)
+    {
+        change();
+        return Task.CompletedTask;
+    }
+
+    private void ShowMatching(string query) =>
+        State = State with { Files = Matching(query), SelectedIndex = 0, SearchQuery = query };
+
+    private async Task LoadSelectedDiffAsync(CancellationToken cancellationToken)
+    {
+        if (Selected() is not { } file)
         {
-            State = State with
-            {
-                Files = Matching(search.Query),
-                SelectedIndex = 0,
-                SearchQuery = search.Query
-            };
             return;
         }
 
-        if (command is ChangesetCommand.ClearSearch)
+        State = State with { Diff = await DiffOfAsync(file, cancellationToken) };
+    }
+
+    /// <summary>Only a deletion can be restored; any other change is the
+    /// reader's own work in progress.</summary>
+    private async Task RestoreSelectedAsync(CancellationToken cancellationToken)
+    {
+        if (Selected() is not { Kind: ChangeKind.Deleted } deleted)
         {
-            State = State with { Files = changedFiles, SelectedIndex = 0, SearchQuery = "" };
             return;
         }
 
-        if (command is ChangesetCommand.LoadSelectedDiff && Selected() is { } file)
-        {
-            State = State with { Diff = await DiffOfAsync(file, cancellationToken) };
-            return;
-        }
+        var restored = await backend.RestoreAsync(deleted, cancellationToken);
+        await LoadAsync(target, cancellationToken);
+        State = State with { Notice = restored ? "" : $"Could not restore {deleted.DisplayPath}" };
+    }
 
-        if (command is ChangesetCommand.RestoreSelected &&
-            Selected() is { Kind: ChangeKind.Deleted } deleted)
-        {
-            var restored = await backend.RestoreAsync(deleted, cancellationToken);
-            await LoadAsync(target, cancellationToken);
-            State = State with
-            {
-                Notice = restored ? "" : $"Could not restore {deleted.DisplayPath}"
-            };
-            return;
-        }
-
+    private void MoveSelection(ChangesetCommand command)
+    {
         var rowCount = State.Files.Count;
         State = State with
         {
