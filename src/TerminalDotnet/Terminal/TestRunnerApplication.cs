@@ -132,7 +132,21 @@ internal sealed class TestRunnerApplication(
         application.Init(TerminalDriver());
         running = application;
         previewed = null;
+        var outsideTheLoop = SynchronizationContext.Current;
+        var loop = new TerminalLoopContext(work => application.Invoke(work));
+        SynchronizationContext.SetSynchronizationContext(loop);
+        try
+        {
+            return RunPanels(application, loop);
+        }
+        finally
+        {
+            SynchronizationContext.SetSynchronizationContext(outsideTheLoop);
+        }
+    }
 
+    private bool RunPanels(IApplication application, TerminalLoopContext loop)
+    {
         using var window = new Window { Title = $"terminal-dotnet - {VersionNumber.Current}" };
         search = Search();
         workspace = Workspace();
@@ -173,7 +187,7 @@ internal sealed class TestRunnerApplication(
         ReloadWhenTheWorkingTreeSettles(application);
 
         application.Run(window);
-        ShutDown();
+        ShutDown(loop);
         return openSourceRequested;
     }
 
@@ -203,11 +217,14 @@ internal sealed class TestRunnerApplication(
     /// Cancelling a run only asks its process tree to end, so the panels'
     /// work is waited out before the application is torn down. Returning
     /// first would leave `dotnet test` orphaned behind the exiting terminal.
+    /// The loop no longer takes that work, so it is released to finish
+    /// without it.
     /// </summary>
-    private void ShutDown()
+    private void ShutDown(TerminalLoopContext loop)
     {
         runCancellation?.Cancel();
         loadCancellation?.Cancel();
+        loop.Release();
         panelWork.EndedAsync().GetAwaiter().GetResult();
         loadCancellation?.Dispose();
         loadCancellation = null;
