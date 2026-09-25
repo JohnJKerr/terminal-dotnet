@@ -107,4 +107,26 @@ public sealed class WhenTitlingAPanel
 
     private static IReadOnlyList<FilterChip> Filters() =>
         [new FilterChip("A All files", false), new FilterChip("U Updated", false)];
+
+    [Fact]
+    public void A_name_too_long_for_the_frame_is_cut_to_fit()
+    {
+        // Act
+        var fitted = PanelTitle.Fitted([new TitleSegment("[0]─Preview ─ src/Deeply/Nested/File.cs", false)], room: 20);
+
+        // Assert
+        Assert.Equal("[0]─Preview ─ src/…", fitted.Single().Text);
+    }
+
+    [Fact]
+    public void A_filter_with_no_room_left_is_left_off()
+    {
+        // Act
+        var fitted = PanelTitle.Fitted(
+            [new TitleSegment("[2]─Tests", false), new TitleSegment("U Updated", false)],
+            room: 15);
+
+        // Assert
+        Assert.Equal(["[2]─Tests"], fitted.Select(segment => segment.Text));
+    }
 }
