@@ -157,14 +157,34 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     private static string FilterClause(TestCase test) =>
         $"FullyQualifiedName={FilterValue(test.FullyQualifiedName)}";
 
+    /// <summary>The results file is discarded however the run ends, because
+    /// a run cancelled part-way can leave one behind that nobody will read.
+    /// </summary>
     private async Task<TestRun> RunBatchAsync(
         string target,
         IReadOnlyList<TestCase> tests,
         bool build,
         CancellationToken cancellationToken)
     {
-        var filter = string.Join('|', tests.Select(FilterClause));
         var resultPath = resultStore.CreatePath();
+        try
+        {
+            return await RunBatchIntoAsync(resultPath, target, tests, build, cancellationToken);
+        }
+        finally
+        {
+            resultStore.Discard(resultPath);
+        }
+    }
+
+    private async Task<TestRun> RunBatchIntoAsync(
+        string resultPath,
+        string target,
+        IReadOnlyList<TestCase> tests,
+        bool build,
+        CancellationToken cancellationToken)
+    {
+        var filter = string.Join('|', tests.Select(FilterClause));
         var result = await commandRunner.RunAsync(
             new CommandRequest(
                 "dotnet",

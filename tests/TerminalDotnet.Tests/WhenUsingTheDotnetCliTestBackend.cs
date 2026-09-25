@@ -453,6 +453,51 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     private static TestCase AddsItem() =>
         new("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.sln");
 
+    [Fact]
+    public async Task It_discards_the_results_file_once_it_has_been_read()
+    {
+        // Arrange
+        var store = new InMemoryTestResultStore("<TestRun />");
+        var backend = new DotnetCliTestBackend(new QueuedCommandRunner(), store);
+
+        // Act
+        await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.Equal(["/tmp/terminal-dotnet.trx"], store.Discarded);
+    }
+
+    [Fact]
+    public async Task It_discards_the_results_file_of_a_cancelled_run()
+    {
+        // Arrange
+        var store = new InMemoryTestResultStore("<TestRun />");
+        var backend = new DotnetCliTestBackend(new CancelledCommandRunner(), store);
+
+        // Act
+        await Cancelled(backend.RunAsync([AddsItem()]));
+
+        // Assert
+        Assert.Equal(["/tmp/terminal-dotnet.trx"], store.Discarded);
+    }
+
+    private static async Task Cancelled(Task run)
+    {
+        try
+        {
+            await run;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private sealed class CancelledCommandRunner : ICommandRunner
+    {
+        public Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default) =>
+            Task.FromCanceled<CommandResult>(new CancellationToken(canceled: true));
+    }
+
     private sealed class InMemoryCommandRunner(CommandResult result) : ICommandRunner
     {
         public CommandRequest? LastRequest { get; private set; }
@@ -468,8 +513,12 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         public string CreatePath() => "/tmp/terminal-dotnet.trx";
 
+        public List<string> Discarded { get; } = [];
+
         public Task<string> ReadAsync(string path, CancellationToken cancellationToken = default) =>
             Task.FromResult(contents);
+
+        public void Discard(string path) => Discarded.Add(path);
     }
 
     private sealed class QueuedCommandRunner(params CommandResult[] results) : ICommandRunner

@@ -81,6 +81,10 @@ public sealed class WhenARunProducesNoResults
 
         public Task<string> ReadAsync(string path, CancellationToken cancellationToken = default) =>
             Task.FromException<string>(new FileNotFoundException("No results were written.", path));
+
+        public void Discard(string path)
+        {
+        }
     }
 
     private sealed class InMemoryTestResultStore(string contents) : ITestResultStore
@@ -89,5 +93,9 @@ public sealed class WhenARunProducesNoResults
 
         public Task<string> ReadAsync(string path, CancellationToken cancellationToken = default) =>
             Task.FromResult(contents);
+
+        public void Discard(string path)
+        {
+        }
     }
 }
