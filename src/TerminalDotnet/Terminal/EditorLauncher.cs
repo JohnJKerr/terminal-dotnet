@@ -9,6 +9,8 @@ public interface IFileOpener
 
 public sealed class EditorLauncher : IFileOpener
 {
+    public const string DefaultEditor = "omarchy-launch-editor";
+
     private readonly string executable;
     private readonly IReadOnlyList<string> configuredArguments;
     private readonly ICommandRunner commandRunner;
@@ -22,6 +24,12 @@ public sealed class EditorLauncher : IFileOpener
         configuredArguments = command[1..];
         this.commandRunner = commandRunner;
     }
+
+    /// <returns>The editor the environment names, preferring the visual one.
+    /// A variable that is set but blank names nothing, so it is passed over
+    /// rather than launched.</returns>
+    public static string Configured(string? visual, string? editor) =>
+        new[] { visual, editor }.FirstOrDefault(named => !string.IsNullOrWhiteSpace(named)) ?? DefaultEditor;
 
     public Task OpenAsync(string path, int line, CancellationToken cancellationToken = default) =>
         commandRunner.RunAsync(

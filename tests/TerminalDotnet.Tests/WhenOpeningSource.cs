@@ -49,6 +49,26 @@ public sealed class WhenOpeningSource
                     [runner.LastRequest.FileName, .. runner.LastRequest.Arguments]));
     }
 
+    [Fact]
+    public void It_passes_over_a_visual_editor_that_is_set_but_blank()
+    {
+        // Act
+        var editor = EditorLauncher.Configured(visual: "  ", editor: "vim");
+
+        // Assert
+        Assert.Equal("vim", editor);
+    }
+
+    [Fact]
+    public void It_falls_back_to_the_default_editor_when_neither_is_set()
+    {
+        // Act
+        var editor = EditorLauncher.Configured(visual: null, editor: "");
+
+        // Assert
+        Assert.Equal(EditorLauncher.DefaultEditor, editor);
+    }
+
     private sealed class InMemoryCommandRunner : ICommandRunner
     {
         public CommandRequest? LastRequest { get; private set; }

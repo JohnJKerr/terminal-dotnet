@@ -50,9 +50,9 @@ var session = new TestExplorerSession(
     new FileTestSourceLocator(),
     new ChangesetUpdatedSourceProvider(new GitChangesetBackend(commandRunner)));
 
-var editor = Environment.GetEnvironmentVariable("VISUAL") ??
-    Environment.GetEnvironmentVariable("EDITOR") ??
-    "omarchy-launch-editor";
+var editor = EditorLauncher.Configured(
+    Environment.GetEnvironmentVariable("VISUAL"),
+    Environment.GetEnvironmentVariable("EDITOR"));
 var editorLauncher = new EditorLauncher(editor, commandRunner);
 using var workspaceWatcher = new FileSystemWorkspaceWatcher();
 new TestRunnerApplication(
