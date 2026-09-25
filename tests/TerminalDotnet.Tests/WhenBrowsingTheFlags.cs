@@ -1,6 +1,7 @@
 using TerminalDotnet.Comments;
 using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Flags;
@@ -70,22 +71,7 @@ public sealed class WhenBrowsingTheFlags
         }
     }
 
-    private static IssueSession Session(IFlagBackend flags) =>
-        new(new NoIssues(), new UnusedClipboard(), flags);
-
-    private sealed class NoIssues : IIssueBackend
-    {
-        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<CompilationIssue>>([]);
-    }
-
-    private sealed class UnusedClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
-            Task.FromResult(false);
-    }
+    private static IssueSession Session(IFlagBackend flags) => GivenA.IssuePanel().WithFlagBackend(flags).Build();
 
     private sealed class StubBackend(IReadOnlyList<Flag> flags) : IFlagBackend
     {

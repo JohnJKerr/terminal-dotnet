@@ -1,6 +1,8 @@
 using TerminalDotnet.Comments;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
+using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Issues;
@@ -53,7 +55,7 @@ public sealed class WhenUsingTheIssuesPanel
     public async Task It_copies_the_selected_issue_details()
     {
         // Arrange
-        var clipboard = new RememberingClipboard();
+        var clipboard = new RecordingClipboard();
         var session = Session(clipboard);
         await session.LoadAsync("/repo/Shop.slnx");
 
@@ -61,7 +63,7 @@ public sealed class WhenUsingTheIssuesPanel
         await session.DispatchAsync(new IssueCommand.CopySelected());
 
         // Assert
-        Assert.Equal("src/Broken.cs(7,3): error CS1002: ; expected", clipboard.Text);
+        Assert.Equal("src/Broken.cs(7,3): error CS1002: ; expected", clipboard.Copied);
     }
 
     [Fact]
@@ -172,27 +174,14 @@ public sealed class WhenUsingTheIssuesPanel
         Assert.Equal(0, issue);
     }
 
-    private static IssueSession Session(ICommentClipboard? clipboard = null) =>
-        new(new FixedBackend(Issues()), clipboard ?? new RememberingClipboard());
+    private static IssueSession Session(ICommentClipboard? clipboard = null) => GivenA.IssuePanel()
+        .WithIssues([.. Issues()])
+        .WithClipboard(clipboard ?? new RecordingClipboard())
+        .Build();
 
     private static IReadOnlyList<CompilationIssue> Issues() =>
     [
         new("/repo/src/Broken.cs", "src/Broken.cs", 7, 3, "CS1002", "; expected", IssueSeverity.Error),
         new("/repo/src/Risky.cs", "src/Risky.cs", 8, 4, "CS0168", "Unused variable", IssueSeverity.Warning)
     ];
-
-    private sealed class FixedBackend(IReadOnlyList<CompilationIssue> issues) : IIssueBackend
-    {
-        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(string target, CancellationToken cancellationToken = default) => Task.FromResult(issues);
-    }
-
-    private sealed class RememberingClipboard : ICommentClipboard
-    {
-        public string Text { get; private set; } = "";
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default)
-        {
-            Text = text;
-            return Task.FromResult(true);
-        }
-    }
 }

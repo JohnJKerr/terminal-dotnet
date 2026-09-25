@@ -1,6 +1,7 @@
 using TerminalDotnet.Comments;
 using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Issues;
@@ -65,34 +66,8 @@ public sealed class WhenListingFlagsAmongTheIssues
         Assert.Equal([IssueSeverity.Flag], session.State.Issues.Select(issue => issue.Severity));
     }
 
-    private static IssueSession Session() => new(
-        new FixedIssues(),
-        new UnusedClipboard(),
-        new FixedFlags());
-
-    private sealed class FixedIssues : IIssueBackend
-    {
-        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<CompilationIssue>>([
-                new("/repo/src/Broken.cs", "src/Broken.cs", 7, 3, "CS1002", "; expected", IssueSeverity.Error)
-            ]);
-    }
-
-    private sealed class FixedFlags : IFlagBackend
-    {
-        public Task<IReadOnlyList<Flag>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Flag>>([
-                new("/repo/src/Work.cs", "src/Work.cs", 12, FlagKind.Todo, "finish it")
-            ]);
-    }
-
-    private sealed class UnusedClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
-            Task.FromResult(false);
-    }
+    private static IssueSession Session() => GivenA.IssuePanel()
+        .WithIssues(new CompilationIssue("/repo/src/Broken.cs", "src/Broken.cs", 7, 3, "CS1002", "; expected", IssueSeverity.Error))
+        .WithFlags(new Flag("/repo/src/Work.cs", "src/Work.cs", 12, FlagKind.Todo, "finish it"))
+        .Build();
 }
