@@ -15,6 +15,7 @@ public sealed class TestExplorerSession(
     private readonly HashSet<TestCase> activeTests = [];
     private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
+    private IReadOnlySet<TestCase> lastRunMembers = new HashSet<TestCase>();
     private bool running;
     private IReadOnlyDictionary<string, TestNodeUpdate> updatedSuites =
         new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
@@ -364,7 +365,7 @@ public sealed class TestExplorerSession(
         ExplorerFilter.Updated => updatedSuites.ContainsKey(SuiteKeyOf(test)),
         ExplorerFilter.Failing => OutcomeOf(test) == TestNodeOutcome.Failed,
         ExplorerFilter.Passing => OutcomeOf(test) == TestNodeOutcome.Passed,
-        ExplorerFilter.LastRun => lastRunTests.Contains(test),
+        ExplorerFilter.LastRun => lastRunMembers.Contains(test),
         ExplorerFilter.NotRun => !completedOutcomes.ContainsKey(test),
         _ => true
     };
@@ -409,6 +410,7 @@ public sealed class TestExplorerSession(
         CancellationToken cancellationToken)
     {
         lastRunTests = Snapshot.Of(tests);
+        lastRunMembers = tests.ToHashSet();
         activeTests.Clear();
         activeTests.UnionWith(tests);
         State = State with
