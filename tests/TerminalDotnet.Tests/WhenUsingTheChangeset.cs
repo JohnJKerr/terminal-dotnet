@@ -1,4 +1,5 @@
 using TerminalDotnet.Changes;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Changeset;
@@ -195,33 +196,4 @@ public sealed class WhenUsingTheChangeset
 
     private static ChangesetSession SessionWith(params ChangedFile[] files) =>
         new(new InMemoryChangesetBackend(files));
-
-    private sealed class InMemoryChangesetBackend(params ChangedFile[] files) : IChangesetBackend
-    {
-        private readonly List<ChangedFile> changedFiles = [.. files];
-
-        public List<ChangedFile> Restored { get; } = [];
-
-        public Task<IReadOnlyList<ChangedFile>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ChangedFile>>([.. changedFiles]);
-
-        public Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult($"diff for {file.DisplayPath}");
-
-        public bool RestoreSucceeds { get; init; } = true;
-
-        public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default)
-        {
-            if (!RestoreSucceeds)
-            {
-                return Task.FromResult(false);
-            }
-
-            Restored.Add(file);
-            changedFiles.Remove(file);
-            return Task.FromResult(true);
-        }
-    }
 }

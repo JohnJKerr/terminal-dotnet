@@ -1,5 +1,6 @@
 using TerminalDotnet.Files;
 using TerminalDotnet.Filters;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
@@ -108,7 +109,7 @@ public sealed class WhenFilteringToUpdatedFiles
 
     private static async Task<FileExplorerSession> LoadedSessionAsync()
     {
-        var session = new FileExplorerSession(new InMemoryFileExplorerBackend(
+        var session = new FileExplorerSession(new FixedFiles(
         [
             new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
             new FileEntry("src/App/App.csproj", "src/App/Added.cs", FileGitStatus.New),
@@ -122,11 +123,4 @@ public sealed class WhenFilteringToUpdatedFiles
     private static IEnumerable<string> FileNames(FileExplorerState state) => state.VisibleNodes
         .Where(node => node.Kind == FileNodeKind.File)
         .Select(node => node.Name);
-
-    private sealed class InMemoryFileExplorerBackend(IReadOnlyList<FileEntry> entries) : IFileExplorerBackend
-    {
-        public Task<IReadOnlyList<FileEntry>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) => Task.FromResult(entries);
-    }
 }

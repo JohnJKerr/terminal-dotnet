@@ -1,5 +1,6 @@
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -10,7 +11,7 @@ public sealed class WhenOpeningSource
     public async Task It_issues_the_configured_editor_command_at_the_failure_line()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner();
+        var runner = new RecordingCommandRunner();
         var launcher = new EditorLauncher("code", runner);
 
         // Act
@@ -34,7 +35,7 @@ public sealed class WhenOpeningSource
     public async Task It_preserves_arguments_from_the_configured_editor_command()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner();
+        var runner = new RecordingCommandRunner();
         var launcher = new EditorLauncher("omarchy-launch-editor --inline", runner);
 
         // Act
@@ -67,16 +68,5 @@ public sealed class WhenOpeningSource
 
         // Assert
         Assert.Equal(EditorLauncher.DefaultEditor, editor);
-    }
-
-    private sealed class InMemoryCommandRunner : ICommandRunner
-    {
-        public CommandRequest? LastRequest { get; private set; }
-
-        public Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default)
-        {
-            LastRequest = request;
-            return Task.FromResult(new CommandResult(0, "", ""));
-        }
     }
 }

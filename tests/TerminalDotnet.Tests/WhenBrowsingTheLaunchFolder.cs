@@ -1,4 +1,5 @@
 using TerminalDotnet.Files;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
@@ -165,12 +166,5 @@ public sealed class WhenBrowsingTheLaunchFolder
     }
 
     private static FileExplorerSession SessionWithFiles(params FileEntry[] entries) =>
-        new(new InMemoryFileExplorerBackend(entries), FileGrouping.Folder);
-
-    private sealed class InMemoryFileExplorerBackend(IReadOnlyList<FileEntry> entries) : IFileExplorerBackend
-    {
-        public Task<IReadOnlyList<FileEntry>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) => Task.FromResult(entries);
-    }
+        new(new FixedFiles(entries), FileGrouping.Folder);
 }

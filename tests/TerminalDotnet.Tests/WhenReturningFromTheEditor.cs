@@ -3,6 +3,7 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Tests.Builders;
 using TerminalDotnet.Issues;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -74,58 +75,7 @@ public sealed class WhenReturningFromTheEditor
         Assert.Equal(FileGitStatus.Modified, folder.State.VisibleNodes.Last().Files[0].GitStatus);
     }
 
-    private static ChangesetSession Changeset() => new(new EmptyChangesetBackend());
+    private static ChangesetSession Changeset() => new(new InMemoryChangesetBackend());
 
     private static IssueSession Issues() => GivenA.IssuePanel().Build();
-
-    private sealed class ChangingChangesetBackend : IChangesetBackend
-    {
-        public bool Changed { get; set; }
-
-        public Task<IReadOnlyList<ChangedFile>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ChangedFile>>(Changed
-                ? [new ChangedFile("/repo/Order.cs", "Order.cs", ChangeKind.Modified)]
-                : []);
-
-        public Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult("");
-
-        public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
-    }
-
-    private sealed class EmptyChangesetBackend : IChangesetBackend
-    {
-        public Task<IReadOnlyList<ChangedFile>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ChangedFile>>([]);
-
-        public Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult("");
-
-        public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
-    }
-
-    private sealed class ChangingFileBackend(FileEntry file) : IFileExplorerBackend
-    {
-        public FileEntry File { get; set; } = file;
-
-        public Task<IReadOnlyList<FileEntry>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<FileEntry>>([File]);
-    }
-
-    private sealed class InMemoryFileOpener(Action onOpen) : IFileOpener
-    {
-        public Task OpenAsync(string path, int line, CancellationToken cancellationToken = default)
-        {
-            onOpen();
-            return Task.CompletedTask;
-        }
-    }
 }

@@ -1,6 +1,7 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -31,29 +32,4 @@ public sealed class WhenSearchingDuringARun
 
     private static readonly TestCase AddsItem =
         new("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-
-    private sealed class HeldTestBackend(TestCase test) : ITestBackend
-    {
-        private readonly TaskCompletionSource finished =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public TaskCompletionSource Started { get; } =
-            new(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        public void Finish() => finished.TrySetResult();
-
-        public Task<IReadOnlyList<TestCase>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<TestCase>>([test]);
-
-        public async Task<TestRun> RunAsync(
-            IReadOnlyCollection<TestCase> tests,
-            CancellationToken cancellationToken = default)
-        {
-            Started.TrySetResult();
-            await finished.Task;
-            return new TestRun(true, "Passed");
-        }
-    }
 }

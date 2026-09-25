@@ -4,6 +4,7 @@ using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
@@ -111,36 +112,11 @@ public sealed class WhenJumpingToARow
 
     private static async Task<FileExplorerSession> SessionWithThreeFiles()
     {
-        var session = new FileExplorerSession(new InMemoryFileExplorerBackend(
+        var session = new FileExplorerSession(new FixedFiles(
             new FileEntry("src/App/App.csproj", "src/App/Order.cs", FileGitStatus.Unchanged),
             new FileEntry("src/App/App.csproj", "src/App/Customer.cs", FileGitStatus.Unchanged)));
         await session.LoadAsync("TerminalDotnet.slnx");
         return session;
-    }
-
-    private sealed class InMemoryFileExplorerBackend(params FileEntry[] entries)
-        : IFileExplorerBackend
-    {
-        public Task<IReadOnlyList<FileEntry>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<FileEntry>>([.. entries]);
-    }
-
-    private sealed class InMemoryChangesetBackend(params ChangedFile[] files) : IChangesetBackend
-    {
-        public Task<IReadOnlyList<ChangedFile>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ChangedFile>>([.. files]);
-
-        public Task<string> DiffAsync(
-            ChangedFile file,
-            CancellationToken cancellationToken = default) => Task.FromResult("");
-
-        public Task<bool> RestoreAsync(
-            ChangedFile file,
-            CancellationToken cancellationToken = default) => Task.FromResult(true);
     }
 
     [Fact]

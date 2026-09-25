@@ -11,7 +11,7 @@ public sealed class WhenARunProducesNoResults
     {
         // Arrange
         var backend = new DotnetCliTestBackend(
-            new InMemoryCommandRunner(new CommandResult(1, "error CS1002: ; expected", "")),
+            new RecordingCommandRunner(new CommandResult(1, "error CS1002: ; expected", "")),
             new MissingTestResultStore());
 
         // Act
@@ -26,7 +26,7 @@ public sealed class WhenARunProducesNoResults
     {
         // Arrange
         var backend = new DotnetCliTestBackend(
-            new InMemoryCommandRunner(new CommandResult(1, "error CS1002: ; expected", "")),
+            new RecordingCommandRunner(new CommandResult(1, "error CS1002: ; expected", "")),
             new MissingTestResultStore());
 
         // Act
@@ -41,7 +41,7 @@ public sealed class WhenARunProducesNoResults
     {
         // Arrange
         var backend = new DotnetCliTestBackend(
-            new InMemoryCommandRunner(new CommandResult(0, "", "")),
+            new RecordingCommandRunner(new CommandResult(0, "", "")),
             new MissingTestResultStore());
 
         // Act
@@ -56,7 +56,7 @@ public sealed class WhenARunProducesNoResults
     {
         // Arrange
         var backend = new DotnetCliTestBackend(
-            new InMemoryCommandRunner(new CommandResult(1, "1 test failed", "")),
+            new RecordingCommandRunner(new CommandResult(1, "1 test failed", "")),
             new InMemoryTestResultStore("<TestRun"));
 
         // Act
@@ -68,13 +68,6 @@ public sealed class WhenARunProducesNoResults
 
     private static TestCase AddsItem() =>
         new("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.sln");
-
-    private sealed class InMemoryCommandRunner(CommandResult result) : ICommandRunner
-    {
-        public Task<CommandResult> RunAsync(
-            CommandRequest request,
-            CancellationToken cancellationToken = default) => Task.FromResult(result);
-    }
 
     private sealed class MissingTestResultStore : ITestResultStore
     {

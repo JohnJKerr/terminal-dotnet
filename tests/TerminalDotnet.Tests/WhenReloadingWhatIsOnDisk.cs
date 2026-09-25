@@ -5,6 +5,7 @@ using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -141,33 +142,5 @@ public sealed class WhenReloadingWhatIsOnDisk
             Discoveries++;
             return Task.FromResult<IReadOnlyList<Flag>>([]);
         }
-    }
-
-    private sealed class ChangingChangesetBackend : IChangesetBackend
-    {
-        public bool Changed { get; set; }
-
-        public Task<IReadOnlyList<ChangedFile>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ChangedFile>>(Changed
-                ? [new ChangedFile("/repo/Order.cs", "Order.cs", ChangeKind.Modified)]
-                : []);
-
-        public Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult("");
-
-        public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
-    }
-
-    private sealed class ChangingFileBackend(FileEntry file) : IFileExplorerBackend
-    {
-        public FileEntry File { get; set; } = file;
-
-        public Task<IReadOnlyList<FileEntry>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<FileEntry>>([File]);
     }
 }

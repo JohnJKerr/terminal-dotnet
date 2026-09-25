@@ -41,7 +41,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_escapes_filter_syntax_in_a_test_name()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, "", ""));
+        var runner = new RecordingCommandRunner(new CommandResult(0, "", ""));
         var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
@@ -57,7 +57,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_issues_one_exact_filter_command_when_running_tests()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
+        var runner = new RecordingCommandRunner(new CommandResult(0, "2 tests passed", ""));
         var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
@@ -161,7 +161,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_reports_a_passing_run_when_the_command_succeeds()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
+        var runner = new RecordingCommandRunner(new CommandResult(0, "2 tests passed", ""));
         var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
@@ -175,7 +175,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_reports_what_the_command_wrote_when_running_tests()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
+        var runner = new RecordingCommandRunner(new CommandResult(0, "2 tests passed", ""));
         var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
 
         // Act
@@ -273,7 +273,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_retains_the_module_each_test_belongs_to_when_discovering()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, $"""
+        var runner = new RecordingCommandRunner(new CommandResult(0, $"""
             Test run for {TestPaths.In("Cart.Tests", "bin", "Debug", "net10.0", "Cart.Tests.dll")} (.NETCoreApp,Version=v10.0)
             The following Tests are available:
                 Shop.Cart.Tests.CartTests.Adds_item(value: 1)
@@ -300,7 +300,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_normalizes_parameterized_identities_when_discovering()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, """
+        var runner = new RecordingCommandRunner(new CommandResult(0, """
             Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
             The following Tests are available:
                 Shop.Cart.Tests.CartTests.Adds_item(value: 1)
@@ -328,7 +328,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         string expected)
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, $"""
+        var runner = new RecordingCommandRunner(new CommandResult(0, $"""
             The following Tests are available:
                 {reportedName}
             """, ""));
@@ -366,7 +366,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     public async Task It_maps_parameterized_results_to_their_distinct_display_cases()
     {
         // Arrange
-        var runner = new InMemoryCommandRunner(new CommandResult(0, "2 tests passed", ""));
+        var runner = new RecordingCommandRunner(new CommandResult(0, "2 tests passed", ""));
         var results = new InMemoryTestResultStore("""
             <TestRun>
               <Results>
@@ -396,7 +396,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         ], run.Results.Select(result => result.Test.DisplayName));
     }
 
-    private static InMemoryCommandRunner ListingCartTests() => new(new CommandResult(0, """
+    private static RecordingCommandRunner ListingCartTests() => new(new CommandResult(0, """
         Determining projects to restore...
         The following Tests are available:
             Shop.Tests.CartTests.Adds_item
@@ -404,7 +404,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         """, ""));
 
     private static DotnetCliTestBackend BackendWithAFailedRun() => new(
-        new InMemoryCommandRunner(new CommandResult(1, "1 test failed", "")),
+        new RecordingCommandRunner(new CommandResult(1, "1 test failed", "")),
         new InMemoryTestResultStore("""
             <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
               <Results>
@@ -497,17 +497,6 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         public Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default) =>
             Task.FromCanceled<CommandResult>(new CancellationToken(canceled: true));
-    }
-
-    private sealed class InMemoryCommandRunner(CommandResult result) : ICommandRunner
-    {
-        public CommandRequest? LastRequest { get; private set; }
-
-        public Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default)
-        {
-            LastRequest = request;
-            return Task.FromResult(result);
-        }
     }
 
     private sealed class QueuedCommandRunner(params CommandResult[] results) : ICommandRunner

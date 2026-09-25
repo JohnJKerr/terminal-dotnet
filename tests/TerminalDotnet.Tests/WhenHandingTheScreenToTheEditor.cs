@@ -5,6 +5,7 @@ using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -93,7 +94,7 @@ public sealed class WhenHandingTheScreenToTheEditor
         IFileOpener editor,
         IssueSession? issues = null) =>
         new([explorer],
-            new ChangesetSession(new EmptyChangesetBackend()),
+            new ChangesetSession(new InMemoryChangesetBackend()),
             editor,
             "App.csproj",
             issues ?? GivenA.IssuePanel().Build());
@@ -127,38 +128,5 @@ public sealed class WhenHandingTheScreenToTheEditor
                     "The name 'total' does not exist",
                     IssueSeverity.Error)]
                 : []);
-    }
-
-    private sealed class EmptyChangesetBackend : IChangesetBackend
-    {
-        public Task<IReadOnlyList<ChangedFile>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<ChangedFile>>([]);
-
-        public Task<string> DiffAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult("");
-
-        public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
-    }
-
-    private sealed class ChangingFileBackend(FileEntry file) : IFileExplorerBackend
-    {
-        public FileEntry File { get; set; } = file;
-
-        public Task<IReadOnlyList<FileEntry>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<FileEntry>>([File]);
-    }
-
-    private sealed class InMemoryFileOpener(Action onOpen) : IFileOpener
-    {
-        public Task OpenAsync(string path, int line, CancellationToken cancellationToken = default)
-        {
-            onOpen();
-            return Task.CompletedTask;
-        }
     }
 }

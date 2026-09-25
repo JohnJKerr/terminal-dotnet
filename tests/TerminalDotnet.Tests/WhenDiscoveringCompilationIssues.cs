@@ -1,5 +1,6 @@
 using TerminalDotnet.Issues;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Issues;
@@ -50,19 +51,8 @@ public sealed class WhenDiscoveringCompilationIssues
             issue.Details);
     }
 
-    private static InMemoryCommandRunner RunnerWithIssues() => new(new CommandResult(1, """
+    private static RecordingCommandRunner RunnerWithIssues() => new(new CommandResult(1, """
         /repo/src/Cart.cs(12,9): error CS1002: ; expected [/repo/Shop.csproj]
         /repo/src/Price.cs(4,2): warning CS0168: Variable is declared but never used [/repo/Shop.csproj]
         """, ""));
-
-    private sealed class InMemoryCommandRunner(CommandResult result) : ICommandRunner
-    {
-        public CommandRequest? LastRequest { get; private set; }
-
-        public Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default)
-        {
-            LastRequest = request;
-            return Task.FromResult(result);
-        }
-    }
 }
