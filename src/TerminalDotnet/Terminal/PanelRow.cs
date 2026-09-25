@@ -16,18 +16,6 @@ public sealed record PanelRow(string Text, RowTone Tone);
 
 public static class RowAppearance
 {
-    public static global::Terminal.Gui.Drawing.Attribute For(
-        RowTone tone,
-        bool isSelected,
-        global::Terminal.Gui.Drawing.Attribute normal,
-        global::Terminal.Gui.Drawing.Attribute selected)
-    {
-        var baseAppearance = isSelected ? selected : normal;
-        return new global::Terminal.Gui.Drawing.Attribute(
-            ForegroundFor(tone, baseAppearance.Foreground),
-            baseAppearance.Background);
-    }
-
     public static Color ForegroundFor(RowTone tone, Color unchanged) => tone switch
     {
         RowTone.Modified => Color.BrightBlue,

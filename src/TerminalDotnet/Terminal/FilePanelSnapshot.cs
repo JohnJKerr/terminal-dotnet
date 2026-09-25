@@ -1,5 +1,4 @@
 using TerminalDotnet.Files;
-using Terminal.Gui.Drawing;
 
 namespace TerminalDotnet.Terminal;
 
