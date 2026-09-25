@@ -56,12 +56,7 @@ var editor = EditorLauncher.Configured(
 var editorLauncher = new EditorLauncher(editor, commandRunner);
 using var workspaceWatcher = new FileSystemWorkspaceWatcher();
 new TestRunnerApplication(
-    session,
-    fileSession,
-    folderSession,
-    changesetSession,
-    commentSession,
-    issueSession,
+    new PanelSessions(session, fileSession, folderSession, changesetSession, commentSession, issueSession),
     target,
     editorLauncher,
     workspaceWatcher).Run();

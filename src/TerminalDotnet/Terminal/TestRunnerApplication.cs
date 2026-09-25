@@ -19,12 +19,7 @@ using Attribute = Terminal.Gui.Drawing.Attribute;
 namespace TerminalDotnet.Terminal;
 
 internal sealed class TestRunnerApplication(
-    TestExplorerSession session,
-    FileExplorerSession fileSession,
-    FileExplorerSession folderSession,
-    ChangesetSession changesetSession,
-    CommentSession commentSession,
-    IssueSession issueSession,
+    PanelSessions panels,
     string target,
     IFileOpener editorLauncher,
     IWorkspaceWatcher workspaceWatcher)
@@ -45,6 +40,36 @@ internal sealed class TestRunnerApplication(
 
     private static readonly TimeSpan SettleDuration = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan EditPollInterval = TimeSpan.FromMilliseconds(250);
+
+    private readonly TestExplorerSession session = panels.Tests;
+    private readonly FileExplorerSession fileSession = panels.ProjectFiles;
+    private readonly FileExplorerSession folderSession = panels.FolderFiles;
+    private readonly ChangesetSession changesetSession = panels.Changes;
+    private readonly CommentSession commentSession = panels.Comments;
+    private readonly IssueSession issueSession = panels.Issues;
+
+    private readonly PanelStartup startup = new(
+        panels.ProjectFiles,
+        panels.FolderFiles,
+        panels.Changes,
+        panels.Tests,
+        target,
+        panels.Issues);
+
+    private readonly PanelReload reload = new(
+        [panels.ProjectFiles, panels.FolderFiles],
+        panels.Changes,
+        target,
+        panels.Issues);
+
+    private readonly ExplorerEditorWorkflow editorWorkflow = new(
+        [panels.ProjectFiles, panels.FolderFiles],
+        panels.Changes,
+        editorLauncher,
+        target,
+        panels.Issues);
+
+    private readonly ProjectRebuild rebuild = new(panels.Issues, panels.Tests, target);
 
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? loadCancellation;
@@ -260,19 +285,7 @@ internal sealed class TestRunnerApplication(
     private Task FillPanelsAsync(
         IApplication application,
         CancellationToken cancellationToken) =>
-        new PanelStartup(
-            fileSession,
-            folderSession,
-            changesetSession,
-            session,
-            target,
-            issueSession).LoadPendingAsync(
-            () =>
-            {
-                RenderOnTheLoop();
-                return Task.CompletedTask;
-            },
-            cancellationToken);
+        startup.LoadPendingAsync(PanelLanded, cancellationToken);
 
     private static string? TerminalDriver() => TerminalDriverChoice.FromEnvironment();
 
@@ -1260,22 +1273,9 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        EditorWorkflow().OpenAsync(openPath, openLine).GetAwaiter().GetResult();
+        editorWorkflow.OpenAsync(openPath, openLine).GetAwaiter().GetResult();
         panelsWereEdited = true;
     }
-
-    private ExplorerEditorWorkflow EditorWorkflow() => new(
-        [fileSession, folderSession],
-        changesetSession,
-        editorLauncher,
-        target,
-        issueSession);
-
-    private PanelReload PanelReload() => new(
-        [fileSession, folderSession],
-        changesetSession,
-        target,
-        issueSession);
 
     /// <summary>
     /// Asks on every frame rather than reloading as the edits land, because a
@@ -1305,7 +1305,6 @@ internal sealed class TestRunnerApplication(
     /// </summary>
     private void Rebuild(IApplication application, bool askedFor)
     {
-        var rebuild = new ProjectRebuild(issueSession, session, target);
         var started = rebuild.Start();
         if (started == RebuildStart.WaitingOnTheRun && askedFor)
         {
@@ -1325,21 +1324,14 @@ internal sealed class TestRunnerApplication(
         sinceRebuildStarted.Restart();
         ShowToast(application, RebuildToast.Rebuilding(TimeSpan.Zero));
         TurnRebuildToast(application);
-        panelWork.Track(RebuildAsync(application, rebuild, loadCancellation!.Token));
+        panelWork.Track(RebuildAsync(application, loadCancellation!.Token));
     }
 
     private async Task RebuildAsync(
         IApplication application,
-        ProjectRebuild rebuild,
         CancellationToken cancellationToken)
     {
-        await rebuild.RunAsync(
-            () =>
-            {
-                RenderOnTheLoop();
-                return Task.CompletedTask;
-            },
-            cancellationToken);
+        await rebuild.RunAsync(PanelLanded, cancellationToken);
         application.Invoke(() => ShowToast(
             application,
             RebuildToast.Finished(issueSession.State, session.State)));
@@ -1442,13 +1434,7 @@ internal sealed class TestRunnerApplication(
     {
         try
         {
-            await PanelReload().FromDiskAsync(
-                () =>
-                {
-                    RenderOnTheLoop();
-                    return Task.CompletedTask;
-                },
-                cancellationToken);
+            await reload.FromDiskAsync(PanelLanded, cancellationToken);
         }
         finally
         {
@@ -1472,13 +1458,13 @@ internal sealed class TestRunnerApplication(
     private Task RefreshEditedPanelsAsync(
         IApplication application,
         CancellationToken cancellationToken) =>
-        EditorWorkflow().RefreshAsync(
-            () =>
-            {
-                RenderOnTheLoop();
-                return Task.CompletedTask;
-            },
-            cancellationToken);
+        editorWorkflow.RefreshAsync(PanelLanded, cancellationToken);
+
+    private Task PanelLanded()
+    {
+        RenderOnTheLoop();
+        return Task.CompletedTask;
+    }
 
     /// <summary>Work that has awaited something draws through the loop, which
     /// passes it over once the terminal it would draw on has gone.</summary>
