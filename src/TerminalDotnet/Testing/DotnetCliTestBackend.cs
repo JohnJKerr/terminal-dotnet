@@ -285,6 +285,31 @@ public sealed partial class DotnetCliTestBackend(
         IReadOnlyDictionary<string, XElement> definitions,
         IReadOnlyDictionary<string, TestCase[]> requestedByName)
     {
+        if (RequestedTestFor(result, definitions, requestedByName) is not { } test)
+        {
+            return null;
+        }
+
+        var stackTrace = ChildText(result, "StackTrace");
+        var source = FailureSourceIn(stackTrace);
+        return new TestResult(
+            test,
+            OutcomeOf(result),
+            DurationOf(result),
+            ChildText(result, "Message"),
+            stackTrace,
+            source?.File,
+            source?.Line,
+            ChildText(result, "StdOut"));
+    }
+
+    /// <summary>A theory reports a result per case under one test name, so
+    /// the case is told apart by the display name it ran as.</summary>
+    private static TestCase? RequestedTestFor(
+        XElement result,
+        IReadOnlyDictionary<string, XElement> definitions,
+        IReadOnlyDictionary<string, TestCase[]> requestedByName)
+    {
         var testId = (string?)result.Attribute("testId");
         if (testId is null || !definitions.TryGetValue(testId, out var definition))
         {
@@ -297,30 +322,31 @@ public sealed partial class DotnetCliTestBackend(
             return null;
         }
 
-        var resultDisplayName = result.Attribute("testName")?.Value.Replace('_', ' ');
-        var test = candidates.FirstOrDefault(candidate =>
-                resultDisplayName?.EndsWith(candidate.DisplayName, StringComparison.Ordinal) == true)
+        var ranAs = result.Attribute("testName")?.Value.Replace('_', ' ');
+        return candidates.FirstOrDefault(candidate =>
+                ranAs?.EndsWith(candidate.DisplayName, StringComparison.Ordinal) == true)
             ?? candidates[0];
-
-        var stackTrace = result.Descendants().SingleOrDefault(element => element.Name.LocalName == "StackTrace")?.Value;
-        var source = stackTrace is null ? null : SourceLocation().Match(stackTrace);
-        var outcome = result.Attribute("outcome")?.Value switch
-        {
-            "Passed" => TestOutcome.Passed,
-            "NotExecuted" => TestOutcome.Skipped,
-            _ => TestOutcome.Failed
-        };
-
-        return new TestResult(
-            test,
-            outcome,
-            TimeSpan.TryParse(result.Attribute("duration")?.Value, out var duration) ? duration : TimeSpan.Zero,
-            result.Descendants().SingleOrDefault(element => element.Name.LocalName == "Message")?.Value,
-            stackTrace,
-            source?.Success == true ? source.Groups["file"].Value : null,
-            source?.Success == true ? int.Parse(source.Groups["line"].Value) : null,
-            result.Descendants().SingleOrDefault(element => element.Name.LocalName == "StdOut")?.Value);
     }
+
+    private static TestOutcome OutcomeOf(XElement result) => result.Attribute("outcome")?.Value switch
+    {
+        "Passed" => TestOutcome.Passed,
+        "NotExecuted" => TestOutcome.Skipped,
+        _ => TestOutcome.Failed
+    };
+
+    private static TimeSpan DurationOf(XElement result) =>
+        TimeSpan.TryParse(result.Attribute("duration")?.Value, out var duration) ? duration : TimeSpan.Zero;
+
+    private static string? ChildText(XElement element, string localName) =>
+        element.Descendants().SingleOrDefault(child => child.Name.LocalName == localName)?.Value;
+
+    private sealed record FailureSource(string File, int Line);
+
+    private static FailureSource? FailureSourceIn(string? stackTrace) =>
+        stackTrace is not null && SourceLocation().Match(stackTrace) is { Success: true } match
+            ? new FailureSource(match.Groups["file"].Value, int.Parse(match.Groups["line"].Value))
+            : null;
 
     [GeneratedRegex(@" in (?<file>.+):line (?<line>\d+)")]
     private static partial Regex SourceLocation();
