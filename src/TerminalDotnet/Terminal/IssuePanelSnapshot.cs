@@ -19,11 +19,22 @@ public sealed record IssuePanelLayout(
         var rows = displayed.SelectMany((lines, index) => index == displayed.Length - 1
             ? lines
             : [.. lines, new IssuePanelRow("", FileRowTone.Neutral)]).ToArray();
-        var firstRows = displayed
-            .Select((_, index) => displayed.Take(index).Sum(lines => lines.Count + 1))
-            .ToArray();
+        var firstRows = FirstRowsOf(displayed);
         var selected = snapshot.SelectedIndex < firstRows.Length ? firstRows[snapshot.SelectedIndex] : 0;
         return new IssuePanelLayout(rows, selected, firstRows);
+    }
+
+    /// <summary>Where each issue starts, counting the gap left beneath every
+    /// issue before it.</summary>
+    private static int[] FirstRowsOf(IReadOnlyList<IReadOnlyList<IssuePanelRow>> displayed)
+    {
+        var firstRows = new int[displayed.Count];
+        for (var index = 1; index < displayed.Count; index++)
+        {
+            firstRows[index] = firstRows[index - 1] + displayed[index - 1].Count + 1;
+        }
+
+        return firstRows;
     }
 
     private static IReadOnlyList<IssuePanelRow> LinesFor(CompilationIssue issue, int width)
