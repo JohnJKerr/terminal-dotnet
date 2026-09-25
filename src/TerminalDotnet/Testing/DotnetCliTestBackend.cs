@@ -5,6 +5,13 @@ namespace TerminalDotnet.Testing;
 
 public sealed partial class DotnetCliTestBackend : ITestBackend
 {
+    /// <summary>Windows caps a command line at 32,767 characters, and the
+    /// filter reaches vstest.console on its command line whichever way it is
+    /// handed to <c>dotnet test</c>. A run whose filter would not fit is split
+    /// into runs whose filters do, leaving room for the paths and switches
+    /// the test task adds around it.</summary>
+    private const int FilterBudget = 20_000;
+
     private readonly ICommandRunner commandRunner;
     private readonly ITestResultStore resultStore;
 
@@ -117,9 +124,46 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             throw new ArgumentException("All tests in a run must have the same target.", nameof(tests));
         }
 
-        var filter = string.Join(
-            '|',
-            tests.Select(test => $"FullyQualifiedName={FilterValue(test.FullyQualifiedName)}"));
+        var runs = new List<TestRun>();
+        foreach (var batch in FilterBatches(tests))
+        {
+            runs.Add(await RunBatchAsync(target, batch, build: runs.Count == 0, cancellationToken));
+        }
+
+        return Combined(runs);
+    }
+
+    private static IEnumerable<IReadOnlyList<TestCase>> FilterBatches(IReadOnlyCollection<TestCase> tests)
+    {
+        var batch = new List<TestCase>();
+        var length = 0;
+        foreach (var test in tests)
+        {
+            var clauseLength = FilterClause(test).Length + 1;
+            if (batch.Count > 0 && length + clauseLength > FilterBudget)
+            {
+                yield return batch;
+                batch = [];
+                length = 0;
+            }
+
+            batch.Add(test);
+            length += clauseLength;
+        }
+
+        yield return batch;
+    }
+
+    private static string FilterClause(TestCase test) =>
+        $"FullyQualifiedName={FilterValue(test.FullyQualifiedName)}";
+
+    private async Task<TestRun> RunBatchAsync(
+        string target,
+        IReadOnlyList<TestCase> tests,
+        bool build,
+        CancellationToken cancellationToken)
+    {
+        var filter = string.Join('|', tests.Select(FilterClause));
         var resultPath = resultStore.CreatePath();
         var result = await commandRunner.RunAsync(
             new CommandRequest(
@@ -132,7 +176,8 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
                     "--logger",
                     $"trx;LogFileName={resultPath}",
                     "--nologo",
-                    "--tl:on"
+                    "--tl:on",
+                    .. BuildSwitches(build)
                 ],
                 Path.GetDirectoryName(Path.GetFullPath(target))!),
             cancellationToken);
@@ -146,6 +191,21 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             Diagnostic = recorded.Diagnostic
         };
     }
+
+    /// <summary>The first part of a split run builds the project, so the
+    /// parts after it test that same build rather than rebuilding it.</summary>
+    private static string[] BuildSwitches(bool build) => build ? [] : ["--no-build"];
+
+    private static TestRun Combined(IReadOnlyList<TestRun> runs) =>
+        runs.Count == 1
+            ? runs[0]
+            : new TestRun(
+                runs.All(run => run.Passed),
+                string.Join(Environment.NewLine, runs.Select(run => run.Output)),
+                runs.SelectMany(run => run.Results).ToArray())
+            {
+                Diagnostic = runs.Select(run => run.Diagnostic).FirstOrDefault(diagnostic => diagnostic is not null)
+            };
 
     /// <summary>A test's name comes from the project being read, and the filter
     /// language gives meaning to some of its characters, so a name holding them

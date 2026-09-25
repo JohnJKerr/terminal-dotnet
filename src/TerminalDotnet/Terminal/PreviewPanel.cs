@@ -147,6 +147,7 @@ internal sealed class PreviewPanel
         View.Y = area.Y;
         View.Width = area.Width;
         View.Height = area.Height;
+        View.Visible = area != PanelLayout.Hidden;
         frame.Place(area);
     }
 

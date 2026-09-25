@@ -30,6 +30,35 @@ public static class PanelTitle
         .. searchQuery.Length == 0 ? Array.Empty<TitleSegment>() : [new($"─ /{searchQuery}", false)]
     ];
 
+    /// <summary>The segments that fit in <paramref name="room"/> columns, each
+    /// drawn after a space. The panel's name is cut short rather than lost, so
+    /// a narrow panel still says what it shows; a filter with no room is left
+    /// off, along with everything after it.</summary>
+    public static IReadOnlyList<TitleSegment> Fitted(IReadOnlyList<TitleSegment> segments, int room)
+    {
+        var fitted = new List<TitleSegment>();
+        var used = 0;
+        foreach (var segment in segments)
+        {
+            var needed = segment.Text.Length + 1;
+            if (used + needed <= room)
+            {
+                fitted.Add(segment);
+                used += needed;
+                continue;
+            }
+
+            if (fitted.Count == 0 && room >= 3)
+            {
+                fitted.Add(segment with { Text = $"{segment.Text[..(room - 2)]}…" });
+            }
+
+            break;
+        }
+
+        return fitted;
+    }
+
     public static string Footer(int selectedIndex, int rowCount) => rowCount == 0
         ? "0 of 0"
         : $"{selectedIndex + 1} of {rowCount}";

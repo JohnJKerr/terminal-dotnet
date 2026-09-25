@@ -24,7 +24,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/e edit", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/e edit", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -41,7 +41,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -232,7 +232,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "p file", "e edit", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "p file", "e edit", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -252,7 +252,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "r restore", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/d diff", "r restore", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -288,7 +288,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/v view", "e edit", "d delete", "y copy", "w save", "x clear all", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/v view", "e edit", "d delete", "y copy", "w save", "x clear all", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -304,7 +304,7 @@ public sealed class WhenListingPanelShortcuts
             EmptyComments());
 
         // Assert
-        Assert.Equal(["Tab pane", "/ search", "^R refresh", "? commands", "q quit"], shortcuts);
+        Assert.Equal(["Tab pane", "/ search", "+ full screen", "^R refresh", "? commands", "q quit"], shortcuts);
     }
 
     [Fact]
@@ -354,8 +354,39 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "↑/k up", "↓/j down", "PgUp/PgDn page", "n/N next/previous row", "e edit", "c comment", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "↑/k up", "↓/j down", "PgUp/PgDn page", "n/N next/previous row", "e edit", "c comment", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_full_screen_from_the_tiles()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Changes,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments());
+
+        // Assert
+        Assert.Contains("+ full screen", shortcuts);
+    }
+
+    [Fact]
+    public void It_offers_the_way_back_to_the_tiles_from_full_screen()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Changes,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments(),
+            fullScreen: true);
+
+        // Assert
+        Assert.Contains("+ tiles", shortcuts);
     }
 
     private static CommentsState EmptyComments() => new([]);

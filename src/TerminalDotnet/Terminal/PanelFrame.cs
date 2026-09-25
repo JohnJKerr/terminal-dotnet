@@ -69,10 +69,11 @@ internal sealed class PanelFrame
     {
         var right = area.X + area.Width - CornerWidth;
         var column = area.X + CornerWidth + 1;
+        var fitted = PanelTitle.Fitted(title, right - column);
         foreach (var (label, index) in titleLabels.Select((label, index) => (label, index)))
         {
-            var text = index < title.Count ? $" {title[index].Text}" : "";
-            label.Visible = text.Length > 0 && column + text.Length <= right;
+            var text = index < fitted.Count ? $" {fitted[index].Text}" : "";
+            label.Visible = text.Length > 0;
             label.Text = text;
             label.Width = text.Length;
             label.X = column;
@@ -80,6 +81,7 @@ internal sealed class PanelFrame
             column += text.Length;
         }
 
+        Footer.Visible = area != PanelLayout.Hidden;
         Footer.Width = Footer.Text.Length;
         Footer.X = Math.Max(area.X, right - Footer.Text.Length - 1);
         Footer.Y = area.Y + area.Height - 1;

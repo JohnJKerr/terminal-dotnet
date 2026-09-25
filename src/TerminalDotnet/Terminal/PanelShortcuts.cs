@@ -15,13 +15,15 @@ public static class PanelShortcuts
         ExplorerState testState,
         CommentsState commentState,
         bool searchFocused = false,
-        IssueState? issueState = null) => searchFocused
+        IssueState? issueState = null,
+        bool fullScreen = false) => searchFocused
         ? SearchingShortcuts
         :
         [
             "Tab pane",
             .. panel == PanelKind.Preview ? Array.Empty<string>() : ["/ search"],
             .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, issueState),
+            fullScreen ? "+ tiles" : "+ full screen",
             "^R refresh",
             "? commands",
             "q quit"
