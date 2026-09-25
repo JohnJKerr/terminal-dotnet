@@ -28,34 +28,34 @@ public sealed partial class DotnetCliTestBackend(
             throw new InvalidOperationException($"Test discovery failed: {result.StandardError}");
         }
 
-        var listingTests = false;
-        var testTarget = target;
-        var tests = new List<TestCase>();
-        foreach (var line in result.StandardOutput.Split('\n'))
-        {
-            if (line.StartsWith("Test run for ", StringComparison.Ordinal))
-            {
-                testTarget = TestTarget(line) ?? target;
-                listingTests = false;
-                continue;
-            }
-
-            if (line.Contains("The following Tests are available:", StringComparison.Ordinal))
-            {
-                listingTests = true;
-                continue;
-            }
-
-            if (!listingTests || !NamesATest(line))
-            {
-                continue;
-            }
-
-            tests.Add(DiscoveredTest(line.Trim(), testTarget));
-        }
-
-        return tests;
+        return DiscoveredTests(result.StandardOutput.Split('\n'), target);
     }
+
+    private const string RunHeader = "Test run for ";
+
+    /// <summary>A solution lists each test project in a section of its own,
+    /// headed by the assembly it built, so each section's tests are claimed by
+    /// that project.</summary>
+    private static IReadOnlyList<TestCase> DiscoveredTests(string[] lines, string target)
+    {
+        int[] starts = [0, .. lines.Index().Where(line => IsRunHeader(line.Item)).Select(line => line.Index)];
+        return starts
+            .Zip([.. starts.Skip(1), lines.Length], (start, end) => lines[start..end])
+            .SelectMany(section => TestsListedIn(section, target))
+            .ToArray();
+    }
+
+    private static IEnumerable<TestCase> TestsListedIn(string[] section, string target)
+    {
+        var project = section is [var header, ..] && IsRunHeader(header) ? TestTarget(header) ?? target : target;
+        return section
+            .SkipWhile(line => !line.Contains("The following Tests are available:", StringComparison.Ordinal))
+            .Skip(1)
+            .Where(NamesATest)
+            .Select(line => DiscoveredTest(line.Trim(), project));
+    }
+
+    private static bool IsRunHeader(string line) => line.StartsWith(RunHeader, StringComparison.Ordinal);
 
     private static bool NamesATest(string line) =>
         !string.IsNullOrWhiteSpace(line) && char.IsWhiteSpace(line[0]);
@@ -81,11 +81,10 @@ public sealed partial class DotnetCliTestBackend(
         return discoveredName[(methodSeparator + 1)..].Replace('_', ' ');
     }
 
-    private static string? TestTarget(string line)
+    private static string? TestTarget(string header)
     {
-        const string prefix = "Test run for ";
-        var framework = line.IndexOf(" (", prefix.Length, StringComparison.Ordinal);
-        return framework < 0 ? null : ProjectTarget(line[prefix.Length..framework]);
+        var framework = header.IndexOf(" (", RunHeader.Length, StringComparison.Ordinal);
+        return framework < 0 ? null : ProjectTarget(header[RunHeader.Length..framework]);
     }
 
     private static string ProjectTarget(string assemblyPath)
