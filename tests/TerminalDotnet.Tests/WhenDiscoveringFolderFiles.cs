@@ -181,6 +181,27 @@ public sealed class WhenDiscoveringFolderFiles
         Assert.Single(files, file => Path.GetFileName(file.Path) == "Order.cs");
     }
 
+    [PosixFact]
+    public async Task It_lists_the_files_beside_a_folder_it_is_not_allowed_to_read()
+    {
+        // Arrange
+        using var folder = LaunchFolder.At("TerminalDotnet.slnx", "docs/guide.md", "locked/secret.md");
+        var locked = Path.Combine(folder.Root, "locked");
+        File.SetUnixFileMode(locked, UnixFileMode.None);
+        try
+        {
+            // Act
+            var files = await folder.WithoutGit().DiscoverAsync();
+
+            // Assert
+            Assert.Contains("guide.md", files.Select(file => Path.GetFileName(file.Path)));
+        }
+        finally
+        {
+            File.SetUnixFileMode(locked, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        }
+    }
+
     [Fact]
     public async Task It_leaves_build_output_out_of_the_listing()
     {
