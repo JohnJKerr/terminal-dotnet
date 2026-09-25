@@ -1,3 +1,4 @@
+using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Tests.Fakes;
@@ -31,6 +32,13 @@ internal sealed class TestExplorerSessionBuilder
         sources = used;
         return this;
     }
+
+    public TestExplorerSessionBuilder WithUpdatedSources(params UpdatedSource[] sources) =>
+        WithUpdatedSources(new FixedUpdatedSources(sources));
+
+    /// <summary>Sources git reports as modified.</summary>
+    public TestExplorerSessionBuilder WithEditedSources(params string[] paths) =>
+        WithUpdatedSources([.. paths.Select(path => new UpdatedSource(path, ChangeKind.Modified))]);
 
     public TestExplorerSessionBuilder WithUpdatedSources(IUpdatedSourceProvider used)
     {

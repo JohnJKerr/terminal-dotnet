@@ -1,6 +1,7 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -23,7 +24,9 @@ public sealed class WhenRediscoveringTheTests
     public async Task It_keeps_the_tree_it_had_while_it_looks()
     {
         // Arrange
-        var session = new TestExplorerSession(new ChangingTestBackend(Adds, Removes));
+        var session = GivenA.TestExplorer()
+            .WithBackend(new ChangingTestBackend(Adds, Removes))
+            .Build();
         await session.LoadAsync("Shop.sln");
 
         // Act
@@ -37,7 +40,9 @@ public sealed class WhenRediscoveringTheTests
     public async Task It_says_it_is_discovering_in_the_status_line()
     {
         // Arrange
-        var session = new TestExplorerSession(new ChangingTestBackend(Adds, Removes));
+        var session = GivenA.TestExplorer()
+            .WithBackend(new ChangingTestBackend(Adds, Removes))
+            .Build();
         await session.LoadAsync("Shop.sln");
 
         // Act
@@ -51,7 +56,9 @@ public sealed class WhenRediscoveringTheTests
     public async Task It_does_not_lay_the_waiting_message_over_the_tree()
     {
         // Arrange
-        var session = new TestExplorerSession(new ChangingTestBackend(Adds, Removes));
+        var session = GivenA.TestExplorer()
+            .WithBackend(new ChangingTestBackend(Adds, Removes))
+            .Build();
         await session.LoadAsync("Shop.sln");
 
         // Act
@@ -66,7 +73,9 @@ public sealed class WhenRediscoveringTheTests
     {
         // Arrange
         var backend = new ChangingTestBackend(Adds, Removes);
-        var session = new TestExplorerSession(backend);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
         await session.LoadAsync("Shop.sln");
         backend.Tests = [Adds, Empties, Removes];
         session.Rediscovering();
@@ -83,7 +92,9 @@ public sealed class WhenRediscoveringTheTests
     {
         // Arrange
         var backend = new ChangingTestBackend(Adds, Removes);
-        var session = new TestExplorerSession(backend);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
         await session.LoadAsync("Shop.sln");
         await session.DispatchAsync(new ExplorerCommand.SelectIndex(session.State.VisibleNodes.Count - 1));
         var wasOn = session.State.VisibleNodes[session.State.SelectedIndex].Name;

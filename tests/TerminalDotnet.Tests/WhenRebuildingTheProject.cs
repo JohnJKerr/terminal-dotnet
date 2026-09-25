@@ -3,6 +3,7 @@ using TerminalDotnet.Explorer;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -87,7 +88,9 @@ public sealed class WhenRebuildingTheProject
         // Arrange
         var log = new List<string>();
         var issues = new IssueSession(new LoggingIssueBackend(log, []), new SilentClipboard());
-        var tests = new TestExplorerSession(new LoggingTestBackend(log));
+        var tests = GivenA.TestExplorer()
+            .WithBackend(new LoggingTestBackend(log))
+            .Build();
         await issues.LoadAsync("Shop.sln");
         await tests.LoadAsync("Shop.sln");
 
@@ -103,7 +106,9 @@ public sealed class WhenRebuildingTheProject
     {
         // Arrange
         var issues = new IssueSession(new LoggingIssueBackend([], [Broken]), new SilentClipboard());
-        var tests = new TestExplorerSession(new LoggingTestBackend([]));
+        var tests = GivenA.TestExplorer()
+            .WithBackend(new LoggingTestBackend([]))
+            .Build();
         await issues.LoadAsync("Shop.sln");
         await tests.LoadAsync("Shop.sln");
         var rebuild = new ProjectRebuild(issues, tests, "Shop.sln");
@@ -147,7 +152,9 @@ public sealed class WhenRebuildingTheProject
     {
         // Arrange
         var issues = new IssueSession(new LoggingIssueBackend([], []), new SilentClipboard());
-        var tests = new TestExplorerSession(new LoggingTestBackend([]));
+        var tests = GivenA.TestExplorer()
+            .WithBackend(new LoggingTestBackend([]))
+            .Build();
         await issues.LoadAsync("Shop.sln");
         await tests.LoadAsync("Shop.sln");
         new ProjectRebuild(issues, tests, "Shop.sln").Start();
@@ -162,7 +169,9 @@ public sealed class WhenRebuildingTheProject
     private static async Task<(IssueSession, TestExplorerSession)> MidRunAsync()
     {
         var issues = new IssueSession(new LoggingIssueBackend([], []), new SilentClipboard());
-        var tests = new TestExplorerSession(new HeldRun());
+        var tests = GivenA.TestExplorer()
+            .WithBackend(new HeldRun())
+            .Build();
         await issues.LoadAsync("Shop.sln");
         await tests.LoadAsync("Shop.sln");
         await tests.DispatchAsync(new ExplorerCommand.SelectIndex(tests.State.VisibleNodes.Count - 1));
@@ -189,7 +198,9 @@ public sealed class WhenRebuildingTheProject
 
     private static ProjectRebuild Rebuild(List<string> log, IReadOnlyList<CompilationIssue> found) => new(
         new IssueSession(new LoggingIssueBackend(log, found), new SilentClipboard()),
-        new TestExplorerSession(new LoggingTestBackend(log)),
+        GivenA.TestExplorer()
+            .WithBackend(new LoggingTestBackend(log))
+            .Build(),
         "Shop.sln");
 
     private sealed class LoggingIssueBackend(List<string> log, IReadOnlyList<CompilationIssue> found)

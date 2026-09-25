@@ -6,6 +6,7 @@ using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -100,7 +101,9 @@ public sealed class WhenFillingThePanels
             new FileExplorerSession(new RecordingFileBackend(new Recorder([], new(), null), "files")),
             new FileExplorerSession(new RecordingFileBackend(new Recorder([], new(), null), "folder")),
             new ChangesetSession(new RecordingChangesetBackend(new Recorder([], new(), null))),
-            new TestExplorerSession(new RecordingTestBackend(new Recorder([], new(), null))),
+            GivenA.TestExplorer()
+                .WithBackend(new RecordingTestBackend(new Recorder([], new(), null)))
+                .Build(),
             "App.slnx",
             issues: issues);
 
@@ -152,7 +155,9 @@ public sealed class WhenFillingThePanels
                     new RecordingFileBackend(recorder, "folder"),
                     FileGrouping.Folder),
                 new ChangesetSession(new RecordingChangesetBackend(recorder)),
-                new TestExplorerSession(new RecordingTestBackend(recorder)),
+                GivenA.TestExplorer()
+                    .WithBackend(new RecordingTestBackend(recorder))
+                    .Build(),
                 "App.slnx"),
             cancellation.Token);
     }
@@ -215,7 +220,7 @@ public sealed class WhenFillingThePanels
         {
             recorder.Record("tests");
             return Task.FromResult<IReadOnlyList<TestCase>>(
-                [new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj")]);
+                [GivenA.TestCase("Shop.Tests.CartTests.Adds_item")]);
         }
 
         public Task<TestRun> RunAsync(

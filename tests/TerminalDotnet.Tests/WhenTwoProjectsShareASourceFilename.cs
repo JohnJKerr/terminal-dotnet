@@ -1,6 +1,6 @@
-using TerminalDotnet.Changes;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -54,38 +54,10 @@ public sealed class WhenTwoProjectsShareASourceFilename
         session.State.VisibleNodes.Single(node =>
             node.Kind == TestNodeKind.Class && node.Tests[0].ProjectPath == projectPath);
 
-    private static async Task<TestExplorerSession> LoadedSessionAsync()
-    {
-        var session = new TestExplorerSession(
-            new InMemoryTestBackend(),
-            updatedSourceProvider: new InMemoryUpdatedSource(
-                new UpdatedSource(TestPaths.In("Shop.Tests", "CartTests.cs"), ChangeKind.Modified)));
-        await session.LoadAsync(TestPaths.In("Shop.sln"));
-        return session;
-    }
-
-    private sealed class InMemoryUpdatedSource(params UpdatedSource[] sources) : IUpdatedSourceProvider
-    {
-        public Task<IReadOnlyList<UpdatedSource>> UpdatedSourcesAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<UpdatedSource>>(sources);
-    }
-
-    private sealed class InMemoryTestBackend : ITestBackend
-    {
-        public Task<IReadOnlyList<TestCase>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<TestCase>>(
-            [
-                new("Shop.Tests.CartTests.Adds_item", "Adds item", TestPaths.In("Shop.Tests", "Shop.Tests.csproj")),
-                new("Admin.Tests.CartTests.Adds_item", "Adds item", TestPaths.In("Admin.Tests", "Admin.Tests.csproj"))
-            ]);
-
-        public Task<TestRun> RunAsync(
-            IReadOnlyCollection<TestCase> tests,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new TestRun(true, "Passed"));
-    }
+    private static Task<TestExplorerSession> LoadedSessionAsync() => GivenA.TestExplorer()
+        .WithTests(
+            GivenA.TestCase("Shop.Tests.CartTests.Adds_item", TestPaths.In("Shop.Tests", "Shop.Tests.csproj")),
+            GivenA.TestCase("Admin.Tests.CartTests.Adds_item", TestPaths.In("Admin.Tests", "Admin.Tests.csproj")))
+        .WithEditedSources(TestPaths.In("Shop.Tests", "CartTests.cs"))
+        .LoadedAsync(TestPaths.In("Shop.sln"));
 }

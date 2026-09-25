@@ -1,5 +1,7 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -10,7 +12,7 @@ public sealed class WhenTwoSuitesShareAName
     public async Task It_shows_a_class_of_its_own_for_each_namespace()
     {
         // Arrange
-        var session = new TestExplorerSession(new InMemoryTestBackend([SalesSaving, InventorySaving]));
+        var session = GivenA.TestExplorer().WithTests(SalesSaving, InventorySaving).Build();
 
         // Act
         await session.LoadAsync("/repo/Shop.sln");
@@ -26,8 +28,9 @@ public sealed class WhenTwoSuitesShareAName
     {
         // Arrange
         var backend = new InMemoryTestBackend([SalesSaving, InventorySaving]);
-        var session = new TestExplorerSession(backend);
-        await session.LoadAsync("/repo/Shop.sln");
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
         await session.DispatchAsync(new ExplorerCommand.MoveDown());
 
         // Act
@@ -44,21 +47,4 @@ public sealed class WhenTwoSuitesShareAName
 
     private static readonly TestCase InventorySaving =
         new("Shop.Tests.Inventory.WhenSaving.It_saves", "It saves", "Shop.Tests.csproj");
-
-    private sealed class InMemoryTestBackend(IReadOnlyList<TestCase> tests) : ITestBackend
-    {
-        public IReadOnlyCollection<TestCase> LastRun { get; private set; } = [];
-
-        public Task<IReadOnlyList<TestCase>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) => Task.FromResult(tests);
-
-        public Task<TestRun> RunAsync(
-            IReadOnlyCollection<TestCase> requested,
-            CancellationToken cancellationToken = default)
-        {
-            LastRun = requested;
-            return Task.FromResult(new TestRun(true, "Passed"));
-        }
-    }
 }

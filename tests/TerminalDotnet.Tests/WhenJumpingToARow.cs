@@ -169,25 +169,9 @@ public sealed class WhenJumpingToARow
         Assert.Equal(3, session.State.SelectedIndex);
     }
 
-    private static async Task<TestExplorerSession> SessionWithTwoTests()
-    {
-        var session = new TestExplorerSession(new InMemoryTestBackend(
-            new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj"),
-            new TestCase("Shop.Tests.CartTests.Drops_item", "Drops item", "Shop.Tests.csproj")));
-        await session.LoadAsync("Shop.sln");
-        return session;
-    }
-
-    private sealed class InMemoryTestBackend(params TestCase[] tests) : ITestBackend
-    {
-        public Task<IReadOnlyList<TestCase>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<TestCase>>([.. tests]);
-
-        public Task<TestRun> RunAsync(
-            IReadOnlyCollection<TestCase> tests,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(new TestRun(true, "Passed", []));
-    }
+    private static Task<TestExplorerSession> SessionWithTwoTests() => GivenA.TestExplorer()
+        .WithTests(
+            GivenA.TestCase("Shop.Tests.CartTests.Adds_item"),
+            GivenA.TestCase("Shop.Tests.CartTests.Drops_item"))
+        .LoadedAsync();
 }
