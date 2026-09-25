@@ -102,7 +102,7 @@ public sealed class WhenCreatingAnIssuePanelSnapshot
         var snapshot = IssuePanelSnapshot.From(state);
 
         // Assert
-        Assert.Equal([FileRowTone.Neutral], snapshot.Rows.Select(row => row.Tone));
+        Assert.Equal([RowTone.Neutral], snapshot.Rows.Select(row => row.Tone));
     }
 
     private static CompilationIssue Flag() => new(

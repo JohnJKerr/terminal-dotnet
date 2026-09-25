@@ -3,85 +3,16 @@ using Terminal.Gui.Drawing;
 
 namespace TerminalDotnet.Terminal;
 
-public enum FileRowTone
-{
-    Neutral,
-    Modified,
-    New,
-    Deleted,
-    Warning
-}
-
-public sealed record FilePanelRow(string Text, FileRowTone Tone);
-
-public sealed record FileStatusSegment(string Text, FileRowTone Tone);
-
-public sealed record PlacedStatusSegment(string Text, FileRowTone Tone, int Column);
-
-public static class StatusSegmentLayout
-{
-    public static IReadOnlyList<PlacedStatusSegment> Place(
-        IReadOnlyList<FileStatusSegment> segments,
-        int firstColumn,
-        int gap)
-    {
-        var columns = ColumnsFor(segments.Select(segment => segment.Text).ToArray(), firstColumn, gap);
-        return segments
-            .Select((segment, index) => new PlacedStatusSegment(segment.Text, segment.Tone, columns[index]))
-            .ToArray();
-    }
-
-    public static IReadOnlyList<int> ColumnsFor(
-        IReadOnlyList<string> texts,
-        int firstColumn,
-        int gap)
-    {
-        var column = firstColumn;
-        var columns = new List<int>();
-        foreach (var text in texts)
-        {
-            columns.Add(column);
-            column += text.Length + gap;
-        }
-
-        return columns;
-    }
-}
-
-public static class FileRowAppearance
-{
-    public static global::Terminal.Gui.Drawing.Attribute For(
-        FileRowTone tone,
-        bool isSelected,
-        global::Terminal.Gui.Drawing.Attribute normal,
-        global::Terminal.Gui.Drawing.Attribute selected)
-    {
-        var baseAppearance = isSelected ? selected : normal;
-        return new global::Terminal.Gui.Drawing.Attribute(
-            ForegroundFor(tone, baseAppearance.Foreground),
-            baseAppearance.Background);
-    }
-
-    public static Color ForegroundFor(FileRowTone tone, Color unchanged) => tone switch
-    {
-        FileRowTone.Modified => Color.BrightBlue,
-        FileRowTone.New => Color.BrightGreen,
-        FileRowTone.Deleted => Color.BrightRed,
-        FileRowTone.Warning => Color.BrightYellow,
-        _ => unchanged
-    };
-}
-
 public sealed record FilePanelSnapshot(
     IReadOnlyList<VisibleFileNode> Nodes,
     int SelectedIndex,
     string SearchQuery,
     int SearchHitCount,
-    IReadOnlyList<FileStatusSegment> StatusSegments,
+    IReadOnlyList<StatusSegment> StatusSegments,
     IReadOnlyList<FilterChip> Filters,
     string EmptyMessage)
 {
-    public IReadOnlyList<FilePanelRow> Rows => Snapshot.Of(Nodes.Select(RowFrom));
+    public IReadOnlyList<PanelRow> Rows => Snapshot.Of(Nodes.Select(RowFrom));
 
     public static FilePanelSnapshot From(FileExplorerState state, bool showsAllFiles = false) => new(
         state.VisibleNodes,
@@ -100,16 +31,16 @@ public sealed record FilePanelSnapshot(
             state.SearchQuery,
             state.ActiveFilter);
 
-    private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(FileChangeSummary changes, string notice) =>
+    private static IReadOnlyList<StatusSegment> StatusSegmentsFrom(FileChangeSummary changes, string notice) =>
     [
-        new(CountedNoun.Of(changes.Total, "File"), FileRowTone.Neutral),
-        new($"{changes.Added} Added", FileRowTone.New),
-        new($"{changes.Edited} Edited", FileRowTone.Modified),
-        new($"{changes.Deleted} Deleted", FileRowTone.Deleted),
-        .. notice.Length > 0 ? new FileStatusSegment[] { new(notice, FileRowTone.Deleted) } : []
+        new(CountedNoun.Of(changes.Total, "File"), RowTone.Neutral),
+        new($"{changes.Added} Added", RowTone.New),
+        new($"{changes.Edited} Edited", RowTone.Modified),
+        new($"{changes.Deleted} Deleted", RowTone.Deleted),
+        .. notice.Length > 0 ? new StatusSegment[] { new(notice, RowTone.Deleted) } : []
     ];
 
-    private static FilePanelRow RowFrom(VisibleFileNode node) => new(
+    private static PanelRow RowFrom(VisibleFileNode node) => new(
         $"{new string(' ', node.Depth * 2)}{MarkerFor(node)} {node.Name}",
         ToneFor(node));
 
@@ -123,19 +54,19 @@ public sealed record FilePanelSnapshot(
         return node.IsExpanded ? "▼" : "▶";
     }
 
-    private static FileRowTone ToneFor(VisibleFileNode node)
+    private static RowTone ToneFor(VisibleFileNode node)
     {
         if (node.Kind != FileNodeKind.File)
         {
-            return FileRowTone.Neutral;
+            return RowTone.Neutral;
         }
 
         return node.Files[0].GitStatus switch
         {
-            FileGitStatus.Modified => FileRowTone.Modified,
-            FileGitStatus.New => FileRowTone.New,
-            FileGitStatus.Deleted => FileRowTone.Deleted,
-            _ => FileRowTone.Neutral
+            FileGitStatus.Modified => RowTone.Modified,
+            FileGitStatus.New => RowTone.New,
+            FileGitStatus.Deleted => RowTone.Deleted,
+            _ => RowTone.Neutral
         };
     }
 }

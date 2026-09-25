@@ -43,7 +43,7 @@ public sealed class WhenCreatingAFilePanelSnapshot
 
         // Assert
         Assert.Equal(
-            [("    • Changed.cs", FileRowTone.Modified), ("    • Added.cs", FileRowTone.New)],
+            [("    • Changed.cs", RowTone.Modified), ("    • Added.cs", RowTone.New)],
             snapshot.Rows.Skip(2).Select(row => (row.Text, row.Tone)));
     }
 
@@ -88,7 +88,7 @@ public sealed class WhenCreatingAFilePanelSnapshot
 
         // Assert
         Assert.Equal(
-            [FileRowTone.Neutral, FileRowTone.New, FileRowTone.Modified, FileRowTone.Deleted],
+            [RowTone.Neutral, RowTone.New, RowTone.Modified, RowTone.Deleted],
             snapshot.StatusSegments.Select(segment => segment.Tone));
     }
 

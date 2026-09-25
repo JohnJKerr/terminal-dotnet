@@ -14,7 +14,7 @@ public sealed class WhenStylingTestRows
 
         // Assert
         Assert.Equal(
-            FileRowAppearance.ForegroundFor(FileRowTone.New, global::Terminal.Gui.Drawing.Color.White),
+            RowAppearance.ForegroundFor(RowTone.New, global::Terminal.Gui.Drawing.Color.White),
             foreground);
     }
 
@@ -26,7 +26,7 @@ public sealed class WhenStylingTestRows
 
         // Assert
         Assert.Equal(
-            FileRowAppearance.ForegroundFor(FileRowTone.Modified, global::Terminal.Gui.Drawing.Color.White),
+            RowAppearance.ForegroundFor(RowTone.Modified, global::Terminal.Gui.Drawing.Color.White),
             foreground);
     }
 

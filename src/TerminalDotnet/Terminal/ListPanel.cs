@@ -9,9 +9,9 @@ namespace TerminalDotnet.Terminal;
 /// none, in the panel's.</summary>
 internal sealed record ListRow(string Text, Color? Foreground)
 {
-    public static ListRow Toned(string text, FileRowTone tone) => new(
+    public static ListRow Toned(string text, RowTone tone) => new(
         text,
-        tone == FileRowTone.Neutral ? null : FileRowAppearance.ForegroundFor(tone, Color.White));
+        tone == RowTone.Neutral ? null : RowAppearance.ForegroundFor(tone, Color.White));
 }
 
 /// <summary>

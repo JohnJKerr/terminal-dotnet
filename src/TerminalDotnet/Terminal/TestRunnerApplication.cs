@@ -64,7 +64,7 @@ internal sealed class TestRunnerApplication(
     private IReadOnlyList<Label> segmentLabels = [];
     private IReadOnlyList<Label> filterLabels = [];
     private IReadOnlyList<FilterChip> filterChips = [];
-    private IReadOnlyList<FileStatusSegment> statusSegments = [];
+    private IReadOnlyList<StatusSegment> statusSegments = [];
     private Label? shortcuts;
     private IReadOnlyList<string> shortcutSegments = [];
 
@@ -307,16 +307,16 @@ internal sealed class TestRunnerApplication(
         {
             var background = args.Result?.Background ?? Color.Black;
             args.Result = new global::Terminal.Gui.Drawing.Attribute(
-                FileRowAppearance.ForegroundFor(ToneFor(index), Color.White),
+                RowAppearance.ForegroundFor(ToneFor(index), Color.White),
                 background);
             args.Handled = true;
         };
         return label;
     }
 
-    private FileRowTone ToneFor(int index) => index < statusSegments.Count
+    private RowTone ToneFor(int index) => index < statusSegments.Count
         ? statusSegments[index].Tone
-        : FileRowTone.Neutral;
+        : RowTone.Neutral;
 
     private static TextField Search() => new()
     {
@@ -1664,11 +1664,11 @@ internal sealed class TestRunnerApplication(
         ? IssuePanelSnapshot.From(issueSession.State).SelectedDetails
         : "";
 
-    private FileRowTone PreviewedDetailTone() =>
+    private RowTone PreviewedDetailTone() =>
         shell.State.PreviewedList == PanelKind.Issues &&
         issueSession.State.SelectedIndex < issueSession.State.Issues.Count
             ? IssuePanelSnapshot.ToneFor(issueSession.State.Issues[issueSession.State.SelectedIndex])
-            : FileRowTone.Neutral;
+            : RowTone.Neutral;
 
     /// <summary>The diff and the test's source both take a moment to fetch, so
     /// the preview shows them only if the reader is still on the row that
@@ -1847,7 +1847,7 @@ internal sealed class TestRunnerApplication(
     /// </summary>
     private sealed record PanelPosition(int Selected, int Count);
 
-    private void ShowSegmentsWhenActive(PanelKind panel, IReadOnlyList<FileStatusSegment> segments)
+    private void ShowSegmentsWhenActive(PanelKind panel, IReadOnlyList<StatusSegment> segments)
     {
         if (shell.State.ActivePanel == panel)
         {
@@ -1855,7 +1855,7 @@ internal sealed class TestRunnerApplication(
         }
     }
 
-    private void ShowSegments(IReadOnlyList<FileStatusSegment> segments)
+    private void ShowSegments(IReadOnlyList<StatusSegment> segments)
     {
         statusSegments = segments;
         var placed = StatusSegmentLayout.Place(segments, ContentInset, SegmentGap);

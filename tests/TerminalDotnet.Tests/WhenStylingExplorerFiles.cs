@@ -14,7 +14,7 @@ public sealed class WhenStylingExplorerFiles
         var selected = new global::Terminal.Gui.Drawing.Attribute(Color.Black, Color.BrightYellow);
 
         // Act
-        var appearance = FileRowAppearance.For(FileRowTone.Modified, isSelected: true, normal, selected);
+        var appearance = RowAppearance.For(RowTone.Modified, isSelected: true, normal, selected);
 
         // Assert
         Assert.Equal(
@@ -26,7 +26,7 @@ public sealed class WhenStylingExplorerFiles
     public void A_deleted_count_is_red()
     {
         // Act
-        var foreground = FileRowAppearance.ForegroundFor(FileRowTone.Deleted, Color.White);
+        var foreground = RowAppearance.ForegroundFor(RowTone.Deleted, Color.White);
 
         // Assert
         Assert.Equal(Color.BrightRed, foreground);
@@ -36,7 +36,7 @@ public sealed class WhenStylingExplorerFiles
     public void A_total_count_keeps_the_unchanged_colour()
     {
         // Act
-        var foreground = FileRowAppearance.ForegroundFor(FileRowTone.Neutral, Color.White);
+        var foreground = RowAppearance.ForegroundFor(RowTone.Neutral, Color.White);
 
         // Assert
         Assert.Equal(Color.White, foreground);

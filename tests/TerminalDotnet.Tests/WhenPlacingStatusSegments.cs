@@ -9,24 +9,24 @@ public sealed class WhenPlacingStatusSegments
     public void It_places_the_first_segment_at_the_opening_column()
     {
         // Arrange
-        IReadOnlyList<FileStatusSegment> segments = [new("3 Files", FileRowTone.Neutral)];
+        IReadOnlyList<StatusSegment> segments = [new("3 Files", RowTone.Neutral)];
 
         // Act
         var placed = StatusSegmentLayout.Place(segments, firstColumn: 22, gap: 2);
 
         // Assert
-        Assert.Equal(new PlacedStatusSegment("3 Files", FileRowTone.Neutral, 22), placed.Single());
+        Assert.Equal(new PlacedStatusSegment("3 Files", RowTone.Neutral, 22), placed.Single());
     }
 
     [Fact]
     public void It_leaves_a_gap_after_each_segment()
     {
         // Arrange
-        IReadOnlyList<FileStatusSegment> segments =
+        IReadOnlyList<StatusSegment> segments =
         [
-            new("3 Files", FileRowTone.Neutral),
-            new("1 Added", FileRowTone.New),
-            new("2 Edited", FileRowTone.Modified)
+            new("3 Files", RowTone.Neutral),
+            new("1 Added", RowTone.New),
+            new("2 Edited", RowTone.Modified)
         ];
 
         // Act

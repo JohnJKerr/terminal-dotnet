@@ -26,7 +26,7 @@ internal sealed class PreviewPanel
     private readonly Label details;
     private int highlightedLine = 1;
     private bool highlighting;
-    private FileRowTone detailTone;
+    private RowTone detailTone;
     private readonly PanelFrame frame;
 
     public PreviewPanel()
@@ -84,7 +84,7 @@ internal sealed class PreviewPanel
 
     public void ShowNothing(string title)
     {
-        ShowSource(title, "", "plaintext", 1, highlightLine: false, "", FileRowTone.Neutral);
+        ShowSource(title, "", "plaintext", 1, highlightLine: false, "", RowTone.Neutral);
     }
 
     public void ShowSource(
@@ -94,7 +94,7 @@ internal sealed class PreviewPanel
         int line,
         bool highlightLine,
         string detail,
-        FileRowTone tone)
+        RowTone tone)
     {
         frame.Show([new TitleSegment(title, false)], "");
         diff.Visible = false;
@@ -190,7 +190,7 @@ internal sealed class PreviewPanel
         label.GettingAttributeForRole += (_, args) =>
         {
             args.Result = new Attribute(
-                FileRowAppearance.ForegroundFor(detailTone, Color.White),
+                RowAppearance.ForegroundFor(detailTone, Color.White),
                 args.Result?.Background ?? Color.Black);
             args.Handled = true;
         };

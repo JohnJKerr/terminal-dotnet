@@ -90,7 +90,7 @@ public sealed class WhenUsingTheIssuesPanel
         var snapshot = IssuePanelSnapshot.From(state);
 
         // Assert
-        Assert.Equal([FileRowTone.Deleted, FileRowTone.Warning], snapshot.Rows.Select(row => row.Tone));
+        Assert.Equal([RowTone.Deleted, RowTone.Warning], snapshot.Rows.Select(row => row.Tone));
     }
 
     [Fact]

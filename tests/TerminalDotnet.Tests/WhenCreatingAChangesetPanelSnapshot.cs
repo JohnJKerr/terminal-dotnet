@@ -32,7 +32,7 @@ public sealed class WhenCreatingAChangesetPanelSnapshot
 
         // Assert
         Assert.Equal(
-            [FileRowTone.New, FileRowTone.Modified, FileRowTone.Deleted],
+            [RowTone.New, RowTone.Modified, RowTone.Deleted],
             snapshot.Rows.Select(row => row.Tone));
     }
 
@@ -77,7 +77,7 @@ public sealed class WhenCreatingAChangesetPanelSnapshot
 
         // Assert
         Assert.Equal(
-            [FileRowTone.Modified, FileRowTone.New, FileRowTone.Deleted],
+            [RowTone.Modified, RowTone.New, RowTone.Deleted],
             snapshot.StatusSegments.Select(segment => segment.Tone));
     }
 
