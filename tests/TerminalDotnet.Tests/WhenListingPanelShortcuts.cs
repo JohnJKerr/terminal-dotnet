@@ -358,6 +358,22 @@ public sealed class WhenListingPanelShortcuts
             shortcuts);
     }
 
+    [Fact]
+    public void It_offers_the_way_back_to_the_tiles_from_full_screen()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Changes,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments(),
+            fullScreen: true);
+
+        // Assert
+        Assert.Contains("+ tiles", shortcuts);
+    }
+
     private static CommentsState EmptyComments() => new([]);
 
     private static ChangesetState EmptyChangeset() => new([]);

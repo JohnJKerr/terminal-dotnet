@@ -108,6 +108,18 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_names_the_key_that_shows_a_panel_full_screen()
+    {
+        // Act
+        var anywhere = CommandMenu.Sections().Single(section => section.Title == "Anywhere");
+
+        // Assert
+        Assert.Contains(
+            anywhere.Entries,
+            entry => entry.Keys == "+" && entry.Description == "show the panel full screen, or return to the tiles");
+    }
+
+    [Fact]
     public void It_names_the_key_that_searches()
     {
         // Act

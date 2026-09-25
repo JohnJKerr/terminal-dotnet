@@ -1513,7 +1513,8 @@ internal sealed class TestRunnerApplication(
             session.State,
             commentSession.State,
             search.HasFocus,
-            issueSession.State);
+            issueSession.State,
+            shell.State.FullScreen);
         ShowShortcuts();
         RenderExplorer();
         RenderTests();
