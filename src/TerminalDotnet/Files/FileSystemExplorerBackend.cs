@@ -56,31 +56,44 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         .OrderBy(path => path, StringComparer.Ordinal)
         .Select(path => new FileEntry(projectPath, path, FileGitStatus.Deleted));
 
+    /// <summary>The solution is read like any other file from the repository,
+    /// so one that is too large, or is not a file at all, lists no projects.
+    /// </summary>
     private static IReadOnlyList<string> ProjectPaths(string target)
     {
         var fullTarget = Path.GetFullPath(target);
-        if (Path.GetExtension(fullTarget).Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+        if (HasExtension(fullTarget, ".csproj"))
         {
             return [fullTarget];
         }
 
+        var solution = FileText.ReadWithin(fullTarget) ?? "";
         var directory = Path.GetDirectoryName(fullTarget)!;
-        if (Path.GetExtension(fullTarget).Equals(".slnx", StringComparison.OrdinalIgnoreCase))
-        {
-            return XDocument.Load(fullTarget)
+        return HasExtension(fullTarget, ".slnx")
+            ? XmlSolutionProjects(solution, directory)
+            : ClassicSolutionProjects(solution, directory);
+    }
+
+    private static bool HasExtension(string path, string extension) =>
+        Path.GetExtension(path).Equals(extension, StringComparison.OrdinalIgnoreCase);
+
+    private static IReadOnlyList<string> XmlSolutionProjects(string solution, string directory) =>
+        solution.Length == 0
+            ? []
+            : XDocument.Parse(solution)
                 .Descendants("Project")
                 .Select(project => project.Attribute("Path")?.Value)
-                .Where(path => path is not null)
-                .Select(path => ProjectPathFrom(path!, directory))
+                .OfType<string>()
+                .Select(path => ProjectPathFrom(path, directory))
                 .ToArray();
-        }
 
-        return File.ReadLines(fullTarget)
+    private static IReadOnlyList<string> ClassicSolutionProjects(string solution, string directory) =>
+        solution.ReplaceLineEndings("\n")
+            .Split('\n')
             .Select(line => SolutionProjectPath().Match(line))
             .Where(match => match.Success)
             .Select(match => ProjectPathFrom(match.Groups[1].Value, directory))
             .ToArray();
-    }
 
     private static string ProjectPathFrom(string declaredPath, string solutionDirectory) =>
         Path.GetFullPath(

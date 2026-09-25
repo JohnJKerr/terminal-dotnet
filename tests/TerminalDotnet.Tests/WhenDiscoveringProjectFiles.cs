@@ -202,6 +202,35 @@ public sealed class WhenDiscoveringProjectFiles
         Assert.Single(files, file => Path.GetFileName(file.Path) == "Gone.cs");
     }
 
+    [PosixFact(Timeout = 10_000)]
+    public async Task It_finds_no_projects_in_a_solution_that_is_a_named_pipe()
+    {
+        // Arrange
+        using var workspace = TemporaryWorkspace.Create();
+        NamedPipe.TryCreate(workspace.PathTo(Solution));
+
+        // Act
+        var files = await Task.Run(() => DiscoverAsync(workspace, new UntrackedCommandRunner()));
+
+        // Assert
+        Assert.Empty(files);
+    }
+
+    [PosixFact(Timeout = 10_000)]
+    public async Task It_finds_no_projects_in_a_classic_solution_that_is_a_named_pipe()
+    {
+        // Arrange
+        using var workspace = TemporaryWorkspace.Create();
+        NamedPipe.TryCreate(workspace.PathTo("onboard.sln"));
+
+        // Act
+        var files = await Task.Run(() => new FileSystemExplorerBackend(new UntrackedCommandRunner())
+            .DiscoverAsync(workspace.PathTo("onboard.sln")));
+
+        // Assert
+        Assert.Empty(files);
+    }
+
     private static Task<IReadOnlyList<FileEntry>> DiscoverAsync(
         TemporaryWorkspace workspace,
         ICommandRunner runner) =>
