@@ -244,4 +244,87 @@ public sealed class WhenUsingThePanelShell
         // Assert
         Assert.False(shell.State.PreviewsChangedFile);
     }
+
+    [Fact]
+    public void It_shows_the_active_panel_full_screen_when_asked()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.Select(PanelKind.Tests);
+
+        // Act
+        shell.ToggleFullScreen();
+
+        // Assert
+        Assert.Equal(PanelKind.Tests, shell.State.FullScreenPanel);
+    }
+
+    [Fact]
+    public void It_returns_to_the_tiles_when_full_screen_is_asked_for_again()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.ToggleFullScreen();
+
+        // Act
+        shell.ToggleFullScreen();
+
+        // Assert
+        Assert.Null(shell.State.FullScreenPanel);
+    }
+
+    [Fact]
+    public void It_keeps_full_screen_on_the_panel_moved_to()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.ToggleFullScreen();
+
+        // Act
+        shell.SelectNext();
+
+        // Assert
+        Assert.Equal(PanelKind.Tests, shell.State.FullScreenPanel);
+    }
+
+    [Fact]
+    public void It_returns_to_the_tiles_when_full_screen_is_left()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.ToggleFullScreen();
+
+        // Act
+        shell.LeaveFullScreen();
+
+        // Assert
+        Assert.Null(shell.State.FullScreenPanel);
+    }
+
+    [Fact]
+    public void Leaving_full_screen_reports_that_it_was_left()
+    {
+        // Arrange
+        var shell = new PanelShell();
+        shell.ToggleFullScreen();
+
+        // Act
+        var left = shell.LeaveFullScreen();
+
+        // Assert
+        Assert.True(left);
+    }
+
+    [Fact]
+    public void Leaving_full_screen_does_nothing_on_the_tiles()
+    {
+        // Arrange
+        var shell = new PanelShell();
+
+        // Act
+        var left = shell.LeaveFullScreen();
+
+        // Assert
+        Assert.False(left);
+    }
 }

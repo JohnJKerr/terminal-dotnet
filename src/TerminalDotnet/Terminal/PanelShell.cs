@@ -28,6 +28,13 @@ public sealed record PanelShellState(IReadOnlyList<string> Panels, PanelKind Act
     /// read the file as it now stands.</summary>
     public bool PreviewsChangedFile { get; init; }
 
+    /// <summary>The active panel is shown over the whole screen, so a narrow
+    /// tile can still show one panel at a readable size. It stays full screen
+    /// as the reader moves between panels.</summary>
+    public bool FullScreen { get; init; }
+
+    public PanelKind? FullScreenPanel => FullScreen ? ActivePanel : null;
+
     /// <summary>Tab walks the lists on the left, then the preview beside
     /// them, then the panels beneath it.</summary>
     private static readonly PanelKind[] TabOrder =
@@ -67,6 +74,20 @@ public sealed class PanelShell
     public void PreviewChangeDiff() => State = State with { PreviewsChangedFile = false };
 
     public void ToggleAllFiles() => State = State with { ShowsAllFiles = !State.ShowsAllFiles };
+
+    public void ToggleFullScreen() => State = State with { FullScreen = !State.FullScreen };
+
+    /// <returns>Whether there was a full screen panel to leave.</returns>
+    public bool LeaveFullScreen()
+    {
+        if (!State.FullScreen)
+        {
+            return false;
+        }
+
+        State = State with { FullScreen = false };
+        return true;
+    }
 
     public void SelectPrevious() => Select(State.Stepped(-1));
 
