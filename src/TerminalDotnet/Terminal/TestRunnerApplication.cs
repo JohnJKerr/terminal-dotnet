@@ -166,7 +166,7 @@ internal sealed class TestRunnerApplication(
         search.ValueChanged += async (_, _) =>
         {
             await SearchAsync(search.Text);
-            Render();
+            RenderOnTheLoop();
         };
         application.Keyboard.KeyDown += (_, key) =>
         {
@@ -269,7 +269,7 @@ internal sealed class TestRunnerApplication(
             issueSession).LoadPendingAsync(
             () =>
             {
-                application.Invoke(() => Render());
+                RenderOnTheLoop();
                 return Task.CompletedTask;
             },
             cancellationToken);
@@ -411,7 +411,7 @@ internal sealed class TestRunnerApplication(
             PanelKind.Issues => issueSession.DispatchAsync(new IssueCommand.SelectIndex(IssueAtRow(row))),
             _ => commentSession.DispatchAsync(new CommentCommand.SelectIndex(row))
         });
-        running?.Invoke(Render);
+        RenderOnTheLoop();
     }
 
     private int IssueAtRow(int row) => IssuePanelLayout
@@ -713,7 +713,7 @@ internal sealed class TestRunnerApplication(
         }
 
         await ClearPanelSearchAsync();
-        Render();
+        RenderOnTheLoop();
     }
 
     private Task ClearPanelSearchAsync() => ActiveFileSession() is { } files
@@ -805,7 +805,7 @@ internal sealed class TestRunnerApplication(
         FileExplorerCommand command)
     {
         await fileExplorer.DispatchAsync(command);
-        Render();
+        RenderOnTheLoop();
     }
 
     private void HandleChangesetKey(
@@ -896,7 +896,7 @@ internal sealed class TestRunnerApplication(
     private async Task DispatchIssueAsync(IssueCommand command)
     {
         await issueSession.DispatchAsync(command);
-        Render();
+        RenderOnTheLoop();
     }
 
     private void HandleCommentKey(
@@ -1059,7 +1059,7 @@ internal sealed class TestRunnerApplication(
         CommentCommand command)
     {
         await commentSession.DispatchAsync(command);
-        Render();
+        RenderOnTheLoop();
     }
 
     private static ChangesetCommand? ChangesetCommandFor(Key key)
@@ -1078,13 +1078,13 @@ internal sealed class TestRunnerApplication(
         ChangesetCommand command)
     {
         await changesetSession.DispatchAsync(command);
-        Render();
+        RenderOnTheLoop();
     }
 
     private async Task RestoreSelectedAsync()
     {
         await changesetSession.DispatchAsync(new ChangesetCommand.RestoreSelected());
-        Render();
+        RenderOnTheLoop();
     }
 
     private async Task DispatchAsync(
@@ -1094,7 +1094,7 @@ internal sealed class TestRunnerApplication(
         if (!RunsTests(command))
         {
             await session.DispatchAsync(command);
-            Render();
+            RenderOnTheLoop();
             return;
         }
 
@@ -1116,7 +1116,7 @@ internal sealed class TestRunnerApplication(
             runCancellation = null;
         }
 
-        application.Invoke(() => Render());
+        RenderOnTheLoop();
     }
 
     private void RequestTestSource(IApplication application) =>
@@ -1336,7 +1336,7 @@ internal sealed class TestRunnerApplication(
         await rebuild.RunAsync(
             () =>
             {
-                application.Invoke(() => Render());
+                RenderOnTheLoop();
                 return Task.CompletedTask;
             },
             cancellationToken);
@@ -1445,7 +1445,7 @@ internal sealed class TestRunnerApplication(
             await PanelReload().FromDiskAsync(
                 () =>
                 {
-                    application.Invoke(() => Render());
+                    RenderOnTheLoop();
                     return Task.CompletedTask;
                 },
                 cancellationToken);
@@ -1475,10 +1475,14 @@ internal sealed class TestRunnerApplication(
         EditorWorkflow().RefreshAsync(
             () =>
             {
-                application.Invoke(() => Render());
+                RenderOnTheLoop();
                 return Task.CompletedTask;
             },
             cancellationToken);
+
+    /// <summary>Work that has awaited something draws through the loop, which
+    /// passes it over once the terminal it would draw on has gone.</summary>
+    private void RenderOnTheLoop() => running?.Invoke(Render);
 
     private void Render()
     {
@@ -1587,7 +1591,7 @@ internal sealed class TestRunnerApplication(
             _ => commentSession.DispatchAsync(
                 down ? new CommentCommand.MoveDown() : new CommentCommand.MoveUp())
         });
-        running?.Invoke(Render);
+        RenderOnTheLoop();
     }
 
     private PanelStates PanelStatesNow() => new(
