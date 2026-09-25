@@ -23,7 +23,7 @@ public static class PanelShortcuts
             "Tab pane",
             .. panel == PanelKind.Preview ? Array.Empty<string>() : ["/ search"],
             .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, issueState),
-            .. fullScreen ? ["+ tiles"] : Array.Empty<string>(),
+            fullScreen ? "+ tiles" : "+ full screen",
             "^R refresh",
             "? commands",
             "q quit"
