@@ -82,6 +82,20 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_keeps_each_command_within_the_windows_command_line_limit()
+    {
+        // Arrange
+        var runner = new QueuedCommandRunner();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+
+        // Act
+        await backend.RunAsync(ManyLongNamedTests());
+
+        // Assert
+        Assert.All(runner.Requests, request => Assert.True(CommandLineLength(request) < WindowsCommandLineLimit));
+    }
+
+    [Fact]
     public async Task It_reports_a_passing_run_when_the_command_succeeds()
     {
         // Arrange
@@ -350,6 +364,19 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             </TestRun>
             """));
 
+    private const int WindowsCommandLineLimit = 32_767;
+
+    private static TestCase[] ManyLongNamedTests() =>
+        Enumerable.Range(0, 1_000)
+            .Select(index => new TestCase(
+                $"Konquest.Integration.Api.Tests.Orders.WhenPlacingAnOrderThroughTheApi.It_accepts_order_{index:D4}",
+                $"It accepts order {index:D4}",
+                "/repo/Api.IntegrationTests.csproj"))
+            .ToArray();
+
+    private static int CommandLineLength(CommandRequest request) =>
+        string.Join(' ', [request.FileName, .. request.Arguments.Select(argument => $"\"{argument}\"")]).Length;
+
     private static TestCase AddsItem() =>
         new("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.sln");
 
@@ -381,7 +408,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         public Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default)
         {
             Requests.Add(request);
-            return Task.FromResult(remaining.Dequeue());
+            return Task.FromResult(remaining.TryDequeue(out var result) ? result : new CommandResult(0, "", ""));
         }
     }
 }
