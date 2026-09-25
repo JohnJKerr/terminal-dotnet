@@ -36,47 +36,40 @@ public sealed class FileTestSourceLocator : ITestSourceLocator
             return null;
         }
 
-        var className = parts[^2];
-        var methodName = parts[^1];
-        foreach (var path in SourceFiles(projectDirectory))
+        var classDeclaration = new Regex($@"\bclass\s+{Regex.Escape(parts[^2])}\b");
+        var methodDeclaration = new Regex($@"\b{Regex.Escape(parts[^1])}\s*\(");
+        return SourceFiles(projectDirectory)
+            .Select(path =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                return LocationIn(path, classDeclaration, methodDeclaration);
+            })
+            .FirstOrDefault(location => location is not null);
+    }
+
+    /// <summary>The method is looked for below its class, so a method of the
+    /// same name in an earlier class of the file is not taken for it.</summary>
+    private static SourceLocation? LocationIn(string path, Regex classDeclaration, Regex methodDeclaration)
+    {
+        if (FileText.ReadLinesWithin(path) is not { } lines)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (FileText.ReadLinesWithin(path) is not { } lines)
-            {
-                continue;
-            }
-
-            var classLine = LineMatching(lines, $@"\bclass\s+{Regex.Escape(className)}\b");
-            if (classLine < 0)
-            {
-                continue;
-            }
-
-            var methodLine = LineMatching(
-                lines,
-                $@"\b{Regex.Escape(methodName)}\s*\(",
-                classLine);
-            if (methodLine >= 0)
-            {
-                return new SourceLocation(path, methodLine + 1);
-            }
+            return null;
         }
 
-        return null;
+        var classLine = LineMatching(lines, classDeclaration);
+        var methodLine = classLine < 0 ? -1 : LineMatching(lines, methodDeclaration, classLine);
+        return methodLine < 0 ? null : new SourceLocation(path, methodLine + 1);
     }
 
     private static IEnumerable<string> SourceFiles(string projectDirectory) =>
         SourceTree.FilesUnder(projectDirectory, "*.cs")
             .OrderBy(path => path, StringComparer.Ordinal);
 
-    private static int LineMatching(
-        IReadOnlyList<string> lines,
-        string pattern,
-        int startIndex = 0)
+    private static int LineMatching(IReadOnlyList<string> lines, Regex pattern, int startIndex = 0)
     {
         for (var index = startIndex; index < lines.Count; index++)
         {
-            if (Regex.IsMatch(lines[index], pattern))
+            if (pattern.IsMatch(lines[index]))
             {
                 return index;
             }
