@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Terminal.Gui.Drawing;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace TerminalDotnet.Terminal;
 
@@ -51,7 +52,7 @@ public static partial class AnsiTestOutput
     private static void AddCells(List<Cell> cells, string text, Color foreground, bool bold)
     {
         var color = bold ? Bright(foreground) : foreground;
-        cells.AddRange(Cell.ToCellList(text, new global::Terminal.Gui.Drawing.Attribute(color, Color.Black)));
+        cells.AddRange(Cell.ToCellList(text, new Attribute(color, Color.Black)));
     }
 
     private static void ApplyStyle(string parameters, ref Color foreground, ref bool bold)

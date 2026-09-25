@@ -10,10 +10,11 @@ using TerminalDotnet.Changes;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Files;
-using TerminalDotnet.Issues;
 using TerminalDotnet.Filters;
+using TerminalDotnet.Issues;
 using TerminalDotnet.Search;
 using static TerminalDotnet.Terminal.KeyMatch;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace TerminalDotnet.Terminal;
 
@@ -151,14 +152,7 @@ internal sealed class TestRunnerApplication(
         search = Search();
         workspace = Workspace();
         testStatus = TestStatus();
-        testStatus.GettingAttributeForRole += (_, args) =>
-        {
-            var background = args.Result?.Background ?? Color.Black;
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(
-                TestStatusAppearance.ForegroundFor(session.State),
-                background);
-            args.Handled = true;
-        };
+        ViewColours.ColourText(testStatus, () => TestStatusAppearance.ForegroundFor(session.State));
         segmentLabels = StatusSegmentLabels();
         filterLabels = FilterLabels();
         shortcuts = Shortcuts();
@@ -304,14 +298,7 @@ internal sealed class TestRunnerApplication(
             Height = 1,
             Visible = false
         };
-        label.GettingAttributeForRole += (_, args) =>
-        {
-            var background = args.Result?.Background ?? Color.Black;
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(
-                RowAppearance.ForegroundFor(ToneFor(index), Color.White),
-                background);
-            args.Handled = true;
-        };
+        ViewColours.ColourText(label, () => RowAppearance.ForegroundFor(ToneFor(index), Color.White));
         return label;
     }
 
@@ -343,13 +330,9 @@ internal sealed class TestRunnerApplication(
             Height = 1,
             Visible = false
         };
-        label.GettingAttributeForRole += (_, args) =>
-        {
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(
-                FilterAppearance.ForegroundFor(index < filterChips.Count && filterChips[index].IsActive),
-                args.Result?.Background ?? Color.Black);
-            args.Handled = true;
-        };
+        ViewColours.ColourText(
+            label,
+            () => FilterAppearance.ForegroundFor(index < filterChips.Count && filterChips[index].IsActive));
         return label;
     }
 
@@ -1046,7 +1029,7 @@ internal sealed class TestRunnerApplication(
         .Split('\n')
         .Select(line => Cell.ToCellList(
             line.TrimEnd('\r'),
-            new global::Terminal.Gui.Drawing.Attribute(Color.White, Color.Black)))
+            new Attribute(Color.White, Color.Black)))
         .ToList();
 
     private void RewriteComment(
@@ -1194,7 +1177,7 @@ internal sealed class TestRunnerApplication(
 
     private static List<Cell> CommandMenuCells(CommandMenuRow row) => Cell.ToCellList(
         row.Text,
-        new global::Terminal.Gui.Drawing.Attribute(
+        new Attribute(
             row.IsHeading ? Color.BrightCyan : Color.White,
             Color.Black)).ToList();
 
@@ -1256,15 +1239,7 @@ internal sealed class TestRunnerApplication(
         return null;
     });
 
-    private static void SetBlackBackground(View view)
-    {
-        view.GettingAttributeForRole += (_, args) =>
-        {
-            var foreground = args.Result?.Foreground ?? Color.White;
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(foreground, Color.Black);
-            args.Handled = true;
-        };
-    }
+    private static void SetBlackBackground(View view) => ViewColours.ColourGround(view, () => Color.Black);
 
     private static string LanguageFrom(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
@@ -1394,11 +1369,7 @@ internal sealed class TestRunnerApplication(
     private View Toast()
     {
         toastText = new Label { X = 1, Y = 0 };
-        toastText.GettingAttributeForRole += (_, args) =>
-        {
-            args.Result = new global::Terminal.Gui.Drawing.Attribute(ToastColor(), Color.Black);
-            args.Handled = true;
-        };
+        ViewColours.Colour(toastText, ToastColor, Color.Black);
         var shown = new View
         {
             Y = 1,

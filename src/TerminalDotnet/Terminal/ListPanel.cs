@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace TerminalDotnet.Terminal;
 
@@ -124,7 +125,7 @@ internal sealed class ListPanel
         }
 
         var role = View.IsSelectedOrMarked(args.Row) && View.HasFocus ? VisualRole.Focus : VisualRole.Normal;
-        args.RowAttribute = new global::Terminal.Gui.Drawing.Attribute(
+        args.RowAttribute = new Attribute(
             foreground,
             View.GetAttributeForRole(role).Background);
     }
