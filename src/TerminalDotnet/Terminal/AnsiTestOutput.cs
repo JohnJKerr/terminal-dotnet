@@ -63,19 +63,13 @@ public static partial class AnsiTestOutput
                 continue;
             }
 
-            if (code == 0)
+            (foreground, bold) = code switch
             {
-                foreground = Color.White;
-                bold = false;
-            }
-            else if (code == 1)
-            {
-                bold = true;
-            }
-            else if (code is >= 30 and <= 37 or >= 90 and <= 97)
-            {
-                foreground = ColorFor(code);
-            }
+                0 => (Color.White, false),
+                1 => (foreground, true),
+                >= 30 and <= 37 or >= 90 and <= 97 => (ColorFor(code), bold),
+                _ => (foreground, bold)
+            };
         }
     }
 
@@ -98,16 +92,17 @@ public static partial class AnsiTestOutput
         _ => Color.White
     };
 
-    private static Color Bright(Color color)
+    private static readonly IReadOnlyDictionary<Color, Color> Brightened = new Dictionary<Color, Color>
     {
-        if (color == Color.Red) return Color.BrightRed;
-        if (color == Color.Green) return Color.BrightGreen;
-        if (color == Color.Blue) return Color.BrightBlue;
-        if (color == Color.Cyan) return Color.BrightCyan;
-        if (color == Color.Magenta) return Color.BrightMagenta;
-        if (color == Color.Yellow) return Color.BrightYellow;
-        return color;
-    }
+        [Color.Red] = Color.BrightRed,
+        [Color.Green] = Color.BrightGreen,
+        [Color.Blue] = Color.BrightBlue,
+        [Color.Cyan] = Color.BrightCyan,
+        [Color.Magenta] = Color.BrightMagenta,
+        [Color.Yellow] = Color.BrightYellow
+    };
+
+    private static Color Bright(Color color) => Brightened.GetValueOrDefault(color, color);
 
     [GeneratedRegex(@"\x1B\[([0-9;]*)m")]
     private static partial Regex StyleSequence();
