@@ -736,31 +736,10 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var action = FilePanelKeyBindings.ActionFor(
-            key,
-            SelectedFile(fileExplorer),
-            search.HasFocus);
-        if (action is FilePanelAction.ToggleFilter toggle)
+        if (FilePanelKeyBindings.ActionFor(key, SelectedFile(fileExplorer), search.HasFocus) is { } action)
         {
             key.Handled = true;
-            panelWork.Track(DispatchFileAsync(
-                fileExplorer,
-                new FileExplorerCommand.ToggleFilter(toggle.Filter)));
-            return;
-        }
-
-        if (action is FilePanelAction.ToggleAllFiles)
-        {
-            key.Handled = true;
-            shell.ToggleAllFiles();
-            Render();
-            return;
-        }
-
-        if (action is FilePanelAction.OpenFile open)
-        {
-            key.Handled = true;
-            RequestOpen(application, open.Path, line: 1);
+            HandleFileAction(application, action, fileExplorer);
             return;
         }
 
@@ -772,6 +751,26 @@ internal sealed class TestRunnerApplication(
 
         key.Handled = true;
         panelWork.Track(DispatchFileAsync(fileExplorer, command));
+    }
+
+    private void HandleFileAction(
+        IApplication application,
+        FilePanelAction action,
+        FileExplorerSession fileExplorer)
+    {
+        switch (action)
+        {
+            case FilePanelAction.ToggleFilter toggle:
+                panelWork.Track(DispatchFileAsync(fileExplorer, new FileExplorerCommand.ToggleFilter(toggle.Filter)));
+                return;
+            case FilePanelAction.ToggleAllFiles:
+                shell.ToggleAllFiles();
+                Render();
+                return;
+            case FilePanelAction.OpenFile open:
+                RequestOpen(application, open.Path, line: 1);
+                return;
+        }
     }
 
     private static VisibleFileNode? SelectedFile(FileExplorerSession fileExplorer) =>
@@ -819,34 +818,10 @@ internal sealed class TestRunnerApplication(
         }
 
         var selected = changesetSession.State.Files[changesetSession.State.SelectedIndex];
-        var action = ChangesetPanelKeyBindings.ActionFor(key, selected, search.HasFocus);
-        if (action is ChangesetAction.ShowDiff)
+        if (ChangesetPanelKeyBindings.ActionFor(key, selected, search.HasFocus) is { } action)
         {
             key.Handled = true;
-            shell.PreviewChangeDiff();
-            Render();
-            return;
-        }
-
-        if (action is ChangesetAction.OpenFile open)
-        {
-            key.Handled = true;
-            RequestOpen(application, open.Path, line: 1);
-            return;
-        }
-
-        if (action is ChangesetAction.PreviewFile)
-        {
-            key.Handled = true;
-            shell.PreviewChangedFile();
-            Render();
-            return;
-        }
-
-        if (action is ChangesetAction.RestoreFile)
-        {
-            key.Handled = true;
-            panelWork.Track(RestoreSelectedAsync(application));
+            HandleChangesetAction(application, action);
             return;
         }
 
@@ -860,19 +835,42 @@ internal sealed class TestRunnerApplication(
         panelWork.Track(DispatchChangesetAsync(command));
     }
 
+    private void HandleChangesetAction(IApplication application, ChangesetAction action)
+    {
+        switch (action)
+        {
+            case ChangesetAction.ShowDiff:
+                shell.PreviewChangeDiff();
+                Render();
+                return;
+            case ChangesetAction.OpenFile open:
+                RequestOpen(application, open.Path, line: 1);
+                return;
+            case ChangesetAction.PreviewFile:
+                shell.PreviewChangedFile();
+                Render();
+                return;
+            case ChangesetAction.RestoreFile:
+                panelWork.Track(RestoreSelectedAsync());
+                return;
+        }
+    }
+
     private void HandleIssueKey(IApplication application, Key key)
     {
-        if (!ActiveList.HasFocus) return;
-        var selected = issueSession.State.SelectedIndex < issueSession.State.Issues.Count
-            ? issueSession.State.Issues[issueSession.State.SelectedIndex]
-            : null;
-        var action = IssuePanelKeyBindings.ActionFor(key, selected, search.HasFocus);
+        if (!ActiveList.HasFocus)
+        {
+            return;
+        }
+
+        var action = IssuePanelKeyBindings.ActionFor(key, SelectedIssue(), search.HasFocus);
         if (action is IssuePanelAction.Edit edit)
         {
             key.Handled = true;
             RequestOpen(application, edit.Path, edit.Line);
             return;
         }
+
         var command = action switch
         {
             IssuePanelAction.Copy => new IssueCommand.CopySelected(),
@@ -881,10 +879,19 @@ internal sealed class TestRunnerApplication(
             _ when Is(key, KeyCode.CursorDown) || Is(key, KeyCode.J) => new IssueCommand.MoveDown(),
             _ => null
         };
-        if (command is null) return;
+        if (command is null)
+        {
+            return;
+        }
+
         key.Handled = true;
         panelWork.Track(DispatchIssueAsync(command));
     }
+
+    private CompilationIssue? SelectedIssue() =>
+        issueSession.State.SelectedIndex < issueSession.State.Issues.Count
+            ? issueSession.State.Issues[issueSession.State.SelectedIndex]
+            : null;
 
     private async Task DispatchIssueAsync(IssueCommand command)
     {
@@ -930,38 +937,27 @@ internal sealed class TestRunnerApplication(
         CommentAction action,
         FileComment selected)
     {
-        if (action is CommentAction.ReadComment)
+        switch (action)
         {
-            ShowComment(application, selected);
-            return;
+            case CommentAction.ReadComment:
+                ShowComment(application, selected);
+                return;
+            case CommentAction.RewriteComment:
+                RewriteComment(application, selected);
+                return;
+            case CommentAction.SaveComments:
+                SaveComments(application);
+                return;
+            case CommentAction.ClearComments:
+                ClearComments(application);
+                return;
+            case CommentAction.CopyComments:
+                panelWork.Track(DispatchCommentAsync(new CommentCommand.CopyAll()));
+                return;
+            case CommentAction.DeleteComment:
+                panelWork.Track(DispatchCommentAsync(new CommentCommand.DeleteSelected()));
+                return;
         }
-
-        if (action is CommentAction.RewriteComment)
-        {
-            RewriteComment(application, selected);
-            return;
-        }
-
-        if (action is CommentAction.SaveComments)
-        {
-            SaveComments(application);
-            return;
-        }
-
-        if (action is CommentAction.ClearComments)
-        {
-            ClearComments(application);
-            return;
-        }
-
-        if (action is CommentAction.CopyComments)
-        {
-            panelWork.Track(DispatchCommentAsync(new CommentCommand.CopyAll()));
-            return;
-        }
-
-        panelWork.Track(DispatchCommentAsync(
-            new CommentCommand.DeleteSelected()));
     }
 
     /// <summary>Clearing cannot be undone, so it is asked for twice. Cancel is
@@ -1085,11 +1081,10 @@ internal sealed class TestRunnerApplication(
         Render();
     }
 
-    private async Task RestoreSelectedAsync(
-        IApplication application)
+    private async Task RestoreSelectedAsync()
     {
         await changesetSession.DispatchAsync(new ChangesetCommand.RestoreSelected());
-        application.Invoke(() => Render());
+        Render();
     }
 
     private async Task DispatchAsync(
@@ -1630,9 +1625,8 @@ internal sealed class TestRunnerApplication(
         : "";
 
     private RowTone PreviewedDetailTone() =>
-        shell.State.PreviewedList == PanelKind.Issues &&
-        issueSession.State.SelectedIndex < issueSession.State.Issues.Count
-            ? IssuePanelSnapshot.ToneFor(issueSession.State.Issues[issueSession.State.SelectedIndex])
+        shell.State.PreviewedList == PanelKind.Issues && SelectedIssue() is { } issue
+            ? IssuePanelSnapshot.ToneFor(issue)
             : RowTone.Neutral;
 
     /// <summary>The diff and the test's source both take a moment to fetch, so
