@@ -1821,7 +1821,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        search.Title = searchQuery.Length == 0 ? "Search" : $"Search — {searchHitCount} hits";
+        search.Title = SearchBox.Title(searchQuery, searchHitCount);
         search.Text = searchQuery;
         ShowFilters(filters);
     }
