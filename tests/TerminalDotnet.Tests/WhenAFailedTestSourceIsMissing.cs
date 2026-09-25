@@ -36,14 +36,10 @@ public sealed class WhenAFailedTestSourceIsMissing
     private static async Task<TestExplorerSession> SessionWithAFailureInAMissingFileAsync()
     {
         var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
-        var failure = new TestResult(
-            test,
-            TestOutcome.Failed,
-            TimeSpan.Zero,
-            "Expected total to be 10.",
-            null,
-            Path.Combine(Path.GetTempPath(), $"terminal-dotnet-gone-{Guid.NewGuid():N}.cs"),
-            42);
+        var failure = GivenA.ResultFor(test)
+            .Failed("Expected total to be 10.")
+            .At(Path.Combine(Path.GetTempPath(), $"terminal-dotnet-gone-{Guid.NewGuid():N}.cs"), 42)
+            .Build();
         var session = await GivenA.TestExplorer()
             .WithBackend(new SingleRunBackend(test, new TestRun(false, "1 test failed", [failure])))
             .LoadedAsync();

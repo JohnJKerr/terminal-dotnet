@@ -109,7 +109,7 @@ public sealed class WhenARunFailsAfterAnEarlierRun
     private static TestRun Passing() => new(
         true,
         "1 test passed",
-        [new TestResult(CartTest, TestOutcome.Passed, TimeSpan.Zero, null, null, null, null)]);
+        [GivenA.ResultFor(CartTest).Build()]);
 
     private static TestRun Unreadable() => new(false, "error CS1002: ; expected")
     {

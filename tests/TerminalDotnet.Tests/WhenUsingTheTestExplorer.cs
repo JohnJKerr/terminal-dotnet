@@ -439,14 +439,7 @@ public sealed class WhenUsingTheTestExplorer
     {
         // Arrange
         var test = GivenA.TestCase("Shop.Tests.CartTests.Skips_item");
-        var skipped = new TestResult(
-            test,
-            TestOutcome.Skipped,
-            TimeSpan.FromMilliseconds(2),
-            null,
-            null,
-            null,
-            null);
+        var skipped = GivenA.ResultFor(test).Skipped().Taking(TimeSpan.FromMilliseconds(2)).Build();
         var session = await GivenA.TestExplorer()
             .WithBackend(new InMemoryTestBackend([test], new TestRun(true, "Skipped: 1", [skipped])))
             .LoadedAsync();
@@ -465,14 +458,12 @@ public sealed class WhenUsingTheTestExplorer
     {
         // Arrange
         var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
-        var failure = new TestResult(
-            test,
-            TestOutcome.Failed,
-            TimeSpan.FromMilliseconds(12),
-            "Expected total to be 10.",
-            "at CartTests.Adds_item() in /repo/CartTests.cs:line 42",
-            "/repo/CartTests.cs",
-            42);
+        var failure = GivenA.ResultFor(test)
+            .Failed("Expected total to be 10.")
+            .Taking(TimeSpan.FromMilliseconds(12))
+            .WithStackTrace("at CartTests.Adds_item() in /repo/CartTests.cs:line 42")
+            .At("/repo/CartTests.cs", 42)
+            .Build();
         var backend = new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure]));
         var session = await GivenA.TestExplorer()
             .WithBackend(backend)
@@ -492,14 +483,12 @@ public sealed class WhenUsingTheTestExplorer
     {
         // Arrange
         var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
-        var failure = new TestResult(
-            test,
-            TestOutcome.Failed,
-            TimeSpan.FromMilliseconds(12),
-            "Expected total to be 10.",
-            "at CartTests.Adds_item() in /repo/CartTests.cs:line 42",
-            "/repo/CartTests.cs",
-            42);
+        var failure = GivenA.ResultFor(test)
+            .Failed("Expected total to be 10.")
+            .Taking(TimeSpan.FromMilliseconds(12))
+            .WithStackTrace("at CartTests.Adds_item() in /repo/CartTests.cs:line 42")
+            .At("/repo/CartTests.cs", 42)
+            .Build();
         var session = await GivenA.TestExplorer()
             .WithBackend(new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])))
             .LoadedAsync();
@@ -518,14 +507,10 @@ public sealed class WhenUsingTheTestExplorer
     {
         // Arrange
         var test = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
-        var failure = new TestResult(
-            test,
-            TestOutcome.Failed,
-            TimeSpan.Zero,
-            "Expected total to be 10.",
-            null,
-            "/repo/CartTests.cs",
-            42);
+        var failure = GivenA.ResultFor(test)
+            .Failed("Expected total to be 10.")
+            .At("/repo/CartTests.cs", 42)
+            .Build();
         var session = await GivenA.TestExplorer()
             .WithBackend(new InMemoryTestBackend([test], new TestRun(false, "1 test failed", [failure])))
             .LoadedAsync();
@@ -547,8 +532,8 @@ public sealed class WhenUsingTheTestExplorer
         var second = GivenA.TestCase("Shop.Tests.CartTests.Removes_item");
         var run = new TestRun(false, "2 tests failed",
         [
-            new TestResult(first, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null),
-            new TestResult(second, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null)
+            GivenA.ResultFor(first).Failed().Build(),
+            GivenA.ResultFor(second).Failed().Build()
         ]);
         var session = await GivenA.TestExplorer()
             .WithBackend(new InMemoryTestBackend([first, second], run))
@@ -570,8 +555,8 @@ public sealed class WhenUsingTheTestExplorer
         var second = GivenA.TestCase("Shop.Tests.CartTests.Removes_item");
         var run = new TestRun(false, "2 tests failed",
         [
-            new TestResult(first, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null),
-            new TestResult(second, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null)
+            GivenA.ResultFor(first).Failed().Build(),
+            GivenA.ResultFor(second).Failed().Build()
         ]);
         var session = await GivenA.TestExplorer()
             .WithBackend(new InMemoryTestBackend([first, second], run))
@@ -621,7 +606,7 @@ public sealed class WhenUsingTheTestExplorer
         // Arrange
         var failed = GivenA.TestCase("Shop.Tests.CartTests.Adds_item");
         var passed = GivenA.TestCase("Shop.Tests.CartTests.Removes_item");
-        var failure = new TestResult(failed, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null);
+        var failure = GivenA.ResultFor(failed).Failed().Build();
         var backend = new InMemoryTestBackend(
             [failed, passed],
             new TestRun(false, "1 test failed", [failure]));

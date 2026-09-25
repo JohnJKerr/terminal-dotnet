@@ -1,6 +1,7 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
@@ -90,14 +91,7 @@ public class WhenCreatingATestPanelSnapshot
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var result = new TestResult(
-            test,
-            TestOutcome.Passed,
-            TimeSpan.FromMilliseconds(7),
-            null,
-            null,
-            null,
-            null);
+        var result = GivenA.ResultFor(test).Taking(TimeSpan.FromMilliseconds(7)).Build();
         var state = new ExplorerState(
             ExplorerStatus.Ready,
             [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test], TestNodeOutcome.Passed)],
@@ -161,9 +155,9 @@ public class WhenCreatingATestPanelSnapshot
         var skipped = new TestCase("Shop.Tests.CartTests.Skips", "Skips", "Shop.Tests.csproj");
         var run = new TestRun(false, "Finished",
         [
-            new TestResult(passed, TestOutcome.Passed, TimeSpan.Zero, null, null, null, null),
-            new TestResult(failed, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null),
-            new TestResult(skipped, TestOutcome.Skipped, TimeSpan.Zero, null, null, null, null)
+            GivenA.ResultFor(passed).Build(),
+            GivenA.ResultFor(failed).Failed().Build(),
+            GivenA.ResultFor(skipped).Skipped().Build()
         ]);
         var state = new ExplorerState(
             ExplorerStatus.Failed,
@@ -201,15 +195,7 @@ public class WhenCreatingATestPanelSnapshot
     {
         // Arrange
         var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "Shop.Tests.csproj");
-        var result = new TestResult(
-            test,
-            TestOutcome.Passed,
-            TimeSpan.Zero,
-            null,
-            null,
-            null,
-            null,
-            "Cart total: 10");
+        var result = GivenA.ResultFor(test).WithOutput("Cart total: 10").Build();
         var state = new ExplorerState(
             ExplorerStatus.Ready,
             [new VisibleTestNode(2, TestNodeKind.Test, test.DisplayName, [test])],

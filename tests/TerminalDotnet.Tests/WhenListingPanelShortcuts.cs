@@ -5,6 +5,7 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -206,7 +207,7 @@ public sealed class WhenListingPanelShortcuts
     {
         // Arrange
         var test = Test();
-        var failed = new TestResult(test, TestOutcome.Failed, TimeSpan.Zero, "Failed", null, null, null);
+        var failed = GivenA.ResultFor(test).Failed().Build();
         var state = TestState() with { LastRun = new TestRun(false, "Failed", [failed]) };
 
         // Act

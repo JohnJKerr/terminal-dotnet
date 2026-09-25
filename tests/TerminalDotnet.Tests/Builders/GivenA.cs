@@ -11,6 +11,8 @@ internal static class GivenA
 
     public static IssueSessionBuilder IssuePanel() => new();
 
+    public static TestResultBuilder ResultFor(TestCase test) => new(test);
+
     /// <summary>A discovered test, named the way discovery names it: the
     /// display name is the method with its underscores read as spaces.</summary>
     public static TestCase TestCase(string fullyQualifiedName, string projectPath = "Shop.Tests.csproj") => new(
