@@ -599,7 +599,7 @@ internal sealed class TestRunnerApplication(
         var chosen = OverThePanels(() => MessageBox.Query(
             application,
             "Quit",
-            $"{count} comments have not been copied or saved. Quitting loses them.",
+            CommentPrompt.QuitLoses(count),
             "Quit anyway",
             "Keep them"));
         if (chosen != KeepChoice)
@@ -974,7 +974,7 @@ internal sealed class TestRunnerApplication(
         var chosen = OverThePanels(() => MessageBox.Query(
             application,
             "Clear comments",
-            $"Clear all {count} comments? This cannot be undone.",
+            CommentPrompt.ClearAll(count),
             "Clear",
             "Cancel"));
         if (chosen != ClearChoice)
