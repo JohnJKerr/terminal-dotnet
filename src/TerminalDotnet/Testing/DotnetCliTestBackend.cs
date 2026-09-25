@@ -127,7 +127,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         var runs = new List<TestRun>();
         foreach (var batch in FilterBatches(tests))
         {
-            runs.Add(await RunBatchAsync(target, batch, cancellationToken));
+            runs.Add(await RunBatchAsync(target, batch, build: runs.Count == 0, cancellationToken));
         }
 
         return Combined(runs);
@@ -160,6 +160,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     private async Task<TestRun> RunBatchAsync(
         string target,
         IReadOnlyList<TestCase> tests,
+        bool build,
         CancellationToken cancellationToken)
     {
         var filter = string.Join('|', tests.Select(FilterClause));
@@ -175,7 +176,8 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
                     "--logger",
                     $"trx;LogFileName={resultPath}",
                     "--nologo",
-                    "--tl:on"
+                    "--tl:on",
+                    .. BuildSwitches(build)
                 ],
                 Path.GetDirectoryName(Path.GetFullPath(target))!),
             cancellationToken);
@@ -189,6 +191,10 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             Diagnostic = recorded.Diagnostic
         };
     }
+
+    /// <summary>The first part of a split run builds the project, so the
+    /// parts after it test that same build rather than rebuilding it.</summary>
+    private static string[] BuildSwitches(bool build) => build ? [] : ["--no-build"];
 
     private static TestRun Combined(IReadOnlyList<TestRun> runs) =>
         runs.Count == 1

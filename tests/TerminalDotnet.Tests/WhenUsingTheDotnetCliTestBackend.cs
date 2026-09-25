@@ -143,6 +143,20 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_builds_only_once_across_a_split_run()
+    {
+        // Arrange
+        var runner = new QueuedCommandRunner();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore("<TestRun />"));
+
+        // Act
+        await backend.RunAsync(ManyLongNamedTests());
+
+        // Assert
+        Assert.All(runner.Requests.Skip(1), request => Assert.Contains("--no-build", request.Arguments));
+    }
+
+    [Fact]
     public async Task It_reports_a_passing_run_when_the_command_succeeds()
     {
         // Arrange
