@@ -198,6 +198,10 @@ Every panel is on the screen at once:
   to `5`, and `Tab` and `Shift+Tab` step through them in the order they sit on
   screen. A click moves to a panel, or to a row within one. The arrow keys
   stay within the panel.
+- **Full screen.** `+` shows the focused panel over the whole screen, which
+  is the way to read one on a small tiled window. `Tab` and the number keys
+  keep it full screen as you move, and `+` or `Esc` returns to the tiles.
+  A panel name too long for its frame is cut short rather than hidden.
 - **Focus.** The panel taking the keys has a green frame, and its title spells
   out its filters. The others show only the filters' letters.
 - **Filters.** Capital letters toggle the focused panel's filters, one at a
@@ -338,9 +342,10 @@ message sits beneath the source.
 | --- | --- |
 | `0`–`5` | Go to the Preview, Explorer, Tests, Changes, Issues or Comments |
 | `Tab` / `Shift+Tab` | Go to the next or previous panel |
+| `+` | Show the focused panel full screen, or return to the tiles |
 | `/` | Search the focused panel |
 | `Enter` (in search) | Leave the search, keeping it |
-| `Esc` | Close what is open, or clear the search |
+| `Esc` | Close what is open, leave full screen, or clear the search |
 | Capital letters | Toggle the focused panel's filters, as named in its title |
 | Click | Go to a panel, or select a row in it |
 | `Ctrl+R` | Refresh every panel and rebuild the project |
