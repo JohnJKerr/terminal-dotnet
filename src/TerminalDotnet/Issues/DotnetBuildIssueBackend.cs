@@ -13,7 +13,7 @@ public sealed partial class DotnetBuildIssueBackend(ICommandRunner runner) : IIs
         var result = await runner.RunAsync(new CommandRequest(
             "dotnet",
             ["build", target, "--nologo", "--tl:off", "--no-incremental"],
-            directory), cancellationToken);
+            directory), cancellationToken).ConfigureAwait(false);
         return [.. Lines(result.StandardOutput, result.StandardError)
             .Select(line => Parsed(line, directory))
             .OfType<CompilationIssue>()

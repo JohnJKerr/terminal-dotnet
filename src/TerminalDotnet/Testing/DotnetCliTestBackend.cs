@@ -29,7 +29,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             "dotnet",
             ["test", target, "--list-tests", "--nologo", "--tl:off"],
             Path.GetDirectoryName(Path.GetFullPath(target))!);
-        var result = await commandRunner.RunAsync(request, cancellationToken);
+        var result = await commandRunner.RunAsync(request, cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException($"Test discovery failed: {result.StandardError}");
@@ -127,7 +127,8 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         var runs = new List<TestRun>();
         foreach (var batch in FilterBatches(tests))
         {
-            runs.Add(await RunBatchAsync(target, batch, build: runs.Count == 0, cancellationToken));
+            var build = runs.Count == 0;
+            runs.Add(await RunBatchAsync(target, batch, build, cancellationToken).ConfigureAwait(false));
         }
 
         return Combined(runs);
@@ -169,7 +170,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         var resultPath = resultStore.CreatePath();
         try
         {
-            return await RunBatchIntoAsync(resultPath, target, tests, build, cancellationToken);
+            return await RunBatchIntoAsync(resultPath, target, tests, build, cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -200,12 +201,12 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
                     .. BuildSwitches(build)
                 ],
                 Path.GetDirectoryName(Path.GetFullPath(target))!),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         var output = string.IsNullOrWhiteSpace(result.StandardError)
             ? result.StandardOutput
             : $"{result.StandardOutput}{Environment.NewLine}{result.StandardError}";
-        var recorded = await RecordedResultsAsync(resultPath, tests, cancellationToken);
+        var recorded = await RecordedResultsAsync(resultPath, tests, cancellationToken).ConfigureAwait(false);
         return new TestRun(result.ExitCode == 0, output.Trim(), recorded.Results)
         {
             Diagnostic = recorded.Diagnostic
@@ -254,7 +255,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     {
         try
         {
-            var trx = await resultStore.ReadAsync(resultPath, cancellationToken);
+            var trx = await resultStore.ReadAsync(resultPath, cancellationToken).ConfigureAwait(false);
             return new RecordedResults(ParseResults(trx, tests), null);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)

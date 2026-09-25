@@ -15,10 +15,12 @@ public interface ITestSourceLocator
 
 public sealed class FileTestSourceLocator : ITestSourceLocator
 {
+    /// <summary>Scans the project's sources, which takes long enough that it
+    /// is kept off whichever thread asked.</summary>
     public Task<SourceLocation?> LocateAsync(
         TestCase test,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult(Located(test, cancellationToken));
+        Task.Run(() => Located(test, cancellationToken), cancellationToken);
 
     private static SourceLocation? Located(TestCase test, CancellationToken cancellationToken)
     {

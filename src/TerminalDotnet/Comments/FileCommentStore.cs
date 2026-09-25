@@ -23,7 +23,7 @@ public sealed class FileCommentStore : ICommentStore
     {
         try
         {
-            await FileReplacement.WriteAsync(path, text, cancellationToken);
+            await FileReplacement.WriteAsync(path, text, cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (Exception exception) when (exception is IOException

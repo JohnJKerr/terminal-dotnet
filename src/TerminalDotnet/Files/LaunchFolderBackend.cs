@@ -16,9 +16,9 @@ public sealed class LaunchFolderBackend(ICommandRunner commandRunner) : IFileExp
         CancellationToken cancellationToken = default)
     {
         var launchFolder = Path.GetDirectoryName(Path.GetFullPath(target))!;
-        var root = await listing.RootAsync(launchFolder, cancellationToken);
-        var gitStatuses = await listing.StatusesAsync(root, cancellationToken);
-        var paths = await listing.FilesUnderAsync(launchFolder, cancellationToken);
+        var root = await listing.RootAsync(launchFolder, cancellationToken).ConfigureAwait(false);
+        var gitStatuses = await listing.StatusesAsync(root, cancellationToken).ConfigureAwait(false);
+        var paths = await listing.FilesUnderAsync(launchFolder, cancellationToken).ConfigureAwait(false);
 
         return
         [

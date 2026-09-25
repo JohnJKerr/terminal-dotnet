@@ -16,7 +16,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
     {
         var result = await commandRunner.RunAsync(
             GitRequest.For(["rev-parse", "--show-toplevel"], workingDirectory),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
     }
@@ -34,7 +34,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
 
         var result = await commandRunner.RunAsync(
             GitRequest.For(["status", "--porcelain=v1", "-z", "--untracked-files=all"], repositoryRoot),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return result.ExitCode == 0
             ? StatusesFrom(result.StandardOutput, repositoryRoot)
@@ -49,7 +49,7 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
     {
         var listing = await commandRunner.RunAsync(
             GitRequest.For(["ls-files", "-z", "--cached", "--others", "--exclude-standard"], directory),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         return listing.ExitCode == 0
             ? TrackedFiles(listing.StandardOutput, directory)

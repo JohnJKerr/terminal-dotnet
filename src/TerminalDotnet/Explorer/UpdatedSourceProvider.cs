@@ -17,7 +17,7 @@ internal sealed class ChangesetUpdatedSourceProvider(IChangesetBackend backend) 
         string target,
         CancellationToken cancellationToken = default)
     {
-        var changes = await backend.DiscoverAsync(target, cancellationToken);
+        var changes = await backend.DiscoverAsync(target, cancellationToken).ConfigureAwait(false);
         return changes
             .Where(file => file.Kind != ChangeKind.Deleted)
             .Select(file => new UpdatedSource(file.Path, file.Kind))

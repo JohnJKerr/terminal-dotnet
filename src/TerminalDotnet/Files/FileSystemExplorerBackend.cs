@@ -13,12 +13,13 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         CancellationToken cancellationToken = default)
     {
         var workingDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
-        var root = await listing.RootAsync(workingDirectory, cancellationToken);
-        var gitStatuses = await listing.StatusesAsync(root, cancellationToken);
+        var root = await listing.RootAsync(workingDirectory, cancellationToken).ConfigureAwait(false);
+        var gitStatuses = await listing.StatusesAsync(root, cancellationToken).ConfigureAwait(false);
         var entries = new List<FileEntry>();
         foreach (var projectPath in ProjectPaths(target))
         {
-            entries.AddRange(await ProjectEntriesAsync(projectPath, gitStatuses, cancellationToken));
+            entries.AddRange(
+                await ProjectEntriesAsync(projectPath, gitStatuses, cancellationToken).ConfigureAwait(false));
         }
 
         return entries;
@@ -30,7 +31,7 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         CancellationToken cancellationToken)
     {
         var projectDirectory = Path.GetDirectoryName(projectPath)!;
-        var paths = await listing.FilesUnderAsync(projectDirectory, cancellationToken);
+        var paths = await listing.FilesUnderAsync(projectDirectory, cancellationToken).ConfigureAwait(false);
         return
         [
             .. paths.Select(path => FileEntryFor(projectPath, path, gitStatuses)),

@@ -29,7 +29,7 @@ public sealed class CommandClipboard(ICommandRunner commandRunner, string workin
     {
         foreach (var tool in Tools)
         {
-            if (await TookAsync(tool, text, cancellationToken))
+            if (await TookAsync(tool, text, cancellationToken).ConfigureAwait(false))
             {
                 return true;
             }
@@ -54,7 +54,7 @@ public sealed class CommandClipboard(ICommandRunner commandRunner, string workin
                 {
                     StandardInput = text
                 },
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             return result.ExitCode == 0;
         }
         catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)

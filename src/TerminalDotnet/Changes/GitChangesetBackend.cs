@@ -13,7 +13,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         CancellationToken cancellationToken = default)
     {
         scopeDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
-        repositoryRoot = await RepositoryRootAsync(cancellationToken);
+        repositoryRoot = await RepositoryRootAsync(cancellationToken).ConfigureAwait(false);
         if (repositoryRoot is null)
         {
             return [];
@@ -21,7 +21,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
 
         var status = await GitAsync(
             ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", scopeDirectory],
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (status.ExitCode != 0)
         {
             return [];
@@ -44,7 +44,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
 
         var tracked = await GitAsync(
             ["diff", .. WithoutConfiguredTools, "HEAD", "--", Pathspec(file)],
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (tracked.StandardOutput.Length > 0)
         {
             return tracked.StandardOutput;
@@ -52,7 +52,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
 
         var untracked = await GitAsync(
             ["diff", .. WithoutConfiguredTools, "--no-index", "--", "/dev/null", file.Path],
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         return untracked.StandardOutput;
     }
 
@@ -70,7 +70,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             return false;
         }
 
-        var restore = await GitAsync(RestoreArgumentsFor(file), cancellationToken);
+        var restore = await GitAsync(RestoreArgumentsFor(file), cancellationToken).ConfigureAwait(false);
         return restore.ExitCode == 0;
     }
 
@@ -125,7 +125,7 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
     {
         var result = await commandRunner.RunAsync(
             GitRequest.For(["rev-parse", "--show-toplevel"], scopeDirectory),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
     }
 

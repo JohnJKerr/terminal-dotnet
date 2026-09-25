@@ -16,7 +16,7 @@ public static class FileReplacement
         var written = SiblingOf(path);
         try
         {
-            await WriteNewFileAsync(written, text, cancellationToken);
+            await WriteNewFileAsync(written, text, cancellationToken).ConfigureAwait(false);
             File.Move(written, path, overwrite: true);
         }
         catch
@@ -39,7 +39,7 @@ public static class FileReplacement
     {
         await using var stream = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
         await using var writer = new StreamWriter(stream);
-        await writer.WriteAsync(text.AsMemory(), cancellationToken);
+        await writer.WriteAsync(text.AsMemory(), cancellationToken).ConfigureAwait(false);
     }
 
     private static void DeleteQuietly(string path)
