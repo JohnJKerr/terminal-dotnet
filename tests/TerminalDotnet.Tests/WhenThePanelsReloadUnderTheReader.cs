@@ -4,6 +4,7 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Filters;
 using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
@@ -118,7 +119,7 @@ public sealed class WhenThePanelsReloadUnderTheReader
     {
         // Arrange
         var backend = new GrowingFlagBackend("Order.cs", "Basket.cs");
-        var issues = new IssueSession(new NoIssues(), new UnusedClipboard(), backend);
+        var issues = GivenA.IssuePanel().WithFlagBackend(backend).Build();
         await issues.LoadFlagsAsync("App.csproj");
         await issues.DispatchAsync(new IssueCommand.SelectIndex(1));
         backend.Add("Alpha.cs");
@@ -164,20 +165,6 @@ public sealed class WhenThePanelsReloadUnderTheReader
 
         public Task<bool> RestoreAsync(ChangedFile file, CancellationToken cancellationToken = default) =>
             Task.FromResult(true);
-    }
-
-    private sealed class NoIssues : IIssueBackend
-    {
-        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<CompilationIssue>>([]);
-    }
-
-    private sealed class UnusedClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
-            Task.FromResult(false);
     }
 
     private sealed class GrowingFlagBackend(params string[] names) : IFlagBackend

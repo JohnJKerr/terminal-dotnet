@@ -87,7 +87,7 @@ public sealed class WhenRebuildingTheProject
     {
         // Arrange
         var log = new List<string>();
-        var issues = new IssueSession(new LoggingIssueBackend(log, []), new SilentClipboard());
+        var issues = GivenA.IssuePanel().WithIssueBackend(new LoggingIssueBackend(log, [])).Build();
         var tests = GivenA.TestExplorer()
             .WithBackend(new LoggingTestBackend(log))
             .Build();
@@ -105,7 +105,7 @@ public sealed class WhenRebuildingTheProject
     public async Task A_broken_build_puts_the_tests_back_as_they_were()
     {
         // Arrange
-        var issues = new IssueSession(new LoggingIssueBackend([], [Broken]), new SilentClipboard());
+        var issues = GivenA.IssuePanel().WithIssueBackend(new LoggingIssueBackend([], [Broken])).Build();
         var tests = GivenA.TestExplorer()
             .WithBackend(new LoggingTestBackend([]))
             .Build();
@@ -151,7 +151,7 @@ public sealed class WhenRebuildingTheProject
     public async Task A_rebuild_already_underway_is_not_started_again()
     {
         // Arrange
-        var issues = new IssueSession(new LoggingIssueBackend([], []), new SilentClipboard());
+        var issues = GivenA.IssuePanel().WithIssueBackend(new LoggingIssueBackend([], [])).Build();
         var tests = GivenA.TestExplorer()
             .WithBackend(new LoggingTestBackend([]))
             .Build();
@@ -168,7 +168,7 @@ public sealed class WhenRebuildingTheProject
 
     private static async Task<(IssueSession, TestExplorerSession)> MidRunAsync()
     {
-        var issues = new IssueSession(new LoggingIssueBackend([], []), new SilentClipboard());
+        var issues = GivenA.IssuePanel().WithIssueBackend(new LoggingIssueBackend([], [])).Build();
         var tests = GivenA.TestExplorer()
             .WithBackend(new HeldRun())
             .Build();
@@ -197,7 +197,7 @@ public sealed class WhenRebuildingTheProject
     }
 
     private static ProjectRebuild Rebuild(List<string> log, IReadOnlyList<CompilationIssue> found) => new(
-        new IssueSession(new LoggingIssueBackend(log, found), new SilentClipboard()),
+        GivenA.IssuePanel().WithIssueBackend(new LoggingIssueBackend(log, found)).Build(),
         GivenA.TestExplorer()
             .WithBackend(new LoggingTestBackend(log))
             .Build(),
@@ -229,11 +229,5 @@ public sealed class WhenRebuildingTheProject
             IReadOnlyCollection<TestCase> tests,
             CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
-    }
-
-    private sealed class SilentClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
     }
 }

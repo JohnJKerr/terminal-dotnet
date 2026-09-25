@@ -3,6 +3,7 @@ using Terminal.Gui.Input;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Issues;
@@ -82,7 +83,7 @@ public sealed class WhenRebuildingTheIssues
     public async Task It_keeps_the_issues_from_the_last_build_in_front_of_the_reader()
     {
         // Arrange
-        var session = new IssueSession(new StubIssueBackend(), new SilentClipboard());
+        var session = GivenA.IssuePanel().WithIssues(Unused, Assigned).Build();
         await session.LoadAsync("App.csproj");
 
         // Act
@@ -96,7 +97,7 @@ public sealed class WhenRebuildingTheIssues
     public async Task It_keeps_the_row_the_reader_was_on()
     {
         // Arrange
-        var session = new IssueSession(new StubIssueBackend(), new SilentClipboard());
+        var session = GivenA.IssuePanel().WithIssues(Unused, Assigned).Build();
         await session.LoadAsync("App.csproj");
         await session.DispatchAsync(new IssueCommand.SelectIndex(1));
 
@@ -116,21 +117,9 @@ public sealed class WhenRebuildingTheIssues
 
     private static CommentsState Comments() => new([]);
 
-    private sealed class StubIssueBackend : IIssueBackend
-    {
-        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<CompilationIssue>>(
-            [
-                new("/repo/Order.cs", "Order.cs", 12, 3, "CS0168", "unused", IssueSeverity.Warning),
-                new("/repo/Basket.cs", "Basket.cs", 4, 1, "CS0219", "assigned", IssueSeverity.Warning)
-            ]);
-    }
+    private static readonly CompilationIssue Unused =
+        new("/repo/Order.cs", "Order.cs", 12, 3, "CS0168", "unused", IssueSeverity.Warning);
 
-    private sealed class SilentClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
-    }
+    private static readonly CompilationIssue Assigned =
+        new("/repo/Basket.cs", "Basket.cs", 4, 1, "CS0219", "assigned", IssueSeverity.Warning);
 }

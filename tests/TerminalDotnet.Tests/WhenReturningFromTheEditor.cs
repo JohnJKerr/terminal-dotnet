@@ -1,6 +1,8 @@
 using TerminalDotnet.Changes;
 using TerminalDotnet.Files;
 using TerminalDotnet.Terminal;
+using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Issues;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -17,7 +19,7 @@ public sealed class WhenReturningFromTheEditor
         var explorer = new FileExplorerSession(backend);
         await explorer.LoadAsync("App.csproj");
         var editor = new InMemoryFileOpener(() => backend.File = modified);
-        var workflow = new ExplorerEditorWorkflow([explorer], Changeset(), editor, "App.csproj");
+        var workflow = new ExplorerEditorWorkflow([explorer], Changeset(), editor, "App.csproj", Issues());
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
@@ -37,7 +39,7 @@ public sealed class WhenReturningFromTheEditor
         var changes = new ChangesetSession(changesetBackend);
         await changes.LoadAsync("App.csproj");
         var editor = new InMemoryFileOpener(() => changesetBackend.Changed = true);
-        var workflow = new ExplorerEditorWorkflow([explorer], changes, editor, "App.csproj");
+        var workflow = new ExplorerEditorWorkflow([explorer], changes, editor, "App.csproj", Issues());
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
@@ -61,7 +63,8 @@ public sealed class WhenReturningFromTheEditor
             [new FileExplorerSession(backend), folder],
             Changeset(),
             editor,
-            "App.csproj");
+            "App.csproj",
+            Issues());
 
         // Act
         await workflow.OpenAsync("Order.cs", 1);
@@ -72,6 +75,8 @@ public sealed class WhenReturningFromTheEditor
     }
 
     private static ChangesetSession Changeset() => new(new EmptyChangesetBackend());
+
+    private static IssueSession Issues() => GivenA.IssuePanel().Build();
 
     private sealed class ChangingChangesetBackend : IChangesetBackend
     {

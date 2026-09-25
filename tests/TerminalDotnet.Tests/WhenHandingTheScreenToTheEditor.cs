@@ -4,6 +4,7 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -32,7 +33,7 @@ public sealed class WhenHandingTheScreenToTheEditor
     {
         // Arrange
         var flagBackend = new GrowingFlagBackend();
-        var issues = new IssueSession(new GrowingIssueBackend(), new UnusedClipboard(), flagBackend);
+        var issues = GivenA.IssuePanel().WithFlagBackend(flagBackend).Build();
         await issues.LoadFlagsAsync("App.csproj");
         var editor = new InMemoryFileOpener(() => flagBackend.Flagged = true);
         var workflow = Workflow(new FileExplorerSession(Unchanging), editor, issues: issues);
@@ -50,7 +51,7 @@ public sealed class WhenHandingTheScreenToTheEditor
     {
         // Arrange
         var issueBackend = new GrowingIssueBackend();
-        var issues = new IssueSession(issueBackend, new UnusedClipboard());
+        var issues = GivenA.IssuePanel().WithIssueBackend(issueBackend).Build();
         await issues.LoadAsync("App.csproj");
         var editor = new InMemoryFileOpener(() => issueBackend.Broken = true);
         var workflow = Workflow(new FileExplorerSession(Unchanging), editor, issues: issues);
@@ -68,10 +69,7 @@ public sealed class WhenHandingTheScreenToTheEditor
     {
         // Arrange
         var landed = 0;
-        var workflow = Workflow(
-            new FileExplorerSession(Unchanging),
-            new InMemoryFileOpener(() => { }),
-            issues: new IssueSession(new GrowingIssueBackend(), new UnusedClipboard(), new GrowingFlagBackend()));
+        var workflow = Workflow(new FileExplorerSession(Unchanging), new InMemoryFileOpener(() => { }));
 
         // Act
         await workflow.RefreshAsync(() =>
@@ -98,7 +96,7 @@ public sealed class WhenHandingTheScreenToTheEditor
             new ChangesetSession(new EmptyChangesetBackend()),
             editor,
             "App.csproj",
-            issues);
+            issues ?? GivenA.IssuePanel().Build());
 
     private sealed class GrowingFlagBackend : IFlagBackend
     {
@@ -162,11 +160,5 @@ public sealed class WhenHandingTheScreenToTheEditor
             onOpen();
             return Task.CompletedTask;
         }
-    }
-
-    private sealed class UnusedClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
     }
 }

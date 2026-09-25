@@ -43,7 +43,7 @@ public sealed class WhenFillingThePanels
         });
 
         // Assert
-        Assert.Equal(4, reports);
+        Assert.Equal(6, reports);
     }
 
     [Fact]
@@ -96,7 +96,7 @@ public sealed class WhenFillingThePanels
     public async Task It_fills_the_flags_among_the_issues()
     {
         // Arrange
-        var issues = new IssueSession(new NoIssues(), new UnusedClipboard(), new OneFlag());
+        var issues = GivenA.IssuePanel().WithFlags(new Flag("/repo/Work.cs", "Work.cs", 1, FlagKind.Todo, "later")).Build();
         var startup = new PanelStartup(
             new FileExplorerSession(new RecordingFileBackend(new Recorder([], new(), null), "files")),
             new FileExplorerSession(new RecordingFileBackend(new Recorder([], new(), null), "folder")),
@@ -105,35 +105,13 @@ public sealed class WhenFillingThePanels
                 .WithBackend(new RecordingTestBackend(new Recorder([], new(), null)))
                 .Build(),
             "App.slnx",
-            issues: issues);
+            issues);
 
         // Act
         await startup.LoadPendingAsync(() => Task.CompletedTask);
 
         // Assert
         Assert.Contains(issues.State.Issues, issue => issue.Severity == IssueSeverity.Flag);
-    }
-
-    private sealed class NoIssues : IIssueBackend
-    {
-        public Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<CompilationIssue>>([]);
-    }
-
-    private sealed class OneFlag : IFlagBackend
-    {
-        public Task<IReadOnlyList<Flag>> DiscoverAsync(
-            string target,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<Flag>>([new("/repo/Work.cs", "Work.cs", 1, FlagKind.Todo, "later")]);
-    }
-
-    private sealed class UnusedClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
-            Task.FromResult(false);
     }
 
     private sealed record Startup(PanelStartup Panels, CancellationToken Cancelled)
@@ -158,7 +136,8 @@ public sealed class WhenFillingThePanels
                 GivenA.TestExplorer()
                     .WithBackend(new RecordingTestBackend(recorder))
                     .Build(),
-                "App.slnx"),
+                "App.slnx",
+                GivenA.IssuePanel().Build()),
             cancellation.Token);
     }
 

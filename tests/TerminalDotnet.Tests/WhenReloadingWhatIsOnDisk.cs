@@ -4,6 +4,7 @@ using TerminalDotnet.Files;
 using TerminalDotnet.Flags;
 using TerminalDotnet.Issues;
 using TerminalDotnet.Terminal;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Terminal;
@@ -48,7 +49,7 @@ public sealed class WhenReloadingWhatIsOnDisk
     {
         // Arrange
         var flagBackend = new CountingFlagBackend();
-        var issues = new IssueSession(new CountingIssueBackend(), new SilentClipboard(), flagBackend);
+        var issues = GivenA.IssuePanel().WithFlagBackend(flagBackend).Build();
 
         // Act
         await Reload(issues: issues).FromDiskAsync(() => Task.CompletedTask);
@@ -62,7 +63,7 @@ public sealed class WhenReloadingWhatIsOnDisk
     {
         // Arrange
         var issueBackend = new CountingIssueBackend();
-        var issues = new IssueSession(issueBackend, new SilentClipboard());
+        var issues = GivenA.IssuePanel().WithIssueBackend(issueBackend).Build();
 
         // Act
         await Reload(issues: issues).FromDiskAsync(() => Task.CompletedTask);
@@ -76,7 +77,7 @@ public sealed class WhenReloadingWhatIsOnDisk
     {
         // Arrange
         var issueBackend = new CountingIssueBackend();
-        var issues = new IssueSession(issueBackend, new SilentClipboard());
+        var issues = GivenA.IssuePanel().WithIssueBackend(issueBackend).Build();
 
         // Act
         await Reload(issues: issues).EverythingAsync(() => Task.CompletedTask);
@@ -96,7 +97,7 @@ public sealed class WhenReloadingWhatIsOnDisk
         // Act
         await Reload(
                 explorers: [explorer],
-                issues: new IssueSession(new CountingIssueBackend(), new SilentClipboard(), new CountingFlagBackend()))
+                issues: GivenA.IssuePanel().Build())
             .FromDiskAsync(() =>
             {
                 landed++;
@@ -114,7 +115,7 @@ public sealed class WhenReloadingWhatIsOnDisk
         new(explorers ?? [],
             changes ?? new ChangesetSession(new ChangingChangesetBackend()),
             "App.csproj",
-            issues);
+            issues ?? GivenA.IssuePanel().Build());
 
     private sealed class CountingIssueBackend : IIssueBackend
     {
@@ -140,12 +141,6 @@ public sealed class WhenReloadingWhatIsOnDisk
             Discoveries++;
             return Task.FromResult<IReadOnlyList<Flag>>([]);
         }
-    }
-
-    private sealed class SilentClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(string text, CancellationToken cancellationToken = default) =>
-            Task.FromResult(true);
     }
 
     private sealed class ChangingChangesetBackend : IChangesetBackend
