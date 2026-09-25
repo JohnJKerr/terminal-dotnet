@@ -100,4 +100,28 @@ public sealed class WhenLayingOutThePanels
         // Assert
         Assert.Equal(layout.Preview.Y + layout.Preview.Height, layout[PanelKind.Issues].Y);
     }
+
+    [Theory]
+    [InlineData(PanelKind.Tests)]
+    [InlineData(PanelKind.Preview)]
+    public void A_full_screen_panel_fills_the_screen(PanelKind panel)
+    {
+        // Act
+        var layout = PanelLayout.For(width: 100, height: 40, expanded: PanelKind.Explorer, fullScreen: panel);
+
+        // Assert
+        Assert.Equal(new PanelArea(0, 0, 100, 40), layout[panel]);
+    }
+
+    [Fact]
+    public void The_panels_behind_a_full_screen_panel_are_given_no_room()
+    {
+        // Act
+        var layout = PanelLayout.For(width: 100, height: 40, expanded: PanelKind.Explorer, fullScreen: PanelKind.Issues);
+
+        // Assert
+        Assert.All(
+            Enum.GetValues<PanelKind>().Where(panel => panel != PanelKind.Issues),
+            panel => Assert.Equal(PanelLayout.Hidden, layout[panel]));
+    }
 }
