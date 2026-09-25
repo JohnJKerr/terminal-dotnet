@@ -8,10 +8,10 @@ using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Trust;
 
-var target = FindTarget(Environment.CurrentDirectory);
-if (target is null)
+var launchTarget = LaunchTarget.From(CandidatesIn(Environment.CurrentDirectory));
+if (launchTarget is not LaunchTarget.Found { Path: var target })
 {
-    Console.Error.WriteLine("No .sln, .slnx, or .csproj file found in the current directory.");
+    Console.Error.WriteLine(NoTargetMessage(launchTarget));
     return 1;
 }
 
@@ -72,12 +72,13 @@ if (!remembered)
 
 return 0;
 
-static string? FindTarget(string directory)
-{
-    var candidates = Directory.EnumerateFiles(directory, "*.sln")
-        .Concat(Directory.EnumerateFiles(directory, "*.slnx"))
-        .Concat(Directory.EnumerateFiles(directory, "*.csproj"))
-        .OrderBy(path => path, StringComparer.Ordinal)
-        .ToArray();
-    return candidates.Length == 1 ? candidates[0] : candidates.FirstOrDefault();
-}
+// Windows matches a three-letter extension pattern against longer ones too,
+// so *.sln also finds the .slnx files.
+static IReadOnlyList<string> CandidatesIn(string directory) => LaunchTarget.SearchPatterns
+    .SelectMany(pattern => Directory.EnumerateFiles(directory, pattern))
+    .Distinct(StringComparer.Ordinal)
+    .ToArray();
+
+static string NoTargetMessage(LaunchTarget target) => target is LaunchTarget.Ambiguous ambiguous
+    ? $"More than one solution or project could be opened here: {string.Join(", ", ambiguous.Candidates.Select(Path.GetFileName))}."
+    : "No .sln, .slnx, or .csproj file found in the current directory.";
