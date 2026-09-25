@@ -1,355 +1,211 @@
 using TerminalDotnet.Files;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Explorer;
 
 public sealed class WhenDiscoveringProjectFiles
 {
+    private const string Solution = "TerminalDotnet.slnx";
+
     [Fact]
     public async Task It_finds_the_files_belonging_to_each_project()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "src", "App", "Order.cs"),
-            "namespace App.Domain; public sealed class Order;");
+        using var workspace = TemporaryWorkspace.WithAppSolution()
+            .WithFile("src/App/Order.cs", "namespace App.Domain; public sealed class Order;");
+        var runner = new RepositoryCommandRunner(workspace.Root, "", "App.csproj\0Order.cs\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(
-                new RepositoryCommandRunner(root, "", "App.csproj\0Order.cs\0")).DiscoverAsync(
-                Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, runner);
 
-            // Assert
-            Assert.Equal(
-                [("App.csproj", "App.csproj"), ("App.csproj", "Order.cs")],
-                files.Select(file => (Path.GetFileName(file.ProjectPath), Path.GetFileName(file.Path))));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal(
+            [("App.csproj", "App.csproj"), ("App.csproj", "Order.cs")],
+            files.Select(file => (Path.GetFileName(file.ProjectPath), Path.GetFileName(file.Path))));
     }
-
 
     [Fact]
     public async Task It_marks_modified_and_new_files_from_git_status()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "Changed.cs"), "namespace App;");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "Added.cs"), "namespace App;");
-        var gitStatus = " M src/App/Changed.cs\0?? src/App/Added.cs\0";
-        var listing = "Added.cs\0Changed.cs\0";
+        using var workspace = TemporaryWorkspace.WithAppSolution()
+            .WithFile("src/App/Changed.cs", "namespace App;")
+            .WithFile("src/App/Added.cs", "namespace App;");
+        var runner = new RepositoryCommandRunner(
+            workspace.Root,
+            " M src/App/Changed.cs\0?? src/App/Added.cs\0",
+            "Added.cs\0Changed.cs\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, gitStatus, listing))
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, runner);
 
-            // Assert
-            Assert.Equal(
-                [("Added.cs", FileGitStatus.New), ("Changed.cs", FileGitStatus.Modified)],
-                files.OrderBy(file => file.Path).Select(file => (Path.GetFileName(file.Path), file.GitStatus)));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal(
+            [("Added.cs", FileGitStatus.New), ("Changed.cs", FileGitStatus.Modified)],
+            files.OrderBy(file => file.Path).Select(file => (Path.GetFileName(file.Path), file.GitStatus)));
     }
 
     [PosixFact]
     public async Task It_lists_a_tracked_file_whose_name_holds_a_newline()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "two\nlines.cs"), "namespace App;");
-        var listing = "two\nlines.cs\0";
+        using var workspace = TemporaryWorkspace.WithAppSolution()
+            .WithFile("src/App/two\nlines.cs", "namespace App;");
+        var runner = new RepositoryCommandRunner(workspace.Root, "", "two\nlines.cs\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, "", listing))
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, runner);
 
-            // Assert
-            Assert.Equal(["two\nlines.cs"], files.Select(file => Path.GetFileName(file.Path)));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal(["two\nlines.cs"], files.Select(file => Path.GetFileName(file.Path)));
     }
 
     [Fact]
     public async Task It_reports_files_git_says_were_deleted()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        var gitStatus = " D src/App/Gone.cs\0";
+        using var workspace = TemporaryWorkspace.WithAppSolution();
+        var runner = new RepositoryCommandRunner(workspace.Root, " D src/App/Gone.cs\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, gitStatus))
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, runner);
 
-            // Assert
-            Assert.Equal(
-                [("Gone.cs", FileGitStatus.Deleted)],
-                files.Select(file => (Path.GetFileName(file.Path), file.GitStatus)));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal(
+            [("Gone.cs", FileGitStatus.Deleted)],
+            files.Select(file => (Path.GetFileName(file.Path), file.GitStatus)));
     }
 
     [Fact]
     public async Task It_ignores_deletions_outside_the_solution_projects()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        var gitStatus = " D docs/Notes.md\0 D other/Gone.cs\0";
+        using var workspace = TemporaryWorkspace.WithAppSolution();
+        var runner = new RepositoryCommandRunner(workspace.Root, " D docs/Notes.md\0 D other/Gone.cs\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(new RepositoryCommandRunner(root, gitStatus))
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, runner);
 
-            // Assert
-            Assert.Empty(files);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Empty(files);
     }
 
     [Fact]
     public async Task It_resolves_git_paths_from_the_repository_root()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        var projectDirectory = Path.Combine(root, "samples", "App");
-        Directory.CreateDirectory(projectDirectory);
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "App.csproj"), "<Project />");
-        await File.WriteAllTextAsync(Path.Combine(projectDirectory, "Changed.cs"), "namespace App;");
-        var runner = new RepositoryCommandRunner(root, " M samples/App/Changed.cs\0", "Changed.cs\0");
+        using var workspace = TemporaryWorkspace.Create()
+            .WithFile("samples/App/App.csproj", "<Project />")
+            .WithFile("samples/App/Changed.cs", "namespace App;");
+        var runner = new RepositoryCommandRunner(workspace.Root, " M samples/App/Changed.cs\0", "Changed.cs\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(runner)
-                .DiscoverAsync(Path.Combine(projectDirectory, "App.csproj"));
+        // Act
+        var files = await new FileSystemExplorerBackend(runner)
+            .DiscoverAsync(workspace.PathTo("samples/App/App.csproj"));
 
-            // Assert
-            Assert.Equal(FileGitStatus.Modified, files[0].GitStatus);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal(FileGitStatus.Modified, files[0].GitStatus);
     }
 
     [Fact]
     public async Task It_finds_files_that_are_not_csharp_sources()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "appsettings.json"), "{}");
-        var runner = new RepositoryCommandRunner(root, "", "App.csproj\0appsettings.json\0");
+        using var workspace = TemporaryWorkspace.WithAppSolution()
+            .WithFile("src/App/appsettings.json", "{}");
+        var runner = new RepositoryCommandRunner(workspace.Root, "", "App.csproj\0appsettings.json\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(runner)
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, runner);
 
-            // Assert
-            Assert.Contains("appsettings.json", files.Select(file => Path.GetFileName(file.Path)));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Contains("appsettings.json", files.Select(file => Path.GetFileName(file.Path)));
     }
 
     [Fact]
     public async Task It_leaves_out_files_git_ignores()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "secrets.env"), "TOKEN=1");
-        var runner = new RepositoryCommandRunner(root, "", "App.csproj\0");
+        using var workspace = TemporaryWorkspace.WithAppSolution()
+            .WithFile("src/App/secrets.env", "TOKEN=1");
+        var runner = new RepositoryCommandRunner(workspace.Root, "", "App.csproj\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(runner)
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, runner);
 
-            // Assert
-            Assert.DoesNotContain("secrets.env", files.Select(file => Path.GetFileName(file.Path)));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.DoesNotContain("secrets.env", files.Select(file => Path.GetFileName(file.Path)));
     }
 
     [Fact]
     public async Task It_falls_back_to_the_files_on_disk_outside_a_repository()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "appsettings.json"), "{}");
+        using var workspace = TemporaryWorkspace.WithAppSolution()
+            .WithFile("src/App/appsettings.json", "{}");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(new UntrackedCommandRunner())
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, new UntrackedCommandRunner());
 
-            // Assert
-            Assert.Equal(
-                ["App.csproj", "appsettings.json"],
-                files.Select(file => Path.GetFileName(file.Path)));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal(
+            ["App.csproj", "appsettings.json"],
+            files.Select(file => Path.GetFileName(file.Path)));
     }
 
     [Fact]
     public async Task It_leaves_build_output_out_of_the_files_it_finds_on_disk()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App", "obj"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "src", "App", "obj", "App.AssemblyInfo.cs"),
-            "// generated");
+        using var workspace = TemporaryWorkspace.WithAppSolution()
+            .WithFile("src/App/obj/App.AssemblyInfo.cs", "// generated");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(new UntrackedCommandRunner())
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, new UntrackedCommandRunner());
 
-            // Assert
-            Assert.Equal(["App.csproj"], files.Select(file => Path.GetFileName(file.Path)));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal(["App.csproj"], files.Select(file => Path.GetFileName(file.Path)));
     }
 
     [Fact]
     public async Task It_reads_solution_project_paths_written_with_windows_separators()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "Api"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "onboard.sln"),
-            "Project(\"{GUID}\") = \"Api\", \"src\\Api\\Api.csproj\", \"{GUID}\"\n");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "Api", "Api.csproj"), "<Project />");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "Api", "appsettings.json"), "{}");
+        using var workspace = TemporaryWorkspace.Create()
+            .WithFile("onboard.sln", "Project(\"{GUID}\") = \"Api\", \"src\\Api\\Api.csproj\", \"{GUID}\"\n")
+            .WithFile("src/Api/Api.csproj", "<Project />")
+            .WithFile("src/Api/appsettings.json", "{}");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(new UntrackedCommandRunner())
-                .DiscoverAsync(Path.Combine(root, "onboard.sln"));
+        // Act
+        var files = await new FileSystemExplorerBackend(new UntrackedCommandRunner())
+            .DiscoverAsync(workspace.PathTo("onboard.sln"));
 
-            // Assert
-            Assert.Equal(
-                [Path.Combine(root, "src", "Api", "Api.csproj")],
-                files.Select(file => file.ProjectPath).Distinct());
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal(
+            [workspace.PathTo("src/Api/Api.csproj")],
+            files.Select(file => file.ProjectPath).Distinct());
     }
 
     [Fact]
     public async Task It_reports_a_file_deleted_on_disk_but_still_in_the_index_only_once()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(Path.Combine(root, "src", "App"));
-        await File.WriteAllTextAsync(
-            Path.Combine(root, "TerminalDotnet.slnx"),
-            "<Solution><Project Path=\"src/App/App.csproj\" /></Solution>");
-        await File.WriteAllTextAsync(Path.Combine(root, "src", "App", "App.csproj"), "<Project />");
-        var runner = new RepositoryCommandRunner(root, " D src/App/Gone.cs\0", "App.csproj\0Gone.cs\0");
+        using var workspace = TemporaryWorkspace.WithAppSolution();
+        var runner = new RepositoryCommandRunner(workspace.Root, " D src/App/Gone.cs\0", "App.csproj\0Gone.cs\0");
 
-        try
-        {
-            // Act
-            var files = await new FileSystemExplorerBackend(runner)
-                .DiscoverAsync(Path.Combine(root, "TerminalDotnet.slnx"));
+        // Act
+        var files = await DiscoverAsync(workspace, runner);
 
-            // Assert
-            Assert.Single(files, file => Path.GetFileName(file.Path) == "Gone.cs");
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Single(files, file => Path.GetFileName(file.Path) == "Gone.cs");
     }
+
+    private static Task<IReadOnlyList<FileEntry>> DiscoverAsync(
+        TemporaryWorkspace workspace,
+        ICommandRunner runner) =>
+        new FileSystemExplorerBackend(runner).DiscoverAsync(workspace.PathTo(Solution));
 
     private sealed class RepositoryCommandRunner(string root, string status, string listing = "")
         : ICommandRunner
