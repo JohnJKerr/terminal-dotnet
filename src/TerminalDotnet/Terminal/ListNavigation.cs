@@ -23,7 +23,9 @@ internal interface IListNavigation
     /// </summary>
     Task ChooseRowAsync(int row);
 
-    Task StepAsync(bool down);
+    /// <summary>Selects the item at <paramref name="index"/> among those the
+    /// panel lists.</summary>
+    Task SelectAsync(int index);
 }
 
 /// <summary>The Explorer browses the projects' files or every file beneath
@@ -39,8 +41,7 @@ internal sealed class FileListNavigation(Func<FileExplorerSession> shown) : ILis
 
     public Task ChooseRowAsync(int row) => shown().DispatchAsync(new FileExplorerCommand.SelectIndex(row));
 
-    public Task StepAsync(bool down) => shown().DispatchAsync(
-        down ? new FileExplorerCommand.MoveDown() : new FileExplorerCommand.MoveUp());
+    public Task SelectAsync(int index) => shown().DispatchAsync(new FileExplorerCommand.SelectIndex(index));
 }
 
 internal sealed class TestListNavigation(TestExplorerSession tests) : IListNavigation
@@ -53,8 +54,7 @@ internal sealed class TestListNavigation(TestExplorerSession tests) : IListNavig
 
     public Task ChooseRowAsync(int row) => tests.DispatchAsync(new ExplorerCommand.SelectIndex(row));
 
-    public Task StepAsync(bool down) => tests.DispatchAsync(
-        down ? new ExplorerCommand.MoveDown() : new ExplorerCommand.MoveUp());
+    public Task SelectAsync(int index) => tests.DispatchAsync(new ExplorerCommand.SelectIndex(index));
 }
 
 internal sealed class ChangesetListNavigation(ChangesetSession changes) : IListNavigation
@@ -67,8 +67,7 @@ internal sealed class ChangesetListNavigation(ChangesetSession changes) : IListN
 
     public Task ChooseRowAsync(int row) => changes.DispatchAsync(new ChangesetCommand.SelectIndex(row));
 
-    public Task StepAsync(bool down) => changes.DispatchAsync(
-        down ? new ChangesetCommand.MoveDown() : new ChangesetCommand.MoveUp());
+    public Task SelectAsync(int index) => changes.DispatchAsync(new ChangesetCommand.SelectIndex(index));
 }
 
 /// <summary>An issue wraps across several rows, so a chosen row is turned
@@ -83,8 +82,7 @@ internal sealed class IssueListNavigation(IssueSession issues, Func<int, int> is
 
     public Task ChooseRowAsync(int row) => issues.DispatchAsync(new IssueCommand.SelectIndex(issueAtRow(row)));
 
-    public Task StepAsync(bool down) => issues.DispatchAsync(
-        down ? new IssueCommand.MoveDown() : new IssueCommand.MoveUp());
+    public Task SelectAsync(int index) => issues.DispatchAsync(new IssueCommand.SelectIndex(index));
 }
 
 internal sealed class CommentListNavigation(CommentSession comments) : IListNavigation
@@ -97,6 +95,5 @@ internal sealed class CommentListNavigation(CommentSession comments) : IListNavi
 
     public Task ChooseRowAsync(int row) => comments.DispatchAsync(new CommentCommand.SelectIndex(row));
 
-    public Task StepAsync(bool down) => comments.DispatchAsync(
-        down ? new CommentCommand.MoveDown() : new CommentCommand.MoveUp());
+    public Task SelectAsync(int index) => comments.DispatchAsync(new CommentCommand.SelectIndex(index));
 }

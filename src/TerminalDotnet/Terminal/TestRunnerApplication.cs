@@ -1333,9 +1333,17 @@ internal sealed class TestRunnerApplication(
         }
     }
 
+    /// <summary>Goes straight to the next row with something to preview,
+    /// and stays put when there is none.</summary>
     private async Task StepPreviewedListAsync(int step)
     {
-        await Navigation[shell.State.PreviewedList].StepAsync(down: step > 0);
+        var list = shell.State.PreviewedList;
+        if (PreviewSubject.NextShown(list, PanelStatesNow(), step, shell.State.PreviewsChangedFile) is not { } row)
+        {
+            return;
+        }
+
+        await Navigation[list].SelectAsync(row);
         RenderOnTheLoop();
     }
 
