@@ -12,11 +12,10 @@ public static class DialogSpace
     /// <summary>The columns the toolkit keeps for a box's own border.</summary>
     private const int Border = 3;
 
-    /// <returns>Whether a box can be drawn in a console this wide.</returns>
     public static bool Fits(int consoleWidth) => consoleWidth >= Border;
 
-    /// <returns>Whether a box can be drawn in the console this is running in.
-    /// A console that cannot say how wide it is has no room for one.</returns>
+    /// <summary>A console that cannot say how wide it is has no room for a
+    /// box.</summary>
     public static bool FitsTheConsole()
     {
         try
