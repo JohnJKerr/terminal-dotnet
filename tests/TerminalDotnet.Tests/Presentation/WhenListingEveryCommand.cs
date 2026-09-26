@@ -142,7 +142,7 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_lists_stepping_to_the_next_row_under_the_preview()
+    public void It_lists_stepping_to_the_next_preview_under_the_preview()
     {
         // Act
         var preview = CommandMenu.Sections().Single(section => section.Title == "Preview");
@@ -150,7 +150,7 @@ public sealed class WhenListingEveryCommand
         // Assert
         Assert.Contains(
             preview.Entries,
-            entry => entry.Keys == "n" && entry.Description == "preview the next row of the panel");
+            entry => entry.Keys == "n" && entry.Description == "go to the next preview, past rows with nothing to show");
     }
 
     [Fact]
