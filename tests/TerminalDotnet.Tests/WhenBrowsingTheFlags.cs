@@ -29,14 +29,12 @@ public sealed class WhenBrowsingTheFlags
     public async Task It_recognizes_comment_flags_without_regard_to_spacing_or_case()
     {
         // Arrange
-        var folder = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-flags-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(folder);
-        var path = Path.Combine(folder, "Work.cs");
-        await File.WriteAllLinesAsync(path, ["//todo first", "// TODO: second", "/*fixme*/", "// ReViEw consider this"]);
-        var session = Session(new FileFlagBackend(new StubFileBackend(path)));
+        using var workspace = TemporaryWorkspace.Create()
+            .WithFile("Work.cs", "//todo first\n// TODO: second\n/*fixme*/\n// ReViEw consider this\n");
+        var session = Session(new FileFlagBackend(new StubFileBackend(workspace.PathTo("Work.cs"))));
 
         // Act
-        await session.LoadFlagsAsync(Path.Combine(folder, "App.slnx"));
+        await session.LoadFlagsAsync(workspace.PathTo("App.slnx"));
 
         // Assert
         Assert.Equal(
@@ -48,27 +46,19 @@ public sealed class WhenBrowsingTheFlags
     public async Task It_skips_a_named_pipe_rather_than_waiting_for_a_writer()
     {
         // Arrange
-        var folder = Directory.CreateTempSubdirectory("terminal-dotnet-flags-");
-        try
+        using var workspace = TemporaryWorkspace.Create();
+        if (!NamedPipe.TryCreate(workspace.PathTo("Pipe.cs")))
         {
-            var path = Path.Combine(folder.FullName, "Pipe.cs");
-            if (!NamedPipe.TryCreate(path))
-            {
-                return;
-            }
-
-            var session = Session(new FileFlagBackend(new StubFileBackend(path)));
-
-            // Act
-            await Task.Run(() => session.LoadFlagsAsync(Path.Combine(folder.FullName, "App.slnx")));
-
-            // Assert
-            Assert.Empty(session.State.Issues);
+            return;
         }
-        finally
-        {
-            folder.Delete(recursive: true);
-        }
+
+        var session = Session(new FileFlagBackend(new StubFileBackend(workspace.PathTo("Pipe.cs"))));
+
+        // Act
+        await Task.Run(() => session.LoadFlagsAsync(workspace.PathTo("App.slnx")));
+
+        // Assert
+        Assert.Empty(session.State.Issues);
     }
 
     private static IssueSession Session(IFlagBackend flags) => GivenA.IssuePanel().WithFlagBackend(flags).Build();

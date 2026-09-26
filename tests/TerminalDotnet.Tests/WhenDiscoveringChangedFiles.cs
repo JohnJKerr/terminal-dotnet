@@ -1,5 +1,6 @@
 using TerminalDotnet.Changes;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Changeset;
@@ -173,39 +174,37 @@ public sealed class WhenDiscoveringChangedFiles
             runner.Requests.Last());
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task It_preserves_a_recreated_file_even_when_git_does_not_list_it(bool afterDiscovery)
+    [Fact]
+    public async Task It_preserves_a_file_recreated_before_discovery_even_when_git_does_not_list_it()
     {
         // Arrange
-        var directory = Directory.CreateTempSubdirectory("restore-recreated-");
-        var path = Path.Combine(directory.FullName, "Gone.cs");
-        try
-        {
-            var runner = new GitCommandRunner(directory.FullName, "D  Gone.cs\0");
-            var backend = new GitChangesetBackend(runner);
-            if (!afterDiscovery)
-            {
-                await File.WriteAllTextAsync(path, "new work");
-            }
+        using var workspace = TemporaryWorkspace.Create().WithFile("Gone.cs", "new work");
+        var runner = new GitCommandRunner(workspace.Root, "D  Gone.cs\0");
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync(workspace.PathTo("App.slnx"));
 
-            var files = await backend.DiscoverAsync(Path.Combine(directory.FullName, "App.slnx"));
-            if (afterDiscovery)
-            {
-                await File.WriteAllTextAsync(path, "new work");
-            }
+        // Act
+        await backend.RestoreAsync(files[0]);
 
-            // Act
-            await backend.RestoreAsync(files[0]);
+        // Assert
+        Assert.DoesNotContain("--worktree", runner.Requests.Last());
+    }
 
-            // Assert
-            Assert.DoesNotContain("--worktree", runner.Requests.Last());
-        }
-        finally
-        {
-            directory.Delete(recursive: true);
-        }
+    [Fact]
+    public async Task It_preserves_a_file_recreated_after_discovery_even_when_git_does_not_list_it()
+    {
+        // Arrange
+        using var workspace = TemporaryWorkspace.Create();
+        var runner = new GitCommandRunner(workspace.Root, "D  Gone.cs\0");
+        var backend = new GitChangesetBackend(runner);
+        var files = await backend.DiscoverAsync(workspace.PathTo("App.slnx"));
+        workspace.WithFile("Gone.cs", "new work");
+
+        // Act
+        await backend.RestoreAsync(files[0]);
+
+        // Assert
+        Assert.DoesNotContain("--worktree", runner.Requests.Last());
     }
 
     [Fact]
