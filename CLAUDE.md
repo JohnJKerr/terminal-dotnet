@@ -29,7 +29,8 @@ Keep terminal framework types and process details outside the explorer module.
 - Use xUnit.
 - Keep one assertion call per test. Split distinct observations into separate behavior tests.
 - Delineate non-empty test sections with `// Arrange`, `// Act`, and `// Assert` comments.
-- Name tests as observable behavior, preferring names such as `It_opens_the_file`. Use broad feature namespaces such as `Testing` or `Explorer`, and name suite classes after their behavioral context, such as `WhenOpeningAFile`, with behaviors such as `Pressing_enter_opens_it`.
+- Name tests as observable behavior, preferring names such as `It_opens_the_file`. Group suites by what they cover, in a folder and matching namespace such as `Tests`, `Build`, `Files`, `Keyboard` or `Presentation`, and name suite classes after their behavioral context, such as `WhenOpeningAFile`, with behaviors such as `Pressing_enter_opens_it`.
+- Arrange shared state through the builders in `Builders/` (start from `GivenA`) and the fakes in `Fakes/` rather than a suite-local copy.
 - Replace external processes with an in-memory `ICommandRunner`; the unit suite must not launch live `dotnet test` processes.
 - Follow vertical TDD slices: one failing behavior, its minimal implementation, then the next behavior.
 
