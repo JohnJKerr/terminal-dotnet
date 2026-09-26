@@ -11,7 +11,7 @@ public sealed class WhenActingOnAPreviewedFile
     public void Pressing_e_opens_the_file_in_the_editor()
     {
         // Act
-        var action = PreviewKeyBindings.ActionFor(new Key(KeyCode.E), viewportHeight: 20);
+        var action = PreviewKeyBindings.ActionFor(new Key(KeyCode.E), viewportHeight: 20, showsAFile: true);
 
         // Assert
         Assert.Equal(new PreviewAction.Edit(), action);
@@ -21,7 +21,7 @@ public sealed class WhenActingOnAPreviewedFile
     public void Pressing_c_comments_on_the_file()
     {
         // Act
-        var action = PreviewKeyBindings.ActionFor(new Key(KeyCode.C), viewportHeight: 20);
+        var action = PreviewKeyBindings.ActionFor(new Key(KeyCode.C), viewportHeight: 20, showsAFile: true);
 
         // Assert
         Assert.Equal(new PreviewAction.Comment(), action);
@@ -31,7 +31,7 @@ public sealed class WhenActingOnAPreviewedFile
     public void Pressing_n_moves_to_the_next_file()
     {
         // Act
-        var action = PreviewKeyBindings.ActionFor(new Key(KeyCode.N), viewportHeight: 20);
+        var action = PreviewKeyBindings.ActionFor(new Key(KeyCode.N), viewportHeight: 20, showsAFile: true);
 
         // Assert
         Assert.Equal(new PreviewAction.StepFile(1), action);
@@ -43,7 +43,8 @@ public sealed class WhenActingOnAPreviewedFile
         // Act
         var action = PreviewKeyBindings.ActionFor(
             new Key(KeyCode.N | KeyCode.ShiftMask),
-            viewportHeight: 20);
+            viewportHeight: 20,
+            showsAFile: true);
 
         // Assert
         Assert.Equal(new PreviewAction.StepFile(-1), action);
@@ -55,7 +56,8 @@ public sealed class WhenActingOnAPreviewedFile
         // Act
         var action = PreviewKeyBindings.ActionFor(
             new Key(KeyCode.J | KeyCode.ShiftMask),
-            viewportHeight: 20);
+            viewportHeight: 20,
+            showsAFile: true);
 
         // Assert
         Assert.Equal(new PreviewAction.Scroll(1), action);

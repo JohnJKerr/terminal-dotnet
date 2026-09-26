@@ -1303,8 +1303,8 @@ internal sealed class TestRunnerApplication(
     /// </summary>
     private void HandlePreviewPanelKey(IApplication application, Key key)
     {
-        var action = PreviewKeyBindings.ActionFor(key, preview.PageHeight);
-        if (action is null || previewedSource is not { } source)
+        var action = PreviewKeyBindings.ActionFor(key, preview.PageHeight, showsAFile: previewedSource is not null);
+        if (action is null)
         {
             return;
         }
@@ -1312,10 +1312,10 @@ internal sealed class TestRunnerApplication(
         key.Handled = true;
         switch (action)
         {
-            case PreviewAction.Edit:
+            case PreviewAction.Edit when previewedSource is { } source:
                 RequestOpen(application, source.Path, source.HighlightLine);
                 return;
-            case PreviewAction.Comment:
+            case PreviewAction.Comment when previewedSource is { } source:
                 CommentOn(application, source.Path);
                 return;
             case PreviewAction.StepFile step:

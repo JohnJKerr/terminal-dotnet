@@ -22,17 +22,20 @@ public abstract record PreviewAction
 /// </summary>
 public static class PreviewKeyBindings
 {
-    public static PreviewAction? ActionFor(Key key, int viewportHeight)
+    /// <param name="showsAFile">Whether the preview is showing a file. A
+    /// folder, project or suite shows nothing, which leaves no file to edit
+    /// or comment on, but the reader can still step past it.</param>
+    public static PreviewAction? ActionFor(Key key, int viewportHeight, bool showsAFile)
     {
         if (key.NoShift.KeyCode == KeyCode.N)
         {
             return new PreviewAction.StepFile(key.IsShift ? -1 : 1);
         }
 
-        return ScrollingOrLeavingFor(key, viewportHeight);
+        return ScrollingFor(key, viewportHeight) ?? (showsAFile ? FileActionFor(key) : null);
     }
 
-    private static PreviewAction? ScrollingOrLeavingFor(Key key, int viewportHeight) =>
+    private static PreviewAction? ScrollingFor(Key key, int viewportHeight) =>
         key.NoShift.KeyCode switch
         {
             KeyCode.CursorDown or KeyCode.J => new PreviewAction.Scroll(1),
@@ -41,10 +44,15 @@ public static class PreviewKeyBindings
             KeyCode.PageUp => new PreviewAction.Scroll(-PageRows(viewportHeight)),
             KeyCode.Home => new PreviewAction.ScrollToStart(),
             KeyCode.End => new PreviewAction.ScrollToEnd(),
-            KeyCode.E => new PreviewAction.Edit(),
-            KeyCode.C => new PreviewAction.Comment(),
             _ => null
         };
+
+    private static PreviewAction? FileActionFor(Key key) => key.NoShift.KeyCode switch
+    {
+        KeyCode.E => new PreviewAction.Edit(),
+        KeyCode.C => new PreviewAction.Comment(),
+        _ => null
+    };
 
     /// <summary>A page keeps one row of the last screen, so the reader has a
     /// line of context to carry across the jump.</summary>
