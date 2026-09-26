@@ -70,6 +70,8 @@ internal sealed class TestRunnerApplication(
 
     private readonly ProjectRebuild rebuild = new(panels.Issues, panels.Tests, target);
 
+    private IReadOnlyDictionary<PanelKind, IListNavigation>? navigation;
+
     private CancellationTokenSource? runCancellation;
     private CancellationTokenSource? loadCancellation;
     private readonly Stopwatch sinceLoadStarted = new();
@@ -412,16 +414,23 @@ internal sealed class TestRunnerApplication(
 
     private async Task ChooseRowAsync(PanelKind panel, int row)
     {
-        await (panel switch
-        {
-            PanelKind.Explorer => ExplorerSession().DispatchAsync(new FileExplorerCommand.SelectIndex(row)),
-            PanelKind.Tests => session.DispatchAsync(new ExplorerCommand.SelectIndex(row)),
-            PanelKind.Changes => changesetSession.DispatchAsync(new ChangesetCommand.SelectIndex(row)),
-            PanelKind.Issues => issueSession.DispatchAsync(new IssueCommand.SelectIndex(IssueAtRow(row))),
-            _ => commentSession.DispatchAsync(new CommentCommand.SelectIndex(row))
-        });
+        await Navigation[panel].ChooseRowAsync(row);
         RenderOnTheLoop();
     }
+
+    /// <summary>How the shell moves through each list panel. The preview is
+    /// not a list, so it has none.</summary>
+    private IReadOnlyDictionary<PanelKind, IListNavigation> Navigation => navigation ??=
+        new Dictionary<PanelKind, IListNavigation>
+        {
+            [PanelKind.Explorer] = new FileListNavigation(ExplorerSession),
+            [PanelKind.Tests] = new TestListNavigation(session),
+            [PanelKind.Changes] = new ChangesetListNavigation(changesetSession),
+            [PanelKind.Issues] = new IssueListNavigation(issueSession, IssueAtRow),
+            [PanelKind.Comments] = new CommentListNavigation(commentSession)
+        };
+
+    private IListNavigation? ActiveNavigation() => Navigation.GetValueOrDefault(shell.State.ActivePanel);
 
     private int IssueAtRow(int row) => IssuePanelLayout
         .From(IssuePanelSnapshot.From(issueSession.State), lists[PanelKind.Issues].View.Viewport.Width)
@@ -546,7 +555,7 @@ internal sealed class TestRunnerApplication(
         {
             case ShellAction.ClearSearch:
                 search.Text = "";
-                panelWork.Track(ClearSearchAsync(application));
+                panelWork.Track(ClearSearchAsync());
                 ActiveList.SetFocus();
                 return;
             case ShellAction.LeaveSearch:
@@ -693,47 +702,20 @@ internal sealed class TestRunnerApplication(
 
     private FileExplorerSession ExplorerSession() => shell.State.ShowsAllFiles ? folderSession : fileSession;
 
-    private string ActiveSearchQuery() => ActiveFileSession() is { } files
-        ? files.State.SearchQuery
-        : shell.State.ActivePanel switch
-        {
-            PanelKind.Changes => changesetSession.State.SearchQuery,
-            PanelKind.Issues => issueSession.State.SearchQuery,
-            PanelKind.Comments => commentSession.State.SearchQuery,
-            _ => session.State.SearchQuery
-        };
+    private string ActiveSearchQuery() => ActiveNavigation()?.SearchQuery ?? "";
 
-    private Task SearchAsync(string query) => ActiveFileSession() is { } files
-        ? files.DispatchAsync(new FileExplorerCommand.Search(query))
-        : shell.State.ActivePanel switch
-        {
-            PanelKind.Changes => changesetSession.DispatchAsync(new ChangesetCommand.Search(query)),
-            PanelKind.Issues => issueSession.DispatchAsync(new IssueCommand.Search(query)),
-            PanelKind.Comments => commentSession.DispatchAsync(new CommentCommand.Search(query)),
-            _ => session.DispatchAsync(new ExplorerCommand.Search(query))
-        };
+    private Task SearchAsync(string query) => ActiveNavigation()?.SearchAsync(query) ?? Task.CompletedTask;
 
-    private async Task ClearSearchAsync(IApplication application)
+    private async Task ClearSearchAsync()
     {
-        if (shell.State.ActivePanel == PanelKind.Tests)
+        if (ActiveNavigation() is not { } list)
         {
-            await DispatchAsync(application, new ExplorerCommand.ClearSearch());
             return;
         }
 
-        await ClearPanelSearchAsync();
+        await list.ClearSearchAsync();
         RenderOnTheLoop();
     }
-
-    private Task ClearPanelSearchAsync() => ActiveFileSession() is { } files
-        ? files.DispatchAsync(new FileExplorerCommand.ClearSearch())
-        : shell.State.ActivePanel switch
-        {
-            PanelKind.Comments => commentSession.DispatchAsync(new CommentCommand.ClearSearch()),
-            PanelKind.Issues => issueSession.DispatchAsync(new IssueCommand.ClearSearch()),
-            _ => changesetSession.DispatchAsync(new ChangesetCommand.ClearSearch())
-        };
-
 
     private void HandleFileKey(
         IApplication application,
@@ -1479,20 +1461,7 @@ internal sealed class TestRunnerApplication(
 
     private async Task StepPreviewedListAsync(int step)
     {
-        var down = step > 0;
-        await (shell.State.PreviewedList switch
-        {
-            PanelKind.Explorer => ExplorerSession().DispatchAsync(
-                down ? new FileExplorerCommand.MoveDown() : new FileExplorerCommand.MoveUp()),
-            PanelKind.Tests => session.DispatchAsync(
-                down ? new ExplorerCommand.MoveDown() : new ExplorerCommand.MoveUp()),
-            PanelKind.Changes => changesetSession.DispatchAsync(
-                down ? new ChangesetCommand.MoveDown() : new ChangesetCommand.MoveUp()),
-            PanelKind.Issues => issueSession.DispatchAsync(
-                down ? new IssueCommand.MoveDown() : new IssueCommand.MoveUp()),
-            _ => commentSession.DispatchAsync(
-                down ? new CommentCommand.MoveDown() : new CommentCommand.MoveUp())
-        });
+        await Navigation[shell.State.PreviewedList].StepAsync(down: step > 0);
         RenderOnTheLoop();
     }
 
