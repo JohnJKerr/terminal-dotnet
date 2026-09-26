@@ -39,7 +39,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
 
         using var process = Process.Start(startInfo) ??
             throw new InvalidOperationException($"Could not start {request.FileName}.");
-        await WriteStandardInputAsync(process, request);
+        await WriteStandardInputAsync(process, request).ConfigureAwait(false);
         var standardOutput = request.CaptureOutput
             ? process.StandardOutput.ReadToEndAsync(CancellationToken.None)
             : Task.FromResult(string.Empty);
@@ -48,15 +48,18 @@ public sealed class ProcessCommandRunner : ICommandRunner
             : Task.FromResult(string.Empty);
         try
         {
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            await EndedAsync(process, standardOutput, standardError);
+            await EndedAsync(process, standardOutput, standardError).ConfigureAwait(false);
             throw;
         }
 
-        return new CommandResult(process.ExitCode, await standardOutput, await standardError);
+        return new CommandResult(
+            process.ExitCode,
+            await standardOutput.ConfigureAwait(false),
+            await standardError.ConfigureAwait(false));
     }
 
     /// <summary>The stream is closed once the text is written, because a
@@ -69,15 +72,15 @@ public sealed class ProcessCommandRunner : ICommandRunner
             return;
         }
 
-        await process.StandardInput.WriteAsync(request.StandardInput);
+        await process.StandardInput.WriteAsync(request.StandardInput).ConfigureAwait(false);
         process.StandardInput.Close();
     }
 
     private static async Task EndedAsync(Process process, params Task<string>[] readers)
     {
         KillProcessTree(process);
-        await process.WaitForExitAsync(CancellationToken.None);
-        await Task.WhenAll(readers);
+        await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
+        await Task.WhenAll(readers).ConfigureAwait(false);
     }
 
     private static void KillProcessTree(Process process)

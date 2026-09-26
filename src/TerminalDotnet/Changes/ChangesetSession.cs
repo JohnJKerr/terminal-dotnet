@@ -18,7 +18,10 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            State = new ChangesetState([], 0, State.SearchQuery);
+            State = new ChangesetState([], 0, State.SearchQuery)
+            {
+                Notice = $"Could not read the changes: {exception.Message}"
+            };
         }
     }
 
@@ -33,67 +36,67 @@ public sealed class ChangesetSession(IChangesetBackend backend)
         changedFiles = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
         var matching = Matching(State.SearchQuery);
 
-        return new ChangesetState(matching, RowFor(standingOn, matching), State.SearchQuery)
+        var selected = RowSelection.FoundAgain(matching, file => file.DisplayPath == standingOn, State.SelectedIndex);
+        return new ChangesetState(matching, selected, State.SearchQuery)
         {
             Summary = SummaryFrom(changedFiles)
         };
     }
 
-    private int RowFor(string? displayPath, IReadOnlyList<ChangedFile> files)
+    public Task DispatchAsync(
+        ChangesetCommand command,
+        CancellationToken cancellationToken = default) => command switch
     {
-        var moved = displayPath is null
-            ? -1
-            : files.ToList().FindIndex(file => file.DisplayPath == displayPath);
-        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, files.Count - 1));
+        ChangesetCommand.Search search => Applied(() => ShowMatching(search.Query)),
+        ChangesetCommand.ClearSearch => Applied(() => ShowMatching("")),
+        ChangesetCommand.LoadSelectedDiff => LoadSelectedDiffAsync(cancellationToken),
+        ChangesetCommand.RestoreSelected => RestoreSelectedAsync(cancellationToken),
+        _ => Applied(() => MoveSelection(command))
+    };
+
+    private static Task Applied(Action change)
+    {
+        change();
+        return Task.CompletedTask;
     }
 
-    public async Task DispatchAsync(
-        ChangesetCommand command,
-        CancellationToken cancellationToken = default)
+    private void ShowMatching(string query) =>
+        State = State with { Files = Matching(query), SelectedIndex = 0, SearchQuery = query };
+
+    private async Task LoadSelectedDiffAsync(CancellationToken cancellationToken)
     {
-        if (command is ChangesetCommand.Search search)
+        if (Selected() is not { } file)
         {
-            State = State with
-            {
-                Files = Matching(search.Query),
-                SelectedIndex = 0,
-                SearchQuery = search.Query
-            };
             return;
         }
 
-        if (command is ChangesetCommand.ClearSearch)
+        State = State with { Diff = await DiffOfAsync(file, cancellationToken) };
+    }
+
+    /// <summary>Only a deletion can be restored; any other change is the
+    /// reader's own work in progress.</summary>
+    private async Task RestoreSelectedAsync(CancellationToken cancellationToken)
+    {
+        if (Selected() is not { Kind: ChangeKind.Deleted } deleted)
         {
-            State = State with { Files = changedFiles, SelectedIndex = 0, SearchQuery = "" };
             return;
         }
 
-        if (command is ChangesetCommand.LoadSelectedDiff && Selected() is { } file)
-        {
-            State = State with { Diff = await DiffOfAsync(file, cancellationToken) };
-            return;
-        }
+        var restored = await backend.RestoreAsync(deleted, cancellationToken);
+        await LoadAsync(target, cancellationToken);
+        State = State with { Notice = restored ? "" : $"Could not restore {deleted.DisplayPath}" };
+    }
 
-        if (command is ChangesetCommand.RestoreSelected &&
-            Selected() is { Kind: ChangeKind.Deleted } deleted)
-        {
-            var restored = await backend.RestoreAsync(deleted, cancellationToken);
-            await LoadAsync(target, cancellationToken);
-            State = State with
-            {
-                Notice = restored ? "" : $"Could not restore {deleted.DisplayPath}"
-            };
-            return;
-        }
-
-        var lastIndex = Math.Max(0, State.Files.Count - 1);
+    private void MoveSelection(ChangesetCommand command)
+    {
+        var rowCount = State.Files.Count;
         State = State with
         {
             SelectedIndex = command switch
             {
-                ChangesetCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
-                ChangesetCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-                ChangesetCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+                ChangesetCommand.SelectIndex jump => RowSelection.At(jump.Index, rowCount),
+                ChangesetCommand.MoveUp => RowSelection.Up(State.SelectedIndex),
+                ChangesetCommand.MoveDown => RowSelection.Down(State.SelectedIndex, rowCount),
                 _ => State.SelectedIndex
             }
         };

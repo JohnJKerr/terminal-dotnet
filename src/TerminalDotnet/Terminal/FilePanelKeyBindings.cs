@@ -2,6 +2,7 @@ using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using TerminalDotnet.Files;
 using TerminalDotnet.Filters;
+using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
 
@@ -43,7 +44,4 @@ public static class FilePanelKeyBindings
             ? new FilePanelAction.OpenFile(selected.Files[0].Path)
             : null;
     }
-
-    private static bool Is(Key key, KeyCode keyCode) =>
-        !key.IsShift && key.NoShift.KeyCode == keyCode;
 }

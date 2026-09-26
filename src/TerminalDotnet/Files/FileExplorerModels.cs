@@ -51,31 +51,24 @@ public sealed record FileExplorerState(
     string SearchQuery = "",
     ExplorerFilter? ActiveFilter = null)
 {
-    private (IReadOnlyList<VisibleFileNode> Nodes, int Files, bool Groups, bool Expanded) content =
-        Summarize(VisibleNodes);
+    private readonly IReadOnlyList<VisibleFileNode> visibleNodes = Snapshot.Of(VisibleNodes);
 
     public IReadOnlyList<VisibleFileNode> VisibleNodes
     {
-        get => content.Nodes;
-        init => content = Summarize(value);
+        get => visibleNodes;
+        init => visibleNodes = Snapshot.Of(value);
     }
 
-    public int VisibleFileCount => content.Files;
-    public bool HasGroups => content.Groups;
-    public bool HasExpandedGroups => content.Expanded;
+    public int VisibleFileCount => visibleNodes.Count(node => node.Kind == FileNodeKind.File);
 
-    private static (IReadOnlyList<VisibleFileNode>, int, bool, bool) Summarize(
-        IReadOnlyList<VisibleFileNode> nodes)
-    {
-        var frozen = Snapshot.Of(nodes);
-        return (
-            frozen,
-            frozen.Count(node => node.Kind == FileNodeKind.File),
-            frozen.Any(node => node.Kind != FileNodeKind.File),
-            frozen.Any(node => node.Kind != FileNodeKind.File && node.IsExpanded));
-    }
+    public bool HasGroups => visibleNodes.Any(node => node.Kind != FileNodeKind.File);
+
+    public bool HasExpandedGroups => visibleNodes.Any(node => node.Kind != FileNodeKind.File && node.IsExpanded);
 
     public FileChangeSummary Changes { get; init; } = FileChangeSummary.Empty;
+
+    /// <summary>Why the files could not be read, when they could not.</summary>
+    public string Notice { get; init; } = "";
 
     /// <summary>Set while the first discovery is still running, so the panel
     /// does not claim there are no files before it has looked.</summary>

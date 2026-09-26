@@ -7,22 +7,23 @@ namespace TerminalDotnet.Explorer;
 
 public sealed class TestExplorerSession(
     ITestBackend backend,
-    ITestSourceLocator? testSourceLocator = null,
-    IUpdatedSourceProvider? updatedSourceProvider = null)
+    ITestSourceLocator testSourceLocator,
+    IUpdatedSourceProvider updatedSourceProvider)
 {
-    private readonly HashSet<string> collapsedNodes = [];
+    private readonly FoldedGroups folded = new();
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
     private readonly HashSet<TestCase> activeTests = [];
     private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
+    private IReadOnlySet<TestCase> lastRunMembers = new HashSet<TestCase>();
     private bool running;
     private IReadOnlyDictionary<string, TestNodeUpdate> updatedSuites =
         new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
 
-    public ExplorerState State { get; private set; } =
-        new(ExplorerStatus.Loading, [], 0, "Discovering tests...");
-
     private const string DiscoveringMessage = "Discovering tests...";
+
+    public ExplorerState State { get; private set; } =
+        new(ExplorerStatus.Loading, [], 0, DiscoveringMessage);
 
     private ExplorerState? beforeRediscovery;
 
@@ -79,7 +80,7 @@ public sealed class TestExplorerSession(
         {
             Status = ExplorerStatus.Ready,
             VisibleNodes = nodes,
-            SelectedIndex = RowFor(standingOn, nodes),
+            SelectedIndex = RowSelection.FoundAgain(nodes, node => NodeId(node) == standingOn, State.SelectedIndex),
             Message = $"Ready — {tests.Count} tests discovered",
             DiscoveredTestCount = tests.Count
         };
@@ -88,15 +89,6 @@ public sealed class TestExplorerSession(
     private string? SelectedNodeId() => State.SelectedIndex < State.VisibleNodes.Count
         ? NodeId(State.VisibleNodes[State.SelectedIndex])
         : null;
-
-    /// <summary>The row the reader was on, wherever the rediscovery moved it
-    /// to. A row it took away leaves them where they were standing instead.
-    /// </summary>
-    private int RowFor(string? nodeId, IReadOnlyList<VisibleTestNode> nodes)
-    {
-        var moved = nodeId is null ? -1 : nodes.Select(NodeId).ToList().IndexOf(nodeId);
-        return moved >= 0 ? moved : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, nodes.Count - 1));
-    }
 
     public Task DispatchAsync(ExplorerCommand command, CancellationToken cancellationToken = default) =>
         command switch
@@ -122,7 +114,7 @@ public sealed class TestExplorerSession(
 
     private async Task LoadSelectedSourceAsync(CancellationToken cancellationToken)
     {
-        if (State.VisibleNodes.Count == 0 || testSourceLocator is null)
+        if (State.VisibleNodes.Count == 0)
         {
             return;
         }
@@ -136,11 +128,6 @@ public sealed class TestExplorerSession(
         string target,
         CancellationToken cancellationToken)
     {
-        if (updatedSourceProvider is null)
-        {
-            return new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
-        }
-
         var sources = await updatedSourceProvider.UpdatedSourcesAsync(target, cancellationToken);
         var projectDirectories = discoveredTests
             .Select(test => ProjectDirectoryOf(test.ProjectPath))
@@ -220,25 +207,18 @@ public sealed class TestExplorerSession(
             return;
         }
 
-        Collapse(selected, !selected.IsExpanded);
+        folded.Toggle(NodeId(selected));
         State = State with { VisibleNodes = CurrentNodes() };
     }
 
     private void ToggleWholeTreeExpansion()
     {
-        var groupIds = GroupNodeIds(TestsMatching(State.SearchQuery, State.ActiveFilter));
-        var collapseAll = groupIds.Any(id => !collapsedNodes.Contains(id));
-        collapsedNodes.Clear();
-        if (collapseAll)
-        {
-            collapsedNodes.UnionWith(groupIds);
-        }
-
+        folded.ToggleAll(GroupNodeIds(TestsMatching(State.SearchQuery, State.ActiveFilter)));
         var nodes = CurrentNodes();
         State = State with
         {
             VisibleNodes = nodes,
-            SelectedIndex = Math.Min(State.SelectedIndex, Math.Max(0, nodes.Count - 1))
+            SelectedIndex = RowSelection.Kept(State.SelectedIndex, nodes.Count)
         };
     }
 
@@ -255,17 +235,6 @@ public sealed class TestExplorerSession(
             .Distinct()
             .Select(testClass => NodeId(project.Key, TestNodeKind.Class, testClass))
     ];
-
-    private void Collapse(VisibleTestNode node, bool isExpanded)
-    {
-        if (isExpanded)
-        {
-            collapsedNodes.Remove(NodeId(node));
-            return;
-        }
-
-        collapsedNodes.Add(NodeId(node));
-    }
 
     private Task RunSelectedAsync(CancellationToken cancellationToken) => State.VisibleNodes.Count == 0
         ? Task.CompletedTask
@@ -285,14 +254,14 @@ public sealed class TestExplorerSession(
 
     private void MoveSelection(ExplorerCommand command)
     {
-        var lastIndex = Math.Max(0, State.VisibleNodes.Count - 1);
+        var rowCount = State.VisibleNodes.Count;
         State = State with
         {
             SelectedIndex = command switch
             {
-                ExplorerCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
-                ExplorerCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-                ExplorerCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
+                ExplorerCommand.SelectIndex jump => RowSelection.At(jump.Index, rowCount),
+                ExplorerCommand.MoveUp => RowSelection.Up(State.SelectedIndex),
+                ExplorerCommand.MoveDown => RowSelection.Down(State.SelectedIndex, rowCount),
                 _ => State.SelectedIndex
             }
         };
@@ -364,7 +333,7 @@ public sealed class TestExplorerSession(
         ExplorerFilter.Updated => updatedSuites.ContainsKey(SuiteKeyOf(test)),
         ExplorerFilter.Failing => OutcomeOf(test) == TestNodeOutcome.Failed,
         ExplorerFilter.Passing => OutcomeOf(test) == TestNodeOutcome.Passed,
-        ExplorerFilter.LastRun => lastRunTests.Contains(test),
+        ExplorerFilter.LastRun => lastRunMembers.Contains(test),
         ExplorerFilter.NotRun => !completedOutcomes.ContainsKey(test),
         _ => true
     };
@@ -409,6 +378,7 @@ public sealed class TestExplorerSession(
         CancellationToken cancellationToken)
     {
         lastRunTests = Snapshot.Of(tests);
+        lastRunMembers = tests.ToHashSet();
         activeTests.Clear();
         activeTests.UnionWith(tests);
         State = State with
@@ -425,26 +395,12 @@ public sealed class TestExplorerSession(
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            activeTests.Clear();
-            State = State with
-            {
-                Status = ExplorerStatus.Ready,
-                VisibleNodes = CurrentNodes(),
-                Message = "Run cancelled",
-                Diagnostic = "Run cancelled"
-            };
+            EndRun(ExplorerStatus.Ready, "Run cancelled", "Run cancelled");
             return;
         }
         catch (Exception exception)
         {
-            activeTests.Clear();
-            State = State with
-            {
-                Status = ExplorerStatus.Failed,
-                VisibleNodes = CurrentNodes(),
-                Message = exception.Message,
-                Diagnostic = exception.Message
-            };
+            EndRun(ExplorerStatus.Failed, exception.Message, exception.Message);
             return;
         }
 
@@ -453,15 +409,19 @@ public sealed class TestExplorerSession(
             completedOutcomes[test] = outcome;
         }
 
+        EndRun(run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed, run.Output, run.Diagnostic);
+        State = State with { LastRun = run, SourceLocation = FailureSourceFrom(run) };
+    }
+
+    private void EndRun(ExplorerStatus status, string message, string? diagnostic)
+    {
         activeTests.Clear();
         State = State with
         {
-            Status = run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
+            Status = status,
             VisibleNodes = CurrentNodes(),
-            Message = run.Output,
-            LastRun = run with { Results = Snapshot.Of(run.Results) },
-            SourceLocation = FailureSourceFrom(run),
-            Diagnostic = run.Diagnostic
+            Message = message,
+            Diagnostic = diagnostic
         };
     }
 
@@ -513,7 +473,7 @@ public sealed class TestExplorerSession(
             TestNodeKind.Project,
             Path.GetFileNameWithoutExtension(project.Key),
             projectTests);
-        var projectCollapsed = collapsedNodes.Contains(NodeId(projectNode));
+        var projectCollapsed = !folded.IsExpanded(NodeId(projectNode));
         var classNodes = projectTests
             .GroupBy(test => test.TestClass)
             .OrderBy(testClass => testClass.Key, StringComparer.Ordinal)
@@ -533,7 +493,7 @@ public sealed class TestExplorerSession(
             classTests[0].ClassName,
             classTests,
             Update: UpdateOf(classTests[0]));
-        var classCollapsed = collapsedNodes.Contains(NodeId(classNode));
+        var classCollapsed = !folded.IsExpanded(NodeId(classNode));
         var testNodes = classTests
             .OrderBy(test => test.DisplayName)
             .Select(test => new VisibleTestNode(

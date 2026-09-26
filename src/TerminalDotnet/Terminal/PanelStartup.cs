@@ -11,7 +11,7 @@ public sealed class PanelStartup(
     ChangesetSession changes,
     TestExplorerSession tests,
     string target,
-    IssueSession? issues = null)
+    IssueSession issues)
 {
     public async Task LoadPendingAsync(
         Func<Task> onPanelFilled,
@@ -39,11 +39,11 @@ public sealed class PanelStartup(
             folderFiles.State.Loading,
             token => folderFiles.LoadAsync(target, token)),
         .. Pending(changes.State.Loading, token => changes.LoadAsync(target, token)),
-        .. issues is null ? [] : Pending(issues.State.Loading, token => issues.LoadAsync(target, token)),
+        .. Pending(issues.State.Loading, token => issues.LoadAsync(target, token)),
         .. Pending(
             tests.State.Status == ExplorerStatus.Loading,
             token => tests.LoadAsync(target, token)),
-        .. issues is null ? [] : Pending(issues.State.FlagsLoading, token => issues.LoadFlagsAsync(target, token))
+        .. Pending(issues.State.FlagsLoading, token => issues.LoadFlagsAsync(target, token))
     ];
 
     private static IEnumerable<Func<CancellationToken, Task>> Pending(

@@ -26,7 +26,7 @@ internal sealed class PreviewPanel
     private readonly Label details;
     private int highlightedLine = 1;
     private bool highlighting;
-    private FileRowTone detailTone;
+    private RowTone detailTone;
     private readonly PanelFrame frame;
 
     public PreviewPanel()
@@ -51,11 +51,7 @@ internal sealed class PreviewPanel
             CanFocus = false,
             Visible = false
         };
-        diff.GettingAttributeForRole += (_, args) =>
-        {
-            args.Result = new Attribute(args.Result?.Foreground ?? Color.White, Background);
-            args.Handled = true;
-        };
+        ViewColours.ColourGround(diff, () => Background);
         highlight = Highlight();
         details = Details();
         View = new View
@@ -84,7 +80,7 @@ internal sealed class PreviewPanel
 
     public void ShowNothing(string title)
     {
-        ShowSource(title, "", "plaintext", 1, highlightLine: false, "", FileRowTone.Neutral);
+        ShowSource(title, "", "plaintext", 1, highlightLine: false, "", RowTone.Neutral);
     }
 
     public void ShowSource(
@@ -94,7 +90,7 @@ internal sealed class PreviewPanel
         int line,
         bool highlightLine,
         string detail,
-        FileRowTone tone)
+        RowTone tone)
     {
         frame.Show([new TitleSegment(title, false)], "");
         diff.Visible = false;
@@ -167,11 +163,7 @@ internal sealed class PreviewPanel
     private static Label Highlight()
     {
         var label = new Label { Width = Dim.Fill(), Height = 1, Visible = false, HotKeySpecifier = NoHotKey };
-        label.GettingAttributeForRole += (_, args) =>
-        {
-            args.Result = new Attribute(args.Result?.Foreground ?? Color.White, Color.BrightBlue);
-            args.Handled = true;
-        };
+        ViewColours.ColourGround(label, () => Color.BrightBlue);
         return label;
     }
 
@@ -187,13 +179,7 @@ internal sealed class PreviewPanel
         };
         label.TextFormatter.MultiLine = true;
         label.TextFormatter.WordWrap = true;
-        label.GettingAttributeForRole += (_, args) =>
-        {
-            args.Result = new Attribute(
-                FileRowAppearance.ForegroundFor(detailTone, Color.White),
-                args.Result?.Background ?? Color.Black);
-            args.Handled = true;
-        };
+        ViewColours.ColourText(label, () => RowAppearance.ForegroundFor(detailTone, Color.White));
         return label;
     }
 }

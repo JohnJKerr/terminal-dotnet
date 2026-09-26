@@ -3,6 +3,12 @@ using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Issues;
 
+/// <summary>
+/// The issues are read from a build's output. Every build compiles from
+/// scratch: an incremental build skips a project that is already up to date,
+/// and a project that is not compiled reports none of its warnings, so they
+/// would vanish from the panel until its next edit.
+/// </summary>
 public sealed partial class DotnetBuildIssueBackend(ICommandRunner runner) : IIssueBackend
 {
     public async Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
@@ -13,7 +19,7 @@ public sealed partial class DotnetBuildIssueBackend(ICommandRunner runner) : IIs
         var result = await runner.RunAsync(new CommandRequest(
             "dotnet",
             ["build", target, "--nologo", "--tl:off", "--no-incremental"],
-            directory), cancellationToken);
+            directory), cancellationToken).ConfigureAwait(false);
         return [.. Lines(result.StandardOutput, result.StandardError)
             .Select(line => Parsed(line, directory))
             .OfType<CompilationIssue>()

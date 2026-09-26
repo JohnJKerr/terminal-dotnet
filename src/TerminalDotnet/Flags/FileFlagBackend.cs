@@ -10,13 +10,24 @@ public sealed partial class FileFlagBackend(IFileExplorerBackend files) : IFlagB
         CancellationToken cancellationToken = default)
     {
         var root = Path.GetDirectoryName(Path.GetFullPath(target))!;
-        var discovered = await files.DiscoverAsync(target, cancellationToken);
-        var flags = discovered
-            .Where(file => file.GitStatus != FileGitStatus.Deleted)
-            .SelectMany(file => FlagsIn(file.Path, root))
-            .ToArray();
-        return flags;
+        var discovered = await files.DiscoverAsync(target, cancellationToken).ConfigureAwait(false);
+        return await Task.Run(() => FlagsAcross(discovered, root, cancellationToken), cancellationToken)
+            .ConfigureAwait(false);
     }
+
+    /// <summary>Reads every file in the tree, which takes long enough that it
+    /// is kept off whichever thread asked.</summary>
+    private static IReadOnlyList<Flag> FlagsAcross(
+        IReadOnlyList<FileEntry> files,
+        string root,
+        CancellationToken cancellationToken) => files
+        .Where(file => file.GitStatus != FileGitStatus.Deleted)
+        .SelectMany(file =>
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return FlagsIn(file.Path, root);
+        })
+        .ToArray();
 
     private static IEnumerable<Flag> FlagsIn(string path, string root)
     {
@@ -24,8 +35,7 @@ public sealed partial class FileFlagBackend(IFileExplorerBackend files) : IFlagB
         {
             return (FileText.ReadLinesWithin(path) ?? [])
                 .Select((line, index) => FlagIn(path, root, index + 1, line))
-                .Where(flag => flag is not null)
-                .Cast<Flag>()
+                .OfType<Flag>()
                 .ToArray();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)

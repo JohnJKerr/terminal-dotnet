@@ -15,9 +15,21 @@ public static class IssuePanelKeyBindings
 {
     public static IssuePanelAction? ActionFor(Key key, CompilationIssue? issue, bool searchActive)
     {
-        if (searchActive) return null;
-        if (FilterFor(key) is { } filter) return new IssuePanelAction.Dispatch(filter);
-        if (issue is null) return null;
+        if (searchActive)
+        {
+            return null;
+        }
+
+        if (FilterFor(key) is { } filter)
+        {
+            return new IssuePanelAction.Dispatch(filter);
+        }
+
+        if (issue is null)
+        {
+            return null;
+        }
+
         return key.NoShift.KeyCode switch
         {
             KeyCode.Enter or KeyCode.E when !key.IsShift => new IssuePanelAction.Edit(issue.Path, issue.Line),

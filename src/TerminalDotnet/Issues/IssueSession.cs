@@ -12,7 +12,7 @@ namespace TerminalDotnet.Issues;
 public sealed class IssueSession(
     IIssueBackend backend,
     ICommentClipboard clipboard,
-    IFlagBackend? flagBackend = null)
+    IFlagBackend flagBackend)
 {
     private IReadOnlyList<CompilationIssue> built = [];
     private IReadOnlyList<CompilationIssue> flagged = [];
@@ -30,8 +30,7 @@ public sealed class IssueSession(
         {
             var standingOn = Selected();
             built = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
-            State = State with { Issues = Matching(), Loading = false, Notice = "" };
-            State = State with { SelectedIndex = RowFor(standingOn) };
+            State = WithIssues(State with { Loading = false, Notice = "" }, standingOn);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
@@ -44,12 +43,6 @@ public sealed class IssueSession(
     /// reason to take the build's issues away with them.</summary>
     public async Task LoadFlagsAsync(string target, CancellationToken cancellationToken = default)
     {
-        if (flagBackend is null)
-        {
-            State = State with { FlagsLoading = false };
-            return;
-        }
-
         var standingOn = Selected();
         try
         {
@@ -60,8 +53,7 @@ public sealed class IssueSession(
             flagged = [];
         }
 
-        State = State with { Issues = Matching(), FlagsLoading = false };
-        State = State with { SelectedIndex = RowFor(standingOn) };
+        State = WithIssues(State with { FlagsLoading = false }, standingOn);
     }
 
     private static IEnumerable<CompilationIssue> FlagIssues(IReadOnlyList<Flag> flags) => flags
@@ -86,14 +78,11 @@ public sealed class IssueSession(
     /// <summary>A rebuild can land while the reader is part-way down the list,
     /// so the issue they were on is found again wherever the build moved it to.
     /// </summary>
-    private int RowFor(CompilationIssue? standingOn)
+    private IssueState WithIssues(IssueState state, CompilationIssue? standingOn)
     {
-        var moved = standingOn is null
-            ? -1
-            : State.Issues.ToList().FindIndex(issue => issue.Details == standingOn.Details);
-        return moved >= 0
-            ? moved
-            : Math.Clamp(State.SelectedIndex, 0, Math.Max(0, State.Issues.Count - 1));
+        var issues = Matching();
+        var selected = RowSelection.FoundAgain(issues, issue => issue.Details == standingOn?.Details, state.SelectedIndex);
+        return state with { Issues = issues, SelectedIndex = selected };
     }
 
     public async Task DispatchAsync(IssueCommand command, CancellationToken cancellationToken = default)
@@ -110,14 +99,17 @@ public sealed class IssueSession(
             ActiveFilter = FilterAfter(command)
         };
         var visible = Matching();
-        var last = Math.Max(0, visible.Count - 1);
         var index = command switch
         {
-            IssueCommand.Search or IssueCommand.ClearSearch or IssueCommand.ToggleErrors or IssueCommand.ToggleWarnings or IssueCommand.ToggleFlags => 0,
-            IssueCommand.SelectIndex select => Math.Clamp(select.Index, 0, last),
-            IssueCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-            IssueCommand.MoveDown => Math.Min(last, State.SelectedIndex + 1),
-            _ => Math.Min(State.SelectedIndex, last)
+            IssueCommand.Search
+                or IssueCommand.ClearSearch
+                or IssueCommand.ToggleErrors
+                or IssueCommand.ToggleWarnings
+                or IssueCommand.ToggleFlags => 0,
+            IssueCommand.SelectIndex select => RowSelection.At(select.Index, visible.Count),
+            IssueCommand.MoveUp => RowSelection.Up(State.SelectedIndex),
+            IssueCommand.MoveDown => RowSelection.Down(State.SelectedIndex, visible.Count),
+            _ => RowSelection.Kept(State.SelectedIndex, visible.Count)
         };
         State = State with { Issues = visible, SelectedIndex = index, Notice = "" };
         if (command is IssueCommand.CopySelected && visible.Count > 0)

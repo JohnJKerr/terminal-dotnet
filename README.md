@@ -313,7 +313,7 @@ you were in, or the diff of a change. The title names the file and line. For
 an issue or a test, the reported line is highlighted, and an issue's full
 message sits beneath the source.
 - `↑`/`k`, `↓`/`j`, `PgUp`/`PgDn`, `Home` and `End` scroll through it.
-- `n` and `N` move the list it follows to its next and previous row.
+- `n` and `N` move the list it follows to its next and previous preview, going straight past rows with nothing to show, such as folders.
 - `e` hands the file to your editor at the same line.
 - `c` writes a comment against the file.
 
@@ -362,7 +362,7 @@ message sits beneath the source.
 | Changes | `Enter`/`d` preview the diff, `p` preview the file, `e` edit, `r` restore deleted |
 | Issues | `Enter`/`e` edit, `y` copy, `X` errors, `W` warnings, `F` flags |
 | Comments | `Enter`/`v` read, `e` edit, `d` delete, `y` copy all, `w` save all, `x` clear all |
-| Preview | `PgUp`/`PgDn` page, `Home`/`End` ends, `n`/`N` next/previous row, `e` edit, `c` comment |
+| Preview | `PgUp`/`PgDn` page, `Home`/`End` ends, `n`/`N` next/previous preview, `e` edit, `c` comment |
 
 ## Configuration
 

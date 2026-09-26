@@ -132,8 +132,8 @@ public static class CommandMenu
         .. Navigation,
         new("PgUp/PgDn", "move a screen at a time"),
         new("Home/End", "jump to the first or last line"),
-        new("n", "preview the next row of the panel"),
-        new("N", "preview the previous row of the panel"),
+        new("n", "go to the next preview, past rows with nothing to show"),
+        new("N", "go to the previous preview"),
         new("e", "edit the file"),
         new("c", "comment on the file")
     ];

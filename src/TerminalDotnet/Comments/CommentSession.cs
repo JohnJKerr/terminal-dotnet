@@ -7,10 +7,8 @@ namespace TerminalDotnet.Comments;
 /// so the reader can gather notes across the panels and take them away in one
 /// go rather than writing them down somewhere else.
 /// </summary>
-public sealed class CommentSession(ICommentClipboard? clipboard = null, ICommentStore? store = null)
+public sealed class CommentSession(ICommentClipboard clipboard, ICommentStore store)
 {
-    private readonly ICommentClipboard clipboard = clipboard ?? new UnreachableClipboard();
-    private readonly ICommentStore store = store ?? new UnreachableStore();
     private readonly List<FileComment> comments = [];
 
     /// <summary>Set once the notes have been copied or saved, and cleared the
@@ -65,7 +63,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
     {
         var cleared = comments.Count;
         comments.Clear();
-        return cleared == 0 ? "" : $"Cleared {cleared} comments";
+        return cleared == 0 ? "" : $"Cleared {CountedNoun.Of(cleared, "comment")}";
     }
 
     /// <summary>Taking the comments away takes all of them, not only the ones
@@ -86,7 +84,7 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
                 CommentReport.From(InPathOrder()),
                 cancellationToken);
             takenAway |= copied;
-            return copied ? $"Copied {comments.Count} comments" : "Could not copy the comments";
+            return copied ? $"Copied {Counted()}" : "Could not copy the comments";
         }
 
         if (command is not CommentCommand.SaveAll save)
@@ -100,9 +98,11 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
             cancellationToken);
         takenAway |= saved;
         return saved
-            ? $"Saved {comments.Count} comments to {save.Path}"
+            ? $"Saved {Counted()} to {save.Path}"
             : $"Could not save the comments to {save.Path}";
     }
+
+    private string Counted() => CountedNoun.Of(comments.Count, "comment");
 
     private IReadOnlyList<FileComment> InPathOrder() => Matching("");
 
@@ -177,33 +177,13 @@ public sealed class CommentSession(ICommentClipboard? clipboard = null, IComment
 
     private int SelectionAfter(CommentCommand command, int count)
     {
-        var lastIndex = Math.Max(0, count - 1);
         return command switch
         {
             CommentCommand.Search or CommentCommand.ClearSearch => 0,
-            CommentCommand.SelectIndex jump => Math.Clamp(jump.Index, 0, lastIndex),
-            CommentCommand.MoveUp => Math.Max(0, State.SelectedIndex - 1),
-            CommentCommand.MoveDown => Math.Min(lastIndex, State.SelectedIndex + 1),
-            _ => Math.Min(State.SelectedIndex, lastIndex)
+            CommentCommand.SelectIndex jump => RowSelection.At(jump.Index, count),
+            CommentCommand.MoveUp => RowSelection.Up(State.SelectedIndex),
+            CommentCommand.MoveDown => RowSelection.Down(State.SelectedIndex, count),
+            _ => RowSelection.Kept(State.SelectedIndex, count)
         };
-    }
-
-    private sealed class UnreachableClipboard : ICommentClipboard
-    {
-        public Task<bool> TryCopyAsync(
-            string text,
-            CancellationToken cancellationToken = default) => Task.FromResult(false);
-    }
-
-    private sealed class UnreachableStore : ICommentStore
-    {
-        public Task<bool> ExistsAsync(
-            string path,
-            CancellationToken cancellationToken = default) => Task.FromResult(false);
-
-        public Task<bool> TryWriteAsync(
-            string path,
-            string text,
-            CancellationToken cancellationToken = default) => Task.FromResult(false);
     }
 }

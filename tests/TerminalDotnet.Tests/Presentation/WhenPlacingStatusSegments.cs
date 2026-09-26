@@ -1,0 +1,58 @@
+using TerminalDotnet.Terminal;
+using Xunit;
+
+namespace TerminalDotnet.Tests.Presentation;
+
+public sealed class WhenPlacingStatusSegments
+{
+    [Fact]
+    public void It_places_the_first_segment_at_the_opening_column()
+    {
+        // Arrange
+        IReadOnlyList<StatusSegment> segments = [new("3 Files", RowTone.Neutral)];
+
+        // Act
+        var placed = StatusSegmentLayout.Place(segments, firstColumn: 22, gap: 2);
+
+        // Assert
+        Assert.Equal(new PlacedStatusSegment("3 Files", RowTone.Neutral, 22), placed.Single());
+    }
+
+    [Fact]
+    public void It_leaves_a_gap_after_each_segment()
+    {
+        // Arrange
+        IReadOnlyList<StatusSegment> segments =
+        [
+            new("3 Files", RowTone.Neutral),
+            new("1 Added", RowTone.New),
+            new("2 Edited", RowTone.Modified)
+        ];
+
+        // Act
+        var placed = StatusSegmentLayout.Place(segments, firstColumn: 22, gap: 2);
+
+        // Assert
+        Assert.Equal([22, 31, 40], placed.Select(segment => segment.Column));
+    }
+
+    [Fact]
+    public void It_places_filter_chips_along_the_same_row()
+    {
+        // Act
+        var columns = StatusSegmentLayout.ColumnsFor(["1. Updated", "2. Failing"], firstColumn: 22, gap: 2);
+
+        // Assert
+        Assert.Equal([22, 34], columns);
+    }
+
+    [Fact]
+    public void It_places_nothing_without_segments()
+    {
+        // Act
+        var placed = StatusSegmentLayout.Place([], firstColumn: 22, gap: 2);
+
+        // Assert
+        Assert.Empty(placed);
+    }
+}

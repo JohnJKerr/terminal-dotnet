@@ -11,13 +11,13 @@ public static class TestRowAppearance
         TestNodeOutcome.Passed => Color.BrightGreen,
         TestNodeOutcome.Skipped => Color.BrightYellow,
         TestNodeOutcome.Running => Color.BrightCyan,
-        _ => FileRowAppearance.ForegroundFor(ToneFor(update), Color.White)
+        _ => RowAppearance.ForegroundFor(ToneFor(update), Color.White)
     };
 
-    private static FileRowTone ToneFor(TestNodeUpdate update) => update switch
+    private static RowTone ToneFor(TestNodeUpdate update) => update switch
     {
-        TestNodeUpdate.Added => FileRowTone.New,
-        TestNodeUpdate.Edited => FileRowTone.Modified,
-        _ => FileRowTone.Neutral
+        TestNodeUpdate.Added => RowTone.New,
+        TestNodeUpdate.Edited => RowTone.Modified,
+        _ => RowTone.Neutral
     };
 }

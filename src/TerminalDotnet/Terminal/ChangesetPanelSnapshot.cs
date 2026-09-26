@@ -2,18 +2,16 @@ using TerminalDotnet.Changes;
 
 namespace TerminalDotnet.Terminal;
 
-public sealed record ChangesetPanelRow(string Text, FileRowTone Tone);
-
 public sealed record ChangesetPanelSnapshot(
     IReadOnlyList<ChangedFile> Files,
     int SelectedIndex,
     string SearchQuery,
     int SearchHitCount,
-    IReadOnlyList<FileStatusSegment> StatusSegments,
+    IReadOnlyList<StatusSegment> StatusSegments,
     DiffContext? Diff,
     string EmptyMessage)
 {
-    public IReadOnlyList<ChangesetPanelRow> Rows => Snapshot.Of(Files.Select(RowFrom));
+    public IReadOnlyList<PanelRow> Rows => Snapshot.Of(Files.Select(RowFrom));
 
     public string DiffTitle => Diff?.DisplayPath ?? "";
 
@@ -32,17 +30,17 @@ public sealed record ChangesetPanelSnapshot(
         ? ""
         : PanelEmptyState.For("changes", state.Files.Count, state.SearchQuery);
 
-    private static IReadOnlyList<FileStatusSegment> StatusSegmentsFrom(
+    private static IReadOnlyList<StatusSegment> StatusSegmentsFrom(
         ChangesetSummary summary,
         string notice) =>
     [
-        new($"{summary.Changed} Changed", FileRowTone.Modified),
-        new($"{summary.Added} Added", FileRowTone.New),
-        new($"{summary.Deleted} Deleted", FileRowTone.Deleted),
-        .. notice.Length > 0 ? new FileStatusSegment[] { new(notice, FileRowTone.Deleted) } : []
+        new($"{summary.Changed} Changed", RowTone.Modified),
+        new($"{summary.Added} Added", RowTone.New),
+        new($"{summary.Deleted} Deleted", RowTone.Deleted),
+        .. notice.Length > 0 ? new StatusSegment[] { new(notice, RowTone.Deleted) } : []
     ];
 
-    private static ChangesetPanelRow RowFrom(ChangedFile file) => new(
+    private static PanelRow RowFrom(ChangedFile file) => new(
         $"{MarkerFor(file.Kind)} {file.DisplayPath}",
         ToneFor(file.Kind));
 
@@ -53,10 +51,10 @@ public sealed record ChangesetPanelSnapshot(
         _ => "~"
     };
 
-    private static FileRowTone ToneFor(ChangeKind kind) => kind switch
+    private static RowTone ToneFor(ChangeKind kind) => kind switch
     {
-        ChangeKind.Added => FileRowTone.New,
-        ChangeKind.Deleted => FileRowTone.Deleted,
-        _ => FileRowTone.Modified
+        ChangeKind.Added => RowTone.New,
+        ChangeKind.Deleted => RowTone.Deleted,
+        _ => RowTone.Modified
     };
 }

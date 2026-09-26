@@ -32,7 +32,7 @@ public static class PanelShortcuts
     /// <summary>The preview has nothing to search; it scrolls what it shows
     /// and steps the list it follows.</summary>
     private static readonly IReadOnlyList<string> PreviewShortcuts =
-        [.. Navigation(), "PgUp/PgDn page", "n/N next/previous row", "e edit", "c comment"];
+        [.. Navigation(), "PgUp/PgDn page", "n/N next/previous preview", "e edit", "c comment"];
 
     /// <summary>Every letter types into the search box, so the line offers only
     /// the two ways out of it and the commands that still answer.</summary>

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using Terminal.Gui.Drawing;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
+using Attribute = Terminal.Gui.Drawing.Attribute;
 
 namespace TerminalDotnet.Terminal;
 
@@ -9,10 +10,20 @@ namespace TerminalDotnet.Terminal;
 /// none, in the panel's.</summary>
 internal sealed record ListRow(string Text, Color? Foreground)
 {
-    public static ListRow Toned(string text, FileRowTone tone) => new(
+    public static ListRow Toned(string text, RowTone tone) => new(
         text,
-        tone == FileRowTone.Neutral ? null : FileRowAppearance.ForegroundFor(tone, Color.White));
+        tone == RowTone.Neutral ? null : RowAppearance.ForegroundFor(tone, Color.White));
 }
+
+/// <summary>What a list panel shows: the items it lists, the rows drawn from
+/// them, the row selected, and what to say when there is nothing to list.
+/// The rows are only drawn again when the panel hands over different items.
+/// </summary>
+internal sealed record PanelListing(
+    IReadOnlyList<object> Items,
+    Func<IReadOnlyList<ListRow>> Rows,
+    int SelectedRow,
+    string EmptyMessage);
 
 /// <summary>
 /// One of the framed lists that tile the screen. Every panel is drawn at once,
@@ -21,7 +32,7 @@ internal sealed record ListRow(string Text, Color? Foreground)
 /// </summary>
 internal sealed class ListPanel
 {
-    private object? listed;
+    private IReadOnlyList<object>? listed;
     private string listedMessage = "";
     private IReadOnlyList<Color?> foregrounds = [];
     private readonly PanelFrame frame;
@@ -53,28 +64,22 @@ internal sealed class ListPanel
     /// and has no row to select. A message such as the discovery marker moves
     /// while the content stays the same, so either one changing lists again.
     /// </summary>
-    public void Show(
-        IReadOnlyList<TitleSegment> title,
-        string footer,
-        object content,
-        Func<IReadOnlyList<ListRow>> rows,
-        int selectedIndex,
-        string emptyMessage)
+    public void Show(IReadOnlyList<TitleSegment> title, string footer, PanelListing listing)
     {
         frame.Show(title, footer);
         showing = true;
         try
         {
-            if (!ReferenceEquals(listed, content) || listedMessage != emptyMessage)
+            if (!ReferenceEquals(listed, listing.Items) || listedMessage != listing.EmptyMessage)
             {
-                listed = content;
-                listedMessage = emptyMessage;
-                List(Shown(rows(), emptyMessage));
+                listed = listing.Items;
+                listedMessage = listing.EmptyMessage;
+                List(Shown(listing.Rows(), listing.EmptyMessage));
             }
 
-            if (foregrounds.Count > 0 && emptyMessage.Length == 0)
+            if (foregrounds.Count > 0 && listing.EmptyMessage.Length == 0)
             {
-                View.SelectedItem = selectedIndex;
+                View.SelectedItem = listing.SelectedRow;
             }
         }
         finally
@@ -124,7 +129,7 @@ internal sealed class ListPanel
         }
 
         var role = View.IsSelectedOrMarked(args.Row) && View.HasFocus ? VisualRole.Focus : VisualRole.Normal;
-        args.RowAttribute = new global::Terminal.Gui.Drawing.Attribute(
+        args.RowAttribute = new Attribute(
             foreground,
             View.GetAttributeForRole(role).Background);
     }

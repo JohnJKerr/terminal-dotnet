@@ -1,6 +1,7 @@
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using TerminalDotnet.Explorer;
+using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
 
@@ -84,7 +85,4 @@ public static class TestPanelKeyBindings
 
     private static TestPanelAction Dispatched(ExplorerCommand command) =>
         new TestPanelAction.Dispatch(command);
-
-    private static bool Is(Key key, KeyCode keyCode) =>
-        !key.IsShift && key.NoShift.KeyCode == keyCode;
 }

@@ -1,6 +1,7 @@
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using TerminalDotnet.Comments;
+using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
 
@@ -50,7 +51,4 @@ public static class CommentPanelKeyBindings
 
         return Is(key, KeyCode.X) ? new CommentAction.ClearComments() : null;
     }
-
-    private static bool Is(Key key, KeyCode keyCode) =>
-        !key.IsShift && key.NoShift.KeyCode == keyCode;
 }

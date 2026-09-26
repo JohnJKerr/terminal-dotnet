@@ -15,7 +15,7 @@ public sealed class ExplorerEditorWorkflow(
     ChangesetSession changes,
     IFileOpener editor,
     string target,
-    IssueSession? issues = null)
+    IssueSession issues)
 {
     private readonly PanelReload reload = new(explorers, changes, target, issues);
 

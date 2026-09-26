@@ -53,33 +53,23 @@ public sealed record ExplorerState(
     string SearchQuery = "",
     ExplorerFilter? ActiveFilter = null)
 {
-    private (IReadOnlyList<VisibleTestNode> Nodes, int Tests, bool Groups, bool Expanded) content =
-        Summarize(VisibleNodes);
+    private readonly IReadOnlyList<VisibleTestNode> visibleNodes = Snapshot.Of(VisibleNodes);
 
     public IReadOnlyList<VisibleTestNode> VisibleNodes
     {
-        get => content.Nodes;
-        init => content = Summarize(value);
+        get => visibleNodes;
+        init => visibleNodes = Snapshot.Of(value);
     }
 
-    public int VisibleTestCount => content.Tests;
+    public int VisibleTestCount => visibleNodes.Count(node => node.Kind == TestNodeKind.Test);
 
     /// <summary>Every test discovery found, whatever the search and the
     /// filter leave in view.</summary>
     public int DiscoveredTestCount { get; init; }
-    public bool HasGroups => content.Groups;
-    public bool HasExpandedGroups => content.Expanded;
 
-    private static (IReadOnlyList<VisibleTestNode>, int, bool, bool) Summarize(
-        IReadOnlyList<VisibleTestNode> nodes)
-    {
-        var frozen = Snapshot.Of(nodes);
-        return (
-            frozen,
-            frozen.Count(node => node.Kind == TestNodeKind.Test),
-            frozen.Any(node => node.Kind != TestNodeKind.Test),
-            frozen.Any(node => node.Kind != TestNodeKind.Test && node.IsExpanded));
-    }
+    public bool HasGroups => visibleNodes.Any(node => node.Kind != TestNodeKind.Test);
+
+    public bool HasExpandedGroups => visibleNodes.Any(node => node.Kind != TestNodeKind.Test && node.IsExpanded);
 
     /// <summary>What went wrong with the most recent attempt to run, when
     /// something did. It is kept apart from <see cref="LastRun"/> so a run

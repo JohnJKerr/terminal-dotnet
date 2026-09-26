@@ -1,3 +1,5 @@
+using System.IO.Enumeration;
+
 namespace TerminalDotnet.Files;
 
 internal static class SourceTree
@@ -6,52 +8,41 @@ internal static class SourceTree
     /// something the reader browses.</summary>
     private static readonly string[] SkippedDirectories = ["bin", "obj", ".git"];
 
-    public static IEnumerable<string> FilesUnder(string root, string searchPattern)
+    /// <summary>A folder that cannot be read is passed over rather than
+    /// ending the walk, so the rest of the tree is still listed.</summary>
+    private static readonly EnumerationOptions Walk = new()
     {
-        var pending = new Stack<string>();
-        pending.Push(root);
-        while (pending.Count > 0)
+        RecurseSubdirectories = true,
+        IgnoreInaccessible = true,
+        AttributesToSkip = FileAttributes.None
+    };
+
+    public static IEnumerable<string> FilesUnder(string root, string searchPattern) =>
+        new FileSystemEnumerable<string>(root, (ref FileSystemEntry entry) => entry.ToFullPath(), Walk)
         {
-            var directory = pending.Pop();
-            foreach (var child in Directory.EnumerateDirectories(directory))
-            {
-                PushSourceDirectory(pending, child);
-            }
-
-            foreach (var file in Directory.EnumerateFiles(directory, searchPattern))
-            {
-                yield return file;
-            }
-        }
-    }
-
-    private static void PushSourceDirectory(Stack<string> pending, string directory)
-    {
-        if (IsSkipped(directory) || LinksElsewhere(directory))
-        {
-            return;
-        }
-
-        pending.Push(directory);
-    }
+            ShouldIncludePredicate = (ref FileSystemEntry entry) =>
+                !entry.IsDirectory && FileSystemName.MatchesSimpleExpression(searchPattern, entry.FileName),
+            ShouldRecursePredicate = (ref FileSystemEntry entry) =>
+                !IsSkipped(entry.FileName) && !LinksElsewhere(entry.Attributes)
+        };
 
     /// <summary>A folder that links to another is left to the walk of wherever
     /// it really lives: following the link would list those files a second
     /// time, and a link pointing back at a folder above it would walk until
-    /// the path itself became too long to resolve. A folder that cannot be
-    /// asked is treated the same way rather than walked.</summary>
-    private static bool LinksElsewhere(string directory)
-    {
-        try
-        {
-            return new DirectoryInfo(directory).Attributes.HasFlag(FileAttributes.ReparsePoint);
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            return true;
-        }
-    }
+    /// the path itself became too long to resolve.</summary>
+    private static bool LinksElsewhere(FileAttributes attributes) =>
+        attributes.HasFlag(FileAttributes.ReparsePoint);
 
-    private static bool IsSkipped(string directory) =>
-        SkippedDirectories.Contains(Path.GetFileName(directory), StringComparer.OrdinalIgnoreCase);
+    private static bool IsSkipped(ReadOnlySpan<char> directoryName)
+    {
+        foreach (var skipped in SkippedDirectories)
+        {
+            if (directoryName.Equals(skipped, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

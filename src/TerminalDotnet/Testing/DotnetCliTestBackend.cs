@@ -3,7 +3,9 @@ using System.Xml.Linq;
 
 namespace TerminalDotnet.Testing;
 
-public sealed partial class DotnetCliTestBackend : ITestBackend
+public sealed partial class DotnetCliTestBackend(
+    ICommandRunner commandRunner,
+    ITestResultStore resultStore) : ITestBackend
 {
     /// <summary>Windows caps a command line at 32,767 characters, and the
     /// filter reaches vstest.console on its command line whichever way it is
@@ -11,15 +13,6 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     /// into runs whose filters do, leaving room for the paths and switches
     /// the test task adds around it.</summary>
     private const int FilterBudget = 20_000;
-
-    private readonly ICommandRunner commandRunner;
-    private readonly ITestResultStore resultStore;
-
-    public DotnetCliTestBackend(ICommandRunner commandRunner, ITestResultStore? resultStore = null)
-    {
-        this.commandRunner = commandRunner;
-        this.resultStore = resultStore ?? new TemporaryTrxResultStore();
-    }
 
     public async Task<IReadOnlyList<TestCase>> DiscoverAsync(
         string target,
@@ -29,40 +22,40 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             "dotnet",
             ["test", target, "--list-tests", "--nologo", "--tl:off"],
             Path.GetDirectoryName(Path.GetFullPath(target))!);
-        var result = await commandRunner.RunAsync(request, cancellationToken);
+        var result = await commandRunner.RunAsync(request, cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException($"Test discovery failed: {result.StandardError}");
         }
 
-        var listingTests = false;
-        var testTarget = target;
-        var tests = new List<TestCase>();
-        foreach (var line in result.StandardOutput.Split('\n'))
-        {
-            if (line.StartsWith("Test run for ", StringComparison.Ordinal))
-            {
-                testTarget = TestTarget(line) ?? target;
-                listingTests = false;
-                continue;
-            }
-
-            if (line.Contains("The following Tests are available:", StringComparison.Ordinal))
-            {
-                listingTests = true;
-                continue;
-            }
-
-            if (!listingTests || !NamesATest(line))
-            {
-                continue;
-            }
-
-            tests.Add(DiscoveredTest(line.Trim(), testTarget));
-        }
-
-        return tests;
+        return DiscoveredTests(result.StandardOutput.Split('\n'), target);
     }
+
+    private const string RunHeader = "Test run for ";
+
+    /// <summary>A solution lists each test project in a section of its own,
+    /// headed by the assembly it built, so each section's tests are claimed by
+    /// that project.</summary>
+    private static IReadOnlyList<TestCase> DiscoveredTests(string[] lines, string target)
+    {
+        int[] starts = [0, .. lines.Index().Where(line => IsRunHeader(line.Item)).Select(line => line.Index)];
+        return starts
+            .Zip([.. starts.Skip(1), lines.Length], (start, end) => lines[start..end])
+            .SelectMany(section => TestsListedIn(section, target))
+            .ToArray();
+    }
+
+    private static IEnumerable<TestCase> TestsListedIn(string[] section, string target)
+    {
+        var project = section is [var header, ..] && IsRunHeader(header) ? TestTarget(header) ?? target : target;
+        return section
+            .SkipWhile(line => !line.Contains("The following Tests are available:", StringComparison.Ordinal))
+            .Skip(1)
+            .Where(NamesATest)
+            .Select(line => DiscoveredTest(line.Trim(), project));
+    }
+
+    private static bool IsRunHeader(string line) => line.StartsWith(RunHeader, StringComparison.Ordinal);
 
     private static bool NamesATest(string line) =>
         !string.IsNullOrWhiteSpace(line) && char.IsWhiteSpace(line[0]);
@@ -88,11 +81,10 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         return discoveredName[(methodSeparator + 1)..].Replace('_', ' ');
     }
 
-    private static string? TestTarget(string line)
+    private static string? TestTarget(string header)
     {
-        const string prefix = "Test run for ";
-        var framework = line.IndexOf(" (", prefix.Length, StringComparison.Ordinal);
-        return framework < 0 ? null : ProjectTarget(line[prefix.Length..framework]);
+        var framework = header.IndexOf(" (", RunHeader.Length, StringComparison.Ordinal);
+        return framework < 0 ? null : ProjectTarget(header[RunHeader.Length..framework]);
     }
 
     private static string ProjectTarget(string assemblyPath)
@@ -127,7 +119,8 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         var runs = new List<TestRun>();
         foreach (var batch in FilterBatches(tests))
         {
-            runs.Add(await RunBatchAsync(target, batch, build: runs.Count == 0, cancellationToken));
+            var build = runs.Count == 0;
+            runs.Add(await RunBatchAsync(target, batch, build, cancellationToken).ConfigureAwait(false));
         }
 
         return Combined(runs);
@@ -157,14 +150,34 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     private static string FilterClause(TestCase test) =>
         $"FullyQualifiedName={FilterValue(test.FullyQualifiedName)}";
 
+    /// <summary>The results file is discarded however the run ends, because
+    /// a run cancelled part-way can leave one behind that nobody will read.
+    /// </summary>
     private async Task<TestRun> RunBatchAsync(
         string target,
         IReadOnlyList<TestCase> tests,
         bool build,
         CancellationToken cancellationToken)
     {
-        var filter = string.Join('|', tests.Select(FilterClause));
         var resultPath = resultStore.CreatePath();
+        try
+        {
+            return await RunBatchIntoAsync(resultPath, target, tests, build, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            resultStore.Discard(resultPath);
+        }
+    }
+
+    private async Task<TestRun> RunBatchIntoAsync(
+        string resultPath,
+        string target,
+        IReadOnlyList<TestCase> tests,
+        bool build,
+        CancellationToken cancellationToken)
+    {
+        var filter = string.Join('|', tests.Select(FilterClause));
         var result = await commandRunner.RunAsync(
             new CommandRequest(
                 "dotnet",
@@ -180,12 +193,12 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
                     .. BuildSwitches(build)
                 ],
                 Path.GetDirectoryName(Path.GetFullPath(target))!),
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
 
         var output = string.IsNullOrWhiteSpace(result.StandardError)
             ? result.StandardOutput
             : $"{result.StandardOutput}{Environment.NewLine}{result.StandardError}";
-        var recorded = await RecordedResultsAsync(resultPath, tests, cancellationToken);
+        var recorded = await RecordedResultsAsync(resultPath, tests, cancellationToken).ConfigureAwait(false);
         return new TestRun(result.ExitCode == 0, output.Trim(), recorded.Results)
         {
             Diagnostic = recorded.Diagnostic
@@ -234,7 +247,7 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
     {
         try
         {
-            var trx = await resultStore.ReadAsync(resultPath, cancellationToken);
+            var trx = await resultStore.ReadAsync(resultPath, cancellationToken).ConfigureAwait(false);
             return new RecordedResults(ParseResults(trx, tests), null);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -272,6 +285,31 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
         IReadOnlyDictionary<string, XElement> definitions,
         IReadOnlyDictionary<string, TestCase[]> requestedByName)
     {
+        if (RequestedTestFor(result, definitions, requestedByName) is not { } test)
+        {
+            return null;
+        }
+
+        var stackTrace = ChildText(result, "StackTrace");
+        var source = FailureSourceIn(stackTrace);
+        return new TestResult(
+            test,
+            OutcomeOf(result),
+            DurationOf(result),
+            ChildText(result, "Message"),
+            stackTrace,
+            source?.File,
+            source?.Line,
+            ChildText(result, "StdOut"));
+    }
+
+    /// <summary>A theory reports a result per case under one test name, so
+    /// the case is told apart by the display name it ran as.</summary>
+    private static TestCase? RequestedTestFor(
+        XElement result,
+        IReadOnlyDictionary<string, XElement> definitions,
+        IReadOnlyDictionary<string, TestCase[]> requestedByName)
+    {
         var testId = (string?)result.Attribute("testId");
         if (testId is null || !definitions.TryGetValue(testId, out var definition))
         {
@@ -284,30 +322,31 @@ public sealed partial class DotnetCliTestBackend : ITestBackend
             return null;
         }
 
-        var resultDisplayName = result.Attribute("testName")?.Value.Replace('_', ' ');
-        var test = candidates.FirstOrDefault(candidate =>
-                resultDisplayName?.EndsWith(candidate.DisplayName, StringComparison.Ordinal) == true)
+        var ranAs = result.Attribute("testName")?.Value.Replace('_', ' ');
+        return candidates.FirstOrDefault(candidate =>
+                ranAs?.EndsWith(candidate.DisplayName, StringComparison.Ordinal) == true)
             ?? candidates[0];
-
-        var stackTrace = result.Descendants().SingleOrDefault(element => element.Name.LocalName == "StackTrace")?.Value;
-        var source = stackTrace is null ? null : SourceLocation().Match(stackTrace);
-        var outcome = result.Attribute("outcome")?.Value switch
-        {
-            "Passed" => TestOutcome.Passed,
-            "NotExecuted" => TestOutcome.Skipped,
-            _ => TestOutcome.Failed
-        };
-
-        return new TestResult(
-            test,
-            outcome,
-            TimeSpan.TryParse(result.Attribute("duration")?.Value, out var duration) ? duration : TimeSpan.Zero,
-            result.Descendants().SingleOrDefault(element => element.Name.LocalName == "Message")?.Value,
-            stackTrace,
-            source?.Success == true ? source.Groups["file"].Value : null,
-            source?.Success == true ? int.Parse(source.Groups["line"].Value) : null,
-            result.Descendants().SingleOrDefault(element => element.Name.LocalName == "StdOut")?.Value);
     }
+
+    private static TestOutcome OutcomeOf(XElement result) => result.Attribute("outcome")?.Value switch
+    {
+        "Passed" => TestOutcome.Passed,
+        "NotExecuted" => TestOutcome.Skipped,
+        _ => TestOutcome.Failed
+    };
+
+    private static TimeSpan DurationOf(XElement result) =>
+        TimeSpan.TryParse(result.Attribute("duration")?.Value, out var duration) ? duration : TimeSpan.Zero;
+
+    private static string? ChildText(XElement element, string localName) =>
+        element.Descendants().SingleOrDefault(child => child.Name.LocalName == localName)?.Value;
+
+    private sealed record FailureSource(string File, int Line);
+
+    private static FailureSource? FailureSourceIn(string? stackTrace) =>
+        stackTrace is not null && SourceLocation().Match(stackTrace) is { Success: true } match
+            ? new FailureSource(match.Groups["file"].Value, int.Parse(match.Groups["line"].Value))
+            : null;
 
     [GeneratedRegex(@" in (?<file>.+):line (?<line>\d+)")]
     private static partial Regex SourceLocation();

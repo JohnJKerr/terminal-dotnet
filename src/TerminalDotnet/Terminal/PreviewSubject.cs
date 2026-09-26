@@ -29,25 +29,73 @@ public abstract record PreviewSubject
     public static PreviewSubject For(
         PanelKind list,
         PanelStates panels,
-        bool previewsChangedFile = false) => list switch
+        bool previewsChangedFile = false) =>
+        SubjectAt(list, panels, SelectedRowOf(list, panels), previewsChangedFile);
+
+    /// <returns>The nearest row in the direction of <paramref name="step"/>
+    /// that has something to preview, or null when none does. A folder or a
+    /// project has nothing to show, so stepping goes straight past it.</returns>
+    public static int? NextShown(
+        PanelKind list,
+        PanelStates panels,
+        int step,
+        bool previewsChangedFile = false)
     {
-        PanelKind.Explorer => Selected(panels.Files.VisibleNodes, panels.Files.SelectedIndex) is
-            { Kind: FileNodeKind.File } node
+        var rowCount = RowCountOf(list, panels);
+        var row = SelectedRowOf(list, panels) + Math.Sign(step);
+        for (; row >= 0 && row < rowCount; row += Math.Sign(step))
+        {
+            if (SubjectAt(list, panels, row, previewsChangedFile) is not Nothing)
+            {
+                return row;
+            }
+        }
+
+        return null;
+    }
+
+    private static PreviewSubject SubjectAt(
+        PanelKind list,
+        PanelStates panels,
+        int row,
+        bool previewsChangedFile) => list switch
+    {
+        PanelKind.Explorer => Selected(panels.Files.VisibleNodes, row) is { Kind: FileNodeKind.File } node
             ? new SourceFile(node.Files[0].Path, 1)
             : new Nothing(),
-        PanelKind.Tests => Selected(panels.Tests.VisibleNodes, panels.Tests.SelectedIndex) is { } test
+        PanelKind.Tests => Selected(panels.Tests.VisibleNodes, row) is { } test
             ? new SelectedTest(test)
             : new Nothing(),
-        PanelKind.Changes => Selected(panels.Changes.Files, panels.Changes.SelectedIndex) is { } change
+        PanelKind.Changes => Selected(panels.Changes.Files, row) is { } change
             ? Changed(change, previewsChangedFile)
             : new Nothing(),
-        PanelKind.Issues => Selected(panels.Issues.Issues, panels.Issues.SelectedIndex) is { } issue
+        PanelKind.Issues => Selected(panels.Issues.Issues, row) is { } issue
             ? new SourceFile(issue.Path, issue.Line)
             : new Nothing(),
-        PanelKind.Comments => Selected(panels.Comments.Comments, panels.Comments.SelectedIndex) is { } comment
+        PanelKind.Comments => Selected(panels.Comments.Comments, row) is { } comment
             ? new SourceFile(comment.Path, 1)
             : new Nothing(),
         _ => new Nothing()
+    };
+
+    private static int SelectedRowOf(PanelKind list, PanelStates panels) => list switch
+    {
+        PanelKind.Explorer => panels.Files.SelectedIndex,
+        PanelKind.Tests => panels.Tests.SelectedIndex,
+        PanelKind.Changes => panels.Changes.SelectedIndex,
+        PanelKind.Issues => panels.Issues.SelectedIndex,
+        PanelKind.Comments => panels.Comments.SelectedIndex,
+        _ => 0
+    };
+
+    private static int RowCountOf(PanelKind list, PanelStates panels) => list switch
+    {
+        PanelKind.Explorer => panels.Files.VisibleNodes.Count,
+        PanelKind.Tests => panels.Tests.VisibleNodes.Count,
+        PanelKind.Changes => panels.Changes.Files.Count,
+        PanelKind.Issues => panels.Issues.Issues.Count,
+        PanelKind.Comments => panels.Comments.Comments.Count,
+        _ => 0
     };
 
     /// <summary>A deleted file has nothing left to read but its diff.</summary>

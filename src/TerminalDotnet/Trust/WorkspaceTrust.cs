@@ -39,7 +39,7 @@ public sealed class WorkspaceTrust(string storePath, ICommandRunner commandRunne
         string launchFolder,
         CancellationToken cancellationToken = default)
     {
-        var folder = await FolderToTrustAsync(launchFolder, cancellationToken);
+        var folder = await FolderToTrustAsync(launchFolder, cancellationToken).ConfigureAwait(false);
         return new TrustDecision(folder, TrustedFolders().Contains(folder, FolderComparer));
     }
 
@@ -52,7 +52,7 @@ public sealed class WorkspaceTrust(string storePath, ICommandRunner commandRunne
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(storePath))!);
-            await FileReplacement.WriteAsync(storePath, StoreText(trusted), cancellationToken);
+            await FileReplacement.WriteAsync(storePath, StoreText(trusted), cancellationToken).ConfigureAwait(false);
             return true;
         }
         catch (Exception exception) when (exception is IOException
@@ -64,15 +64,9 @@ public sealed class WorkspaceTrust(string storePath, ICommandRunner commandRunne
         }
     }
 
-    private async Task<string> FolderToTrustAsync(string launchFolder, CancellationToken cancellationToken)
-    {
-        var root = await commandRunner.RunAsync(
-            GitRequest.For(["rev-parse", "--show-toplevel"], launchFolder),
-            cancellationToken);
-        return Normalized(root.ExitCode == 0 && root.StandardOutput.Trim() is { Length: > 0 } top
-            ? top
-            : launchFolder);
-    }
+    private async Task<string> FolderToTrustAsync(string launchFolder, CancellationToken cancellationToken) =>
+        Normalized(await GitRepository.RootAsync(commandRunner, launchFolder, cancellationToken).ConfigureAwait(false)
+            ?? launchFolder);
 
     private IReadOnlyList<string> TrustedFolders()
     {

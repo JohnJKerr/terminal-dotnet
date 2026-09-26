@@ -3,25 +3,29 @@ using TerminalDotnet.Testing;
 
 namespace TerminalDotnet.Changes;
 
+/// <summary>
+/// The changeset as git reports it. Each file is named by its full path, so
+/// git is asked about it from wherever the file is rather than from wherever
+/// the changeset was last discovered.
+/// </summary>
 public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChangesetBackend
 {
-    private string? repositoryRoot;
-    private string scopeDirectory = "";
-
     public async Task<IReadOnlyList<ChangedFile>> DiscoverAsync(
         string target,
         CancellationToken cancellationToken = default)
     {
-        scopeDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
-        repositoryRoot = await RepositoryRootAsync(cancellationToken);
+        var scopeDirectory = Path.GetDirectoryName(Path.GetFullPath(target))!;
+        var repositoryRoot = await GitRepository.RootAsync(commandRunner, scopeDirectory, cancellationToken)
+            .ConfigureAwait(false);
         if (repositoryRoot is null)
         {
             return [];
         }
 
         var status = await GitAsync(
+            repositoryRoot,
             ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--", scopeDirectory],
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (status.ExitCode != 0)
         {
             return [];
@@ -37,22 +41,20 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         ChangedFile file,
         CancellationToken cancellationToken = default)
     {
-        if (repositoryRoot is null)
-        {
-            return "";
-        }
-
+        var folder = NearestFolderOnDisk(file);
         var tracked = await GitAsync(
+            folder,
             ["diff", .. WithoutConfiguredTools, "HEAD", "--", Pathspec(file)],
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         if (tracked.StandardOutput.Length > 0)
         {
             return tracked.StandardOutput;
         }
 
         var untracked = await GitAsync(
+            folder,
             ["diff", .. WithoutConfiguredTools, "--no-index", "--", "/dev/null", file.Path],
-            cancellationToken);
+            cancellationToken).ConfigureAwait(false);
         return untracked.StandardOutput;
     }
 
@@ -65,13 +67,22 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         ChangedFile file,
         CancellationToken cancellationToken = default)
     {
-        if (repositoryRoot is null)
+        var restore = await GitAsync(NearestFolderOnDisk(file), RestoreArgumentsFor(file), cancellationToken)
+            .ConfigureAwait(false);
+        return restore.ExitCode == 0;
+    }
+
+    /// <summary>A deleted file can take its folder with it, so git is run
+    /// from the closest folder above it that is still there.</summary>
+    private static string NearestFolderOnDisk(ChangedFile file)
+    {
+        var folder = Path.GetDirectoryName(file.Path);
+        while (folder is not null && !Directory.Exists(folder))
         {
-            return false;
+            folder = Path.GetDirectoryName(folder);
         }
 
-        var restore = await GitAsync(RestoreArgumentsFor(file), cancellationToken);
-        return restore.ExitCode == 0;
+        return folder ?? Path.GetPathRoot(file.Path)!;
     }
 
     /// <summary>Git lists a file deleted in the index and written again in the
@@ -121,20 +132,11 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
     /// literal prefix keeps an operation to the file the panel selected.</summary>
     private static string Pathspec(ChangedFile file) => $":(literal){file.Path}";
 
-    private async Task<string?> RepositoryRootAsync(CancellationToken cancellationToken)
-    {
-        var result = await commandRunner.RunAsync(
-            GitRequest.For(["rev-parse", "--show-toplevel"], scopeDirectory),
-            cancellationToken);
-        return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
-    }
-
     private Task<CommandResult> GitAsync(
+        string workingDirectory,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken) =>
-        commandRunner.RunAsync(
-            GitRequest.For(arguments, repositoryRoot!),
-            cancellationToken);
+        commandRunner.RunAsync(GitRequest.For(arguments, workingDirectory), cancellationToken);
 
     private static ChangedFile ChangedFileFrom(
         GitStatusEntry entry,
