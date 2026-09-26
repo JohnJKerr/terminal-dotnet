@@ -84,7 +84,7 @@ internal sealed class TestRunnerApplication(
     private bool reloadingWhatIsOnDisk;
     private string? openPath;
     private int openLine = 1;
-    private int openDialogs;
+    private readonly DialogHost dialogs = new();
 
     private Label? testStatus;
     private Label? shortcuts;
@@ -333,7 +333,7 @@ internal sealed class TestRunnerApplication(
     /// shell, so the shell follows the focus to wherever it landed.</summary>
     private void FollowTheFocus(PanelKind panel, bool focused)
     {
-        if (!focused || openDialogs > 0 || shell.State.ActivePanel == panel || running is not { } application)
+        if (!focused || dialogs.AnyOpen || shell.State.ActivePanel == panel || running is not { } application)
         {
             return;
         }
@@ -412,7 +412,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (openDialogs > 0)
+        if (dialogs.AnyOpen)
         {
             return;
         }
@@ -465,7 +465,7 @@ internal sealed class TestRunnerApplication(
     /// shell knowing. Panels are left only by number or Tab.</summary>
     private void HoldTheFocus(Key key)
     {
-        if (key.Handled || openDialogs > 0 || search.HasFocus)
+        if (key.Handled || dialogs.AnyOpen || search.HasFocus)
         {
             return;
         }
@@ -546,7 +546,7 @@ internal sealed class TestRunnerApplication(
         }
 
         var count = commentSession.State.Comments.Count;
-        var chosen = OverThePanels(() => MessageBox.Query(
+        var chosen = dialogs.Over(() => MessageBox.Query(
             application,
             "Quit",
             CommentPrompt.QuitLoses(count),
@@ -891,7 +891,7 @@ internal sealed class TestRunnerApplication(
     private void ClearComments(IApplication application)
     {
         var count = commentSession.State.Comments.Count;
-        var chosen = OverThePanels(() => MessageBox.Query(
+        var chosen = dialogs.Over(() => MessageBox.Query(
             application,
             "Clear comments",
             CommentPrompt.ClearAll(count),
@@ -907,7 +907,7 @@ internal sealed class TestRunnerApplication(
 
     private void SaveComments(IApplication application)
     {
-        var path = OverThePanels(
+        var path = dialogs.Over(
             () => SavePrompt.Ask(application, "Save comments", SuggestedCommentPath()));
         if (path is null || !MayWriteOver(application, path))
         {
@@ -927,7 +927,7 @@ internal sealed class TestRunnerApplication(
             return true;
         }
 
-        var chosen = OverThePanels(() => MessageBox.Query(
+        var chosen = dialogs.Over(() => MessageBox.Query(
             application,
             "Save comments",
             $"{Path.GetFileName(path)} already exists. Saving replaces what is in it.",
@@ -940,7 +940,7 @@ internal sealed class TestRunnerApplication(
 
     private string LaunchFolder() => Path.GetDirectoryName(Path.GetFullPath(target))!;
 
-    private void ShowComment(IApplication application, FileComment selected) => ShowCellDialog(
+    private void ShowComment(IApplication application, FileComment selected) => dialogs.ShowText(
         application,
         $"Comment — {selected.DisplayPath} — ↑/↓ scroll  Esc close",
         CommentCells(selected.Text),
@@ -957,7 +957,7 @@ internal sealed class TestRunnerApplication(
         IApplication application,
         FileComment selected)
     {
-        var written = OverThePanels(
+        var written = dialogs.Over(
             () => CommentDialog.Ask(application, selected.DisplayPath, selected.Text));
         if (written is null)
         {
@@ -1065,7 +1065,7 @@ internal sealed class TestRunnerApplication(
     private void CommentOn(IApplication application, string path)
     {
         var displayPath = DisplayPathFor(path);
-        var written = OverThePanels(
+        var written = dialogs.Over(
             () => CommentDialog.Ask(application, displayPath, commentSession.Against(path)));
         if (written is null)
         {
@@ -1082,14 +1082,14 @@ internal sealed class TestRunnerApplication(
     private void ShowTestOutput(IApplication application)
     {
         var snapshot = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
-        ShowCellDialog(
+        dialogs.ShowText(
             application,
             $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close",
             AnsiTestOutput.ToCells(snapshot.SelectedOutput),
             wordWrap: true);
     }
 
-    private void ShowCommands(IApplication application) => ShowCellDialog(
+    private void ShowCommands(IApplication application) => dialogs.ShowText(
         application,
         "Commands — ↑/↓ scroll  Esc close",
         CommandMenu.Rows().Select(CommandMenuCells).ToList(),
@@ -1100,66 +1100,6 @@ internal sealed class TestRunnerApplication(
         new Attribute(
             row.IsHeading ? Color.BrightCyan : Color.White,
             Color.Black)).ToList();
-
-    private void ShowCellDialog(
-        IApplication application,
-        string title,
-        List<List<Cell>> lines,
-        bool wordWrap)
-    {
-        using var dialog = FullScreenDialog(title);
-        var text = new ColoredTextView(wordWrap)
-        {
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill()
-        };
-        text.Load(lines);
-        SetBlackBackground(dialog);
-        SetBlackBackground(text);
-        dialog.Add(text);
-        OverThePanels(() => application.Run(dialog));
-    }
-
-    private static Window FullScreenDialog(string title) => new()
-    {
-        Title = title,
-        X = 0,
-        Y = 0,
-        Width = Dim.Fill(),
-        Height = Dim.Fill(),
-        ShadowStyle = ShadowStyles.None
-    };
-
-    /// <summary>
-    /// Runs a dialog over the panels. The shell listens for keys across the
-    /// whole application, so the panels are told to stand down for as long as
-    /// something is open in front of them; otherwise a q typed into a comment
-    /// would quit rather than be written. Dialogs open over one another — a
-    /// comment is written over the preview it was prompted by — so what is
-    /// open is counted rather than flagged.
-    /// </summary>
-    private T OverThePanels<T>(Func<T> show)
-    {
-        openDialogs++;
-        try
-        {
-            return show();
-        }
-        finally
-        {
-            openDialogs--;
-        }
-    }
-
-    private void OverThePanels(Action show) => OverThePanels<object?>(() =>
-    {
-        show();
-        return null;
-    });
-
-    private static void SetBlackBackground(View view) => ViewColours.ColourGround(view, () => Color.Black);
 
     private static string LanguageFrom(string path) => Path.GetExtension(path).ToLowerInvariant() switch
     {
