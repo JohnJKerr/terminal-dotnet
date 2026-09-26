@@ -1,3 +1,4 @@
+using System.Runtime.Versioning;
 using TerminalDotnet.Files;
 using TerminalDotnet.Testing;
 using Xunit;
@@ -182,6 +183,7 @@ public sealed class WhenDiscoveringFolderFiles
     }
 
     [PosixFact]
+    [UnsupportedOSPlatform("windows")]
     public async Task It_lists_the_files_beside_a_folder_it_is_not_allowed_to_read()
     {
         // Arrange
