@@ -103,9 +103,18 @@ internal sealed class PreviewPanel
         details.Text = detail;
         details.Visible = detail.Length > 0;
         code.Height = Dim.Fill(details.Visible ? DetailRows : 0);
-        code.ScrollVertical(-code.GetContentSize().Height);
-        code.ScrollVertical(Math.Max(0, line - 1 - code.Viewport.Height / 3));
+        ScrollToLine(line);
         ShowHighlight();
+    }
+
+    /// <summary>A new file starts from its top, wherever the last one was
+    /// left: scrolling up by the new file's length is not enough when the
+    /// last one was longer and read to its end. The line to highlight is then
+    /// brought a third of the way down.</summary>
+    private void ScrollToLine(int line)
+    {
+        code.Viewport = code.Viewport with { X = 0, Y = 0 };
+        code.ScrollVertical(Math.Max(0, line - 1 - code.Viewport.Height / 3));
     }
 
     public void ShowDiff(string title, IReadOnlyList<DiffLine> lines)
