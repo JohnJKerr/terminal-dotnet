@@ -1558,13 +1558,12 @@ internal sealed class TestRunnerApplication(
         var snapshot = FilePanelSnapshot.From(ExplorerSession().State, shell.State.ShowsAllFiles);
         RenderPanel(
             PanelKind.Explorer,
-            snapshot.Filters,
-            snapshot.SearchQuery,
-            snapshot.SearchHitCount,
-            snapshot.Nodes,
-            () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
-            snapshot.SelectedIndex,
-            snapshot.EmptyMessage,
+            new PanelSearch(snapshot.Filters, snapshot.SearchQuery, snapshot.SearchHitCount),
+            new PanelListing(
+                snapshot.Nodes,
+                () => TonedRows(snapshot.Rows),
+                snapshot.SelectedIndex,
+                snapshot.EmptyMessage),
             new PanelPosition(snapshot.SelectedIndex, snapshot.Nodes.Count));
         ShowSegmentsWhenActive(PanelKind.Explorer, snapshot.StatusSegments);
     }
@@ -1574,13 +1573,12 @@ internal sealed class TestRunnerApplication(
         var snapshot = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
         RenderPanel(
             PanelKind.Tests,
-            snapshot.Filters,
-            snapshot.SearchQuery,
-            snapshot.SearchHitCount,
-            snapshot.Tests,
-            () => [.. snapshot.TestRows.Zip(snapshot.Tests, TestRow)],
-            snapshot.SelectedIndex,
-            snapshot.EmptyMessage,
+            new PanelSearch(snapshot.Filters, snapshot.SearchQuery, snapshot.SearchHitCount),
+            new PanelListing(
+                snapshot.Tests,
+                () => [.. snapshot.TestRows.Zip(snapshot.Tests, TestRow)],
+                snapshot.SelectedIndex,
+                snapshot.EmptyMessage),
             new PanelPosition(snapshot.SelectedIndex, snapshot.Tests.Count));
         if (shell.State.ActivePanel != PanelKind.Tests)
         {
@@ -1593,6 +1591,9 @@ internal sealed class TestRunnerApplication(
         testStatus.Text = snapshot.StatusLine;
     }
 
+    private static IReadOnlyList<ListRow> TonedRows(IReadOnlyList<PanelRow> rows) =>
+        [.. rows.Select(row => ListRow.Toned(row.Text, row.Tone))];
+
     private static ListRow TestRow(string text, VisibleTestNode node) =>
         new(text, TestRowAppearance.ForegroundFor(node.Outcome, node.Update));
 
@@ -1601,13 +1602,12 @@ internal sealed class TestRunnerApplication(
         var snapshot = ChangesetPanelSnapshot.From(changesetSession.State);
         RenderPanel(
             PanelKind.Changes,
-            [],
-            snapshot.SearchQuery,
-            snapshot.SearchHitCount,
-            snapshot.Files,
-            () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
-            snapshot.SelectedIndex,
-            snapshot.EmptyMessage,
+            new PanelSearch([], snapshot.SearchQuery, snapshot.SearchHitCount),
+            new PanelListing(
+                snapshot.Files,
+                () => TonedRows(snapshot.Rows),
+                snapshot.SelectedIndex,
+                snapshot.EmptyMessage),
             new PanelPosition(snapshot.SelectedIndex, snapshot.Files.Count));
         ShowSegmentsWhenActive(PanelKind.Changes, snapshot.StatusSegments);
     }
@@ -1618,13 +1618,12 @@ internal sealed class TestRunnerApplication(
         var layout = IssuePanelLayout.From(snapshot, lists[PanelKind.Issues].View.Viewport.Width);
         RenderPanel(
             PanelKind.Issues,
-            snapshot.Filters,
-            snapshot.SearchQuery,
-            snapshot.Issues.Count,
-            layout,
-            () => [.. layout.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
-            layout.SelectedRowIndex,
-            snapshot.EmptyMessage,
+            new PanelSearch(snapshot.Filters, snapshot.SearchQuery, snapshot.Issues.Count),
+            new PanelListing(
+                layout.Rows,
+                () => TonedRows(layout.Rows),
+                layout.SelectedRowIndex,
+                snapshot.EmptyMessage),
             new PanelPosition(snapshot.SelectedIndex, snapshot.Issues.Count));
         ShowSegmentsWhenActive(PanelKind.Issues, snapshot.StatusSegments);
     }
@@ -1634,47 +1633,39 @@ internal sealed class TestRunnerApplication(
         var snapshot = CommentPanelSnapshot.From(commentSession.State);
         RenderPanel(
             PanelKind.Comments,
-            [],
-            snapshot.SearchQuery,
-            snapshot.SearchHitCount,
-            snapshot.Comments,
-            () => [.. snapshot.Rows.Select(row => ListRow.Toned(row.Text, row.Tone))],
-            snapshot.SelectedIndex,
-            snapshot.EmptyMessage,
+            new PanelSearch([], snapshot.SearchQuery, snapshot.SearchHitCount),
+            new PanelListing(
+                snapshot.Comments,
+                () => TonedRows(snapshot.Rows),
+                snapshot.SelectedIndex,
+                snapshot.EmptyMessage),
             new PanelPosition(snapshot.SelectedIndex, snapshot.Comments.Count));
         ShowSegmentsWhenActive(PanelKind.Comments, snapshot.StatusSegments);
     }
 
     /// <summary>Every panel lists its rows, but only the one taking the keys
     /// fills the search box beneath them.</summary>
-    private void RenderPanel(
-        PanelKind panel,
-        IReadOnlyList<FilterChip> filters,
-        string searchQuery,
-        int searchHitCount,
-        object content,
-        Func<IReadOnlyList<ListRow>> rows,
-        int selectedIndex,
-        string emptyMessage,
-        PanelPosition position)
+    private void RenderPanel(PanelKind panel, PanelSearch searched, PanelListing listing, PanelPosition position)
     {
         var active = shell.State.ActivePanel == panel;
         lists[panel].Show(
-            PanelTitle.Segments(panel, filters, searchQuery, active),
+            PanelTitle.Segments(panel, searched.Filters, searched.Query, active),
             PanelTitle.Footer(position.Selected, position.Count),
-            content,
-            rows,
-            selectedIndex,
-            emptyMessage);
+            listing);
         if (!active)
         {
             return;
         }
 
-        search.Title = SearchBox.Title(searchQuery, searchHitCount);
-        search.Text = searchQuery;
-        ShowFilters(filters);
+        search.Title = SearchBox.Title(searched.Query, searched.HitCount);
+        search.Text = searched.Query;
+        ShowFilters(searched.Filters);
     }
+
+    /// <summary>What a panel is searched for and filtered to, which the
+    /// search box beneath the panels shows while the panel takes the keys.
+    /// </summary>
+    private sealed record PanelSearch(IReadOnlyList<FilterChip> Filters, string Query, int HitCount);
 
     /// <summary>Where the selection stands among what the panel lists. The
     /// issues wrap across several rows each, so they count issues, not rows.
