@@ -1,130 +1,85 @@
 using TerminalDotnet.Explorer;
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Builders;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Testing;
 
 public sealed class WhenLocatingTestSource
 {
+    private const string CartTests = """
+        namespace Shop.Tests;
+
+        public sealed class CartTests
+        {
+            [Fact]
+            public void Adds_item()
+            {
+            }
+        }
+        """;
+
     [Fact]
     public async Task It_ignores_a_copy_left_in_a_nested_build_directory()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        try
-        {
-            Directory.CreateDirectory(Path.Combine(root, "sub", "obj"));
-            var project = Path.Combine(root, "Shop.Tests.csproj");
-            await File.WriteAllTextAsync(project, "<Project />");
-            await File.WriteAllTextAsync(Path.Combine(root, "sub", "obj", "CartTests.cs"), """
-                public sealed class CartTests
-                {
-                    public void Adds_item()
-                    {
-                    }
-                }
-                """);
-            var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", project);
+        using var workspace = ShopTests().WithFile("sub/obj/CartTests.cs", CartTests);
 
-            // Act
-            var source = await new FileTestSourceLocator().LocateAsync(test);
+        // Act
+        var source = await LocateAddsItemAsync(workspace);
 
-            // Assert
-            Assert.Null(source);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Null(source);
     }
 
     [Fact(Timeout = 10_000)]
     public async Task It_gives_up_on_a_missing_test_when_a_folder_links_back_to_its_parent()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        try
-        {
-            Directory.CreateDirectory(Path.Combine(root, "sub"));
-            Directory.CreateSymbolicLink(Path.Combine(root, "sub", "loop"), root);
-            var project = Path.Combine(root, "Shop.Tests.csproj");
-            await File.WriteAllTextAsync(project, "<Project />");
-            var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", project);
+        using var workspace = ShopTests().WithFolder("sub");
+        Directory.CreateSymbolicLink(workspace.PathTo("sub/loop"), workspace.Root);
 
-            // Act
-            var source = await new FileTestSourceLocator().LocateAsync(test);
+        // Act
+        var source = await LocateAddsItemAsync(workspace);
 
-            // Assert
-            Assert.Null(source);
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Null(source);
     }
 
     [Fact(Timeout = 10_000)]
     public async Task It_passes_over_a_named_pipe_rather_than_waiting_for_a_writer()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        try
+        using var workspace = ShopTests();
+        if (!NamedPipe.TryCreate(workspace.PathTo("CartTests.cs")))
         {
-            Directory.CreateDirectory(root);
-            if (!NamedPipe.TryCreate(Path.Combine(root, "CartTests.cs")))
-            {
-                return;
-            }
-
-            var project = Path.Combine(root, "Shop.Tests.csproj");
-            await File.WriteAllTextAsync(project, "<Project />");
-            var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", project);
-
-            // Act
-            var source = await Task.Run(() => new FileTestSourceLocator().LocateAsync(test));
-
-            // Assert
-            Assert.Null(source);
+            return;
         }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+
+        // Act
+        var source = await Task.Run(() => LocateAddsItemAsync(workspace));
+
+        // Assert
+        Assert.Null(source);
     }
 
     [Fact]
     public async Task It_finds_a_test_before_the_test_has_run()
     {
         // Arrange
-        var root = Path.Combine(Path.GetTempPath(), $"terminal-dotnet-{Guid.NewGuid():N}");
-        try
-        {
-            Directory.CreateDirectory(root);
-            var project = Path.Combine(root, "Shop.Tests.csproj");
-            var sourcePath = Path.Combine(root, "CartTests.cs");
-            await File.WriteAllTextAsync(project, "<Project />");
-            await File.WriteAllTextAsync(sourcePath, """
-                namespace Shop.Tests;
+        using var workspace = ShopTests().WithFile("CartTests.cs", CartTests);
 
-                public sealed class CartTests
-                {
-                    [Fact]
-                    public void Adds_item()
-                    {
-                    }
-                }
-                """);
-            var test = new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", project);
+        // Act
+        var source = await LocateAddsItemAsync(workspace);
 
-            // Act
-            var source = await new FileTestSourceLocator().LocateAsync(test);
-
-            // Assert
-            Assert.Equal((sourcePath, 6), (source!.Path, source.HighlightLine));
-        }
-        finally
-        {
-            Directory.Delete(root, recursive: true);
-        }
+        // Assert
+        Assert.Equal((workspace.PathTo("CartTests.cs"), 6), (source?.Path, source?.HighlightLine));
     }
+
+    private static TemporaryWorkspace ShopTests() =>
+        TemporaryWorkspace.Create().WithFile("Shop.Tests.csproj", "<Project />");
+
+    private static Task<SourceLocation?> LocateAddsItemAsync(TemporaryWorkspace workspace) =>
+        new FileTestSourceLocator().LocateAsync(
+            GivenA.TestCase("Shop.Tests.CartTests.Adds_item", workspace.PathTo("Shop.Tests.csproj")));
 }
