@@ -31,7 +31,6 @@ internal sealed class TestRunnerApplication(
     private const int FilterGap = 2;
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int SearchRow = StatusRow + 1;
-    private const int ToastPadding = 4;
 
     /// <summary>The choices a message box offers, in the order it offers them.
     /// It opens on its last button, so the safe choice goes last.</summary>
@@ -80,10 +79,7 @@ internal sealed class TestRunnerApplication(
     private readonly EditBurst outsideEdits = new();
     private readonly EditsSinceTheBuild editsSinceTheBuild = new();
     private readonly Stopwatch sinceRebuildStarted = new();
-    private View? toast;
-    private Label? toastText;
-    private Toast? shownToast;
-    private int toastsShown;
+    private ToastPanel toast = new(ContentInset);
     private readonly Stopwatch sinceWatching = new();
     private bool openSourceRequested;
     private bool panelsWereEdited;
@@ -186,8 +182,8 @@ internal sealed class TestRunnerApplication(
         window.Add(workspace, search, testStatus, shortcuts);
         window.Add([.. segmentLabels]);
         window.Add([.. filterLabels]);
-        toast = Toast();
-        window.Add(toast);
+        toast = new ToastPanel(ContentInset);
+        window.Add(toast.View);
         search.ValueChanged += async (_, _) =>
         {
             await SearchAsync(search.Text);
@@ -1308,7 +1304,7 @@ internal sealed class TestRunnerApplication(
         var started = rebuild.Start();
         if (started == RebuildStart.WaitingOnTheRun && askedFor)
         {
-            ShowToast(application, RebuildToast.WaitingOnTheRun());
+            toast.Show(application, RebuildToast.WaitingOnTheRun());
             return;
         }
 
@@ -1322,8 +1318,8 @@ internal sealed class TestRunnerApplication(
         sinceLoadStarted.Restart();
         TurnActivityMarker(application);
         sinceRebuildStarted.Restart();
-        ShowToast(application, RebuildToast.Rebuilding(TimeSpan.Zero));
-        TurnRebuildToast(application);
+        toast.Show(application, RebuildToast.Rebuilding(TimeSpan.Zero));
+        toast.KeepTurning(application, () => RebuildToast.Rebuilding(sinceRebuildStarted.Elapsed));
         panelWork.Track(RebuildAsync(application, loadCancellation!.Token));
     }
 
@@ -1332,87 +1328,7 @@ internal sealed class TestRunnerApplication(
         CancellationToken cancellationToken)
     {
         await rebuild.RunAsync(PanelLanded, cancellationToken);
-        application.Invoke(() => ShowToast(
-            application,
-            RebuildToast.Finished(issueSession.State, session.State)));
-    }
-
-    /// <summary>Turns the marker in the toast for as long as the rebuild is out,
-    /// asking for the draw because nothing else wakes the loop meanwhile.
-    /// </summary>
-    private void TurnRebuildToast(IApplication application) =>
-        application.AddTimeout(ActivityMarker.FrameDuration, () =>
-        {
-            if (shownToast is not { Tone: ToastTone.Working })
-            {
-                return false;
-            }
-
-            ShowToastText(RebuildToast.Rebuilding(sinceRebuildStarted.Elapsed));
-            application.LayoutAndDraw(true);
-            return true;
-        });
-
-    private View Toast()
-    {
-        toastText = new Label { X = 1, Y = 0 };
-        ViewColours.Colour(toastText, ToastColor, Color.Black);
-        var shown = new View
-        {
-            Y = 1,
-            Height = 3,
-            BorderStyle = LineStyle.Rounded,
-            CanFocus = false,
-            TabStop = TabBehavior.NoStop,
-            Visible = false
-        };
-        SetBlackBackground(shown);
-        shown.Add(toastText);
-        return shown;
-    }
-
-    private Color ToastColor() => shownToast?.Tone switch
-    {
-        ToastTone.Succeeded => Color.BrightGreen,
-        ToastTone.Failed => Color.BrightRed,
-        ToastTone.Waiting => Color.BrightYellow,
-        _ => Color.White
-    };
-
-    /// <summary>Each toast replaces the one before it, so a fade scheduled for
-    /// an older toast must not take down the one showing now.</summary>
-    private void ShowToast(IApplication application, Toast shown)
-    {
-        var showing = ++toastsShown;
-        ShowToastText(shown);
-        toast!.Visible = true;
-        application.LayoutAndDraw(true);
-        if (!shown.FadesAway)
-        {
-            return;
-        }
-
-        application.AddTimeout(RebuildToast.FadeAfter, () =>
-        {
-            if (showing == toastsShown)
-            {
-                toast.Visible = false;
-                shownToast = null;
-                application.LayoutAndDraw(true);
-            }
-
-            return false;
-        });
-    }
-
-    private void ShowToastText(Toast shown)
-    {
-        shownToast = shown;
-        var width = shown.Text.Length + ToastPadding;
-        toastText!.Text = shown.Text;
-        toastText.Width = shown.Text.Length;
-        toast!.Width = width;
-        toast.X = Pos.AnchorEnd(width + ContentInset);
+        application.Invoke(() => toast.Show(application, RebuildToast.Finished(issueSession.State, session.State)));
     }
 
     /// <summary>The issues are left out: an agent saves often enough that a
