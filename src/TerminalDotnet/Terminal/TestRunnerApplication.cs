@@ -25,10 +25,6 @@ internal sealed class TestRunnerApplication(
     IWorkspaceWatcher workspaceWatcher)
 {
     private const int ContentInset = 1;
-    private const int SegmentGap = 2;
-    private const int MaxStatusSegments = 4;
-    private const int MaxFilterChips = 5;
-    private const int FilterGap = 2;
     private const int StatusRow = ShortcutLines.Rows + 1;
     private const int SearchRow = StatusRow + 1;
 
@@ -91,16 +87,14 @@ internal sealed class TestRunnerApplication(
     private int openDialogs;
 
     private Label? testStatus;
-    private IReadOnlyList<Label> segmentLabels = [];
-    private IReadOnlyList<Label> filterLabels = [];
-    private IReadOnlyList<FilterChip> filterChips = [];
-    private IReadOnlyList<StatusSegment> statusSegments = [];
     private Label? shortcuts;
     private IReadOnlyList<string> shortcutSegments = [];
 
     /// <summary>The views of the terminal that is up. Each terminal the app
     /// raises builds its own, so these stand in until the first one does.</summary>
     private TextField search = new();
+    private StatusSegmentLine segments = new(ContentInset, StatusRow);
+    private FilterChipLine filters = new(new View(), SearchRow);
     private readonly Dictionary<PanelKind, ListPanel> lists = [];
 
     private View workspace = new();
@@ -176,14 +170,14 @@ internal sealed class TestRunnerApplication(
         workspace = Workspace();
         testStatus = TestStatus();
         ViewColours.ColourText(testStatus, () => TestStatusAppearance.ForegroundFor(session.State));
-        segmentLabels = StatusSegmentLabels();
-        filterLabels = FilterLabels();
+        segments = new StatusSegmentLine(ContentInset, StatusRow);
+        filters = new FilterChipLine(search, SearchRow);
         shortcuts = Shortcuts();
         shortcuts.ViewportChanged += (_, _) => ShowShortcuts();
 
         window.Add(workspace, search, testStatus, shortcuts);
-        window.Add([.. segmentLabels]);
-        window.Add([.. filterLabels]);
+        window.Add([.. segments.Labels]);
+        window.Add([.. filters.Labels]);
         toast = new ToastPanel(ContentInset);
         window.Add(toast.View);
         search.ValueChanged += async (_, _) =>
@@ -295,28 +289,6 @@ internal sealed class TestRunnerApplication(
         Height = 1
     };
 
-    private IReadOnlyList<Label> StatusSegmentLabels() => Enumerable
-        .Range(0, MaxStatusSegments)
-        .Select(StatusSegmentLabel)
-        .ToArray();
-
-    private Label StatusSegmentLabel(int index)
-    {
-        var label = new Label
-        {
-            X = ContentInset,
-            Y = Pos.AnchorEnd(StatusRow),
-            Height = 1,
-            Visible = false
-        };
-        ViewColours.ColourText(label, () => RowAppearance.ForegroundFor(ToneFor(index), Color.White));
-        return label;
-    }
-
-    private RowTone ToneFor(int index) => index < statusSegments.Count
-        ? statusSegments[index].Tone
-        : RowTone.Neutral;
-
     private static TextField Search() => new()
     {
         Title = "Search",
@@ -326,44 +298,6 @@ internal sealed class TestRunnerApplication(
         Height = 1,
         TabStop = TabBehavior.NoStop
     };
-
-    /// <summary>The focused panel's filters sit beside the search, the one in
-    /// use picked out, so what the panel is hiding is always in view.</summary>
-    private IReadOnlyList<Label> FilterLabels() => [.. Enumerable
-        .Range(0, MaxFilterChips)
-        .Select(FilterLabel)];
-
-    private Label FilterLabel(int index)
-    {
-        var label = new Label
-        {
-            Y = Pos.AnchorEnd(SearchRow),
-            Height = 1,
-            Visible = false
-        };
-        ViewColours.ColourText(
-            label,
-            () => FilterAppearance.ForegroundFor(index < filterChips.Count && filterChips[index].IsActive));
-        return label;
-    }
-
-    private void ShowFilters(IReadOnlyList<FilterChip> chips)
-    {
-        filterChips = chips;
-        var columns = StatusSegmentLayout.ColumnsFor([.. chips.Select(chip => chip.Text)], 0, FilterGap);
-        foreach (var (label, index) in filterLabels.Select((label, index) => (label, index)))
-        {
-            label.Visible = index < chips.Count;
-            if (!label.Visible)
-            {
-                continue;
-            }
-
-            label.X = Pos.Right(search) + FilterGap + columns[index];
-            label.Width = chips[index].Text.Length;
-            label.Text = chips[index].Text;
-        }
-    }
 
     /// <summary>Every panel is on the screen at once, laid out again whenever
     /// the room they share changes size.</summary>
@@ -1388,7 +1322,7 @@ internal sealed class TestRunnerApplication(
         RenderComments();
         if (shell.State.ActivePanel == PanelKind.Preview)
         {
-            ShowFilters([]);
+            filters.Show([]);
         }
 
         FollowTheSelection();
@@ -1586,7 +1520,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        HideSegments();
+        segments.Hide();
         testStatus!.Visible = true;
         testStatus.Text = snapshot.StatusLine;
     }
@@ -1659,7 +1593,7 @@ internal sealed class TestRunnerApplication(
 
         search.Title = SearchBox.Title(searched.Query, searched.HitCount);
         search.Text = searched.Query;
-        ShowFilters(searched.Filters);
+        filters.Show(searched.Filters);
     }
 
     /// <summary>What a panel is searched for and filtered to, which the
@@ -1672,42 +1606,11 @@ internal sealed class TestRunnerApplication(
     /// </summary>
     private sealed record PanelPosition(int Selected, int Count);
 
-    private void ShowSegmentsWhenActive(PanelKind panel, IReadOnlyList<StatusSegment> segments)
+    private void ShowSegmentsWhenActive(PanelKind panel, IReadOnlyList<StatusSegment> reported)
     {
         if (shell.State.ActivePanel == panel)
         {
-            ShowSegments(segments);
-        }
-    }
-
-    private void ShowSegments(IReadOnlyList<StatusSegment> segments)
-    {
-        statusSegments = segments;
-        var placed = StatusSegmentLayout.Place(segments, ContentInset, SegmentGap);
-        for (var index = 0; index < segmentLabels.Count; index++)
-        {
-            Show(segmentLabels[index], index < placed.Count ? placed[index] : null);
-        }
-    }
-
-    private static void Show(Label label, PlacedStatusSegment? segment)
-    {
-        label.Visible = segment is not null;
-        if (segment is null)
-        {
-            return;
-        }
-
-        label.X = segment.Column;
-        label.Width = segment.Text.Length;
-        label.Text = segment.Text;
-    }
-
-    private void HideSegments()
-    {
-        foreach (var label in segmentLabels)
-        {
-            label.Visible = false;
+            segments.Show(reported);
         }
     }
 
