@@ -1,0 +1,116 @@
+using Terminal.Gui.Drivers;
+using Terminal.Gui.Input;
+using TerminalDotnet.Comments;
+using TerminalDotnet.Terminal;
+using Xunit;
+
+namespace TerminalDotnet.Tests.Keyboard;
+
+public sealed class WhenPressingAKeyInTheCommentPanel
+{
+    [Fact]
+    public void Pressing_enter_reads_the_comment()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Enter));
+
+        // Assert
+        Assert.Equal(new CommentAction.ReadComment(), action);
+    }
+
+    [Fact]
+    public void Pressing_v_reads_the_comment()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.V));
+
+        // Assert
+        Assert.Equal(new CommentAction.ReadComment(), action);
+    }
+
+    [Fact]
+    public void Pressing_e_rewrites_the_comment()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.E));
+
+        // Assert
+        Assert.Equal(new CommentAction.RewriteComment(), action);
+    }
+
+    [Fact]
+    public void Pressing_d_deletes_the_comment()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.D));
+
+        // Assert
+        Assert.Equal(new CommentAction.DeleteComment(), action);
+    }
+
+    [Fact]
+    public void Pressing_a_key_with_nothing_commented_does_nothing()
+    {
+        // Act
+        var action = CommentPanelKeyBindings.ActionFor(new Key(KeyCode.E), null, searchActive: false);
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_a_key_while_searching_types_it_instead()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.E), searchActive: true);
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    [Fact]
+    public void Pressing_y_copies_the_comments_to_the_clipboard()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Y));
+
+        // Assert
+        Assert.Equal(new CommentAction.CopyComments(), action);
+    }
+
+    [Fact]
+    public void Pressing_w_saves_the_comments_to_a_file()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.W));
+
+        // Assert
+        Assert.Equal(new CommentAction.SaveComments(), action);
+    }
+
+    [Fact]
+    public void Pressing_x_clears_every_comment()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.X));
+
+        // Assert
+        Assert.Equal(new CommentAction.ClearComments(), action);
+    }
+
+    [Fact]
+    public void Pressing_p_leaves_the_preview_to_follow_the_selection()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.P));
+
+        // Assert
+        Assert.Null(action);
+    }
+
+    private static CommentAction? ActionFor(Key key, bool searchActive = false) =>
+        CommentPanelKeyBindings.ActionFor(
+            key,
+            new FileComment("/repo/src/Order.cs", "src/Order.cs", "needs a guard"),
+            searchActive);
+}
