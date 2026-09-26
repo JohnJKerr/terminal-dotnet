@@ -355,7 +355,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "↑/k up", "↓/j down", "PgUp/PgDn page", "n/N next/previous row", "e edit", "c comment", "+ full screen", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "↑/k up", "↓/j down", "PgUp/PgDn page", "n/N next/previous preview", "e edit", "c comment", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
