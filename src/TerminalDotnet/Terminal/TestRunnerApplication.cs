@@ -74,6 +74,7 @@ internal sealed class TestRunnerApplication(
     private readonly Stopwatch sincePanelsAppeared = new();
     private readonly PanelShell shell = new();
     private readonly BackgroundWork panelWork = new();
+    private readonly List<string> diagnostics = [];
     private readonly EditBurst outsideEdits = new();
     private readonly EditsSinceTheBuild editsSinceTheBuild = new();
     private readonly Stopwatch sinceRebuildStarted = new();
@@ -112,6 +113,8 @@ internal sealed class TestRunnerApplication(
     /// <summary>The list taking the keys, or the list the preview follows
     /// while the reader is in the preview.</summary>
     private ListView ActiveList => lists[shell.State.PreviewedList].View;
+
+    public IReadOnlyList<string> Diagnostics => diagnostics;
 
     public void Run()
     {
@@ -1030,11 +1033,22 @@ internal sealed class TestRunnerApplication(
 
         using var cancellation = new CancellationTokenSource();
         runCancellation = cancellation;
+        var selected = session.State.VisibleNodes.Count > 0
+            ? session.State.VisibleNodes[session.State.SelectedIndex]
+            : null;
+        var selectedTarget = selected?.Tests[0].ProjectPath ?? target;
         try
         {
             var run = session.DispatchAsync(command, cancellation.Token);
             Render();
             await run;
+            if (session.State.Diagnostic is { } diagnostic)
+            {
+                diagnostics.Add($"Test run for {selectedTarget}: {diagnostic}{Environment.NewLine}" +
+                    $"Selected: {selected?.Tests.Count ?? 0} tests; " +
+                    $"first: {selected?.Tests[0].FullyQualifiedName ?? "none"}{Environment.NewLine}" +
+                    $"Output: {session.State.Message}");
+            }
         }
         finally
         {
@@ -1407,7 +1421,23 @@ internal sealed class TestRunnerApplication(
 
     private async Task PreviewTestAsync(PreviewSubject subject)
     {
-        await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
+        try
+        {
+            await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            diagnostics.Add($"Test preview failed: {exception}");
+            running?.Invoke(() =>
+            {
+                if (previewed == subject)
+                {
+                    preview.ShowNothing(PreviewPanelTitle("Preview", "source lookup failed"));
+                }
+            });
+            return;
+        }
+
         running?.Invoke(() =>
         {
             if (previewed != subject)
@@ -1421,6 +1451,9 @@ internal sealed class TestRunnerApplication(
                 return;
             }
 
+            var test = ((PreviewSubject.SelectedTest)subject).Node.Tests[0];
+            diagnostics.Add($"Test preview: source not found for {test.FullyQualifiedName} " +
+                $"in {test.ProjectPath}");
             preview.ShowNothing(PreviewPanelTitle("Preview", "source not found"));
         });
     }

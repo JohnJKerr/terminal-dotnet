@@ -52,6 +52,36 @@ public sealed class WhenARunProducesNoResults
     }
 
     [Fact]
+    public async Task It_reports_when_the_results_file_contains_no_outcomes()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, "Build succeeded", "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.Contains("No test outcomes were recorded", run.Diagnostic);
+    }
+
+    [Fact]
+    public async Task It_does_not_call_an_empty_results_file_a_passing_run()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, "Build succeeded", "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.False(run.Passed);
+    }
+
+    [Fact]
     public async Task It_keeps_the_output_when_the_results_cannot_be_read()
     {
         // Arrange

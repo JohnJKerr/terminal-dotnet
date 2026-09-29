@@ -162,7 +162,9 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     {
         // Arrange
         var runner = new RecordingCommandRunner(new CommandResult(0, "2 tests passed", ""));
-        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+        var backend = new DotnetCliTestBackend(
+            runner,
+            new InMemoryTestResultStore(PassingResultsFor(AddsItem())));
 
         // Act
         var run = await backend.RunAsync([AddsItem()]);

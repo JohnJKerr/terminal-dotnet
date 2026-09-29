@@ -199,7 +199,7 @@ public sealed partial class DotnetCliTestBackend(
             ? result.StandardOutput
             : $"{result.StandardOutput}{Environment.NewLine}{result.StandardError}";
         var recorded = await RecordedResultsAsync(resultPath, tests, cancellationToken).ConfigureAwait(false);
-        return new TestRun(result.ExitCode == 0, output.Trim(), recorded.Results)
+        return new TestRun(result.ExitCode == 0 && recorded.Results.Count > 0, output.Trim(), recorded.Results)
         {
             Diagnostic = recorded.Diagnostic
         };
@@ -248,7 +248,10 @@ public sealed partial class DotnetCliTestBackend(
         try
         {
             var trx = await resultStore.ReadAsync(resultPath, cancellationToken).ConfigureAwait(false);
-            return new RecordedResults(ParseResults(trx, tests), null);
+            var results = ParseResults(trx, tests);
+            return results.Count == 0
+                ? new RecordedResults([], "No test outcomes were recorded for the selected tests.")
+                : new RecordedResults(results, null);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {

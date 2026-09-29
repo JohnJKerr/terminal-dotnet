@@ -55,11 +55,16 @@ var editor = EditorLauncher.Configured(
     Environment.GetEnvironmentVariable("EDITOR"));
 var editorLauncher = new EditorLauncher(editor, commandRunner);
 using var workspaceWatcher = new FileSystemWorkspaceWatcher();
-new TestRunnerApplication(
+var application = new TestRunnerApplication(
     new PanelSessions(session, fileSession, folderSession, changesetSession, commentSession, issueSession),
     target,
     editorLauncher,
-    workspaceWatcher).Run();
+    workspaceWatcher);
+application.Run();
+foreach (var diagnostic in application.Diagnostics)
+{
+    Console.Error.WriteLine(diagnostic);
+}
 if (!remembered)
 {
     Console.Error.WriteLine(TrustQuestion.NotRemembered(decision.Folder, trust.StorePath));
