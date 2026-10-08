@@ -22,7 +22,8 @@ internal sealed class TestRunnerApplication(
     PanelSessions panels,
     string target,
     IFileOpener editorLauncher,
-    IWorkspaceWatcher workspaceWatcher)
+    IWorkspaceWatcher workspaceWatcher,
+    ICommentClipboard clipboard)
 {
     private const int ContentInset = 1;
     private const int StatusRow = ShortcutLines.Rows + 1;
@@ -193,6 +194,7 @@ internal sealed class TestRunnerApplication(
             HandleKey(application, key);
             HoldTheFocus(key);
         };
+        application.Mouse.MouseEvent += (_, mouse) => SelectWithTheMouse(application, mouse);
         Render();
         SettleOnceTheFirstFrameIsDrawn(application);
         FocusActivePanel();
@@ -342,6 +344,39 @@ internal sealed class TestRunnerApplication(
         }
 
         OpenPanel(application, panel);
+    }
+
+    /// <summary>A drag across the preview selects the text under it, and
+    /// letting go copies it. The mouse is followed from the application
+    /// rather than from the preview's views, so a drag keeps selecting once
+    /// it has left them.</summary>
+    private void SelectWithTheMouse(IApplication application, Mouse mouse)
+    {
+        if (dialogs.AnyOpen)
+        {
+            return;
+        }
+
+        if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
+        {
+            preview.SelectTo(mouse.ScreenPosition);
+        }
+        else if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed))
+        {
+            preview.SelectFrom(mouse.View, mouse.ScreenPosition);
+        }
+        else if (mouse.Flags.HasFlag(MouseFlags.LeftButtonReleased) && preview.SelectedText is { Length: > 0 } selected)
+        {
+            panelWork.Track(CopySelectionAsync(application, selected));
+        }
+    }
+
+    private async Task CopySelectionAsync(IApplication application, string selected)
+    {
+        var copied = await clipboard.TryCopyAsync(selected);
+        application.Invoke(() => toast.Show(
+            application,
+            copied ? SelectionToast.Copied(selected) : SelectionToast.NotCopied()));
     }
 
     /// <summary>A row picked with the mouse moves the panel's own selection,
