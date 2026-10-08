@@ -113,6 +113,18 @@ public sealed class WhenLayingOutThePanels
         Assert.Equal(new PanelArea(0, 0, 100, 40), layout[panel]);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(PanelKind.Explorer)]
+    public void A_shown_panel_is_not_hidden_before_the_screen_has_a_size(PanelKind? fullScreen)
+    {
+        // Act
+        var layout = PanelLayout.For(width: 0, height: 0, expanded: PanelKind.Explorer, fullScreen);
+
+        // Assert
+        Assert.NotEqual(PanelLayout.Hidden, layout[PanelKind.Explorer]);
+    }
+
     [Fact]
     public void The_panels_behind_a_full_screen_panel_are_given_no_room()
     {

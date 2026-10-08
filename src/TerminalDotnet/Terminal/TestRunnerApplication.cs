@@ -195,7 +195,7 @@ internal sealed class TestRunnerApplication(
         };
         Render();
         SettleOnceTheFirstFrameIsDrawn(application);
-        ActiveList.SetFocus();
+        FocusActivePanel();
         FillPanels(application);
         RefreshEditedPanels(application);
         ReloadWhenTheWorkingTreeSettles(application);
@@ -584,6 +584,13 @@ internal sealed class TestRunnerApplication(
     {
         ArrangePanels();
         Render();
+        FocusActivePanel();
+    }
+
+    /// <summary>The reader may be in the preview when the editor hands the
+    /// screen back, so the panel they left takes the keys again.</summary>
+    private void FocusActivePanel()
+    {
         if (shell.State.ActivePanel == PanelKind.Preview)
         {
             preview.View.SetFocus();

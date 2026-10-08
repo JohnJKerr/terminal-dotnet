@@ -1,6 +1,11 @@
 namespace TerminalDotnet.Terminal;
 
-public sealed record PanelArea(int X, int Y, int Width, int Height);
+public sealed record PanelArea(int X, int Y, int Width, int Height)
+{
+    /// <summary>A panel given no room is hidden, which a shown panel is not
+    /// merely because the screen has no size yet.</summary>
+    public bool Shown { get; init; } = true;
+}
 
 /// <summary>
 /// Where each panel sits on the screen. The lists the reader moves through
@@ -17,7 +22,7 @@ public sealed class PanelLayout
     private const double BottomShare = 0.3;
     private const int MinimumBottomHeight = 8;
 
-    public static readonly PanelArea Hidden = new(0, 0, 0, 0);
+    public static readonly PanelArea Hidden = new(0, 0, 0, 0) { Shown = false };
 
     private static readonly PanelKind[] Stacked = [PanelKind.Explorer, PanelKind.Tests, PanelKind.Changes];
 
