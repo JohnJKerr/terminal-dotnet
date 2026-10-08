@@ -35,7 +35,7 @@ public sealed class WhenListingEveryCommand
 
         // Assert
         Assert.Equal(
-            ["↑/k", "↓/j", "Enter/e", "y", "X", "W", "F"],
+            ["↑/k", "↓/j", "Enter/e", "y", "[/]"],
             issues.Entries.Select(entry => entry.Keys));
     }
 
@@ -206,15 +206,25 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_lists_the_test_filters_under_tests()
+    public void It_lists_stepping_through_the_filters_under_tests()
     {
         // Act
         var tests = CommandMenu.Sections().Single(section => section.Title == "Tests");
 
         // Assert
-        Assert.Equal(
-            ["U", "F", "P", "L", "N"],
-            tests.Entries.Select(entry => entry.Keys).Where(keys => keys.All(char.IsUpper)));
+        Assert.Contains(
+            tests.Entries,
+            entry => entry.Keys == "[/]" && entry.Description == "step back or on through the filters in the title");
+    }
+
+    [Fact]
+    public void It_lists_no_capital_letter_filters_under_tests()
+    {
+        // Act
+        var tests = CommandMenu.Sections().Single(section => section.Title == "Tests");
+
+        // Assert
+        Assert.DoesNotContain(tests.Entries, entry => entry.Keys.All(char.IsUpper));
     }
 
     [Fact]
@@ -278,13 +288,15 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
-    public void It_lists_every_file_under_the_explorer()
+    public void It_lists_stepping_through_the_filters_under_the_explorer()
     {
         // Act
         var explorer = CommandMenu.Sections().Single(section => section.Title == "Explorer");
 
         // Assert
-        Assert.Contains(explorer.Entries, entry => entry.Keys == "A" && entry.Description == "show every file");
+        Assert.Contains(
+            explorer.Entries,
+            entry => entry.Keys == "[/]" && entry.Description == "step back or on through the filters in the title");
     }
 
     [Fact]
