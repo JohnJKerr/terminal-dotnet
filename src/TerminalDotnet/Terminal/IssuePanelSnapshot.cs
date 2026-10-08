@@ -97,8 +97,8 @@ public sealed record IssuePanelSnapshot(
 
     private static IReadOnlyList<FilterChip> FiltersFrom(IssueFilter? active) =>
     [
-        new("X Errors", active == IssueFilter.Errors),
-        new("W Warnings", active == IssueFilter.Warnings),
-        new("F Flags", active == IssueFilter.Flags)
+        new("Errors", active == IssueFilter.Errors),
+        new("Warnings", active == IssueFilter.Warnings),
+        new("Flags", active == IssueFilter.Flags)
     ];
 }

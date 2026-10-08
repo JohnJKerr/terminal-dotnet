@@ -18,7 +18,7 @@ public static class PanelFilters
     private static IReadOnlyList<FilterChip> Chips(
         ExplorerFilter? active,
         IReadOnlyList<ExplorerFilter> offered) => offered
-        .Select(filter => new FilterChip($"{filter.Key()} {filter.DisplayName()}", filter == active))
+        .Select(filter => new FilterChip(filter.DisplayName(), filter == active))
         .ToArray();
 
     /// <summary>The test filter to toggle so the panel takes a step along
