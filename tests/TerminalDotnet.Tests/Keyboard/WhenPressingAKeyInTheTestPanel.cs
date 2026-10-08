@@ -160,10 +160,10 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_capital_U_toggles_the_updated_filter()
+    public void Pressing_right_bracket_steps_to_the_first_filter()
     {
         // Act
-        var action = ActionFor(Shifted(KeyCode.U));
+        var action = ActionFor(RightBracket);
 
         // Assert
         Assert.Equal(
@@ -172,10 +172,10 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_capital_F_toggles_the_failing_filter()
+    public void Pressing_right_bracket_steps_on_from_the_filter_in_use()
     {
         // Act
-        var action = ActionFor(Shifted(KeyCode.F));
+        var action = ActionFor(RightBracket, activeFilter: ExplorerFilter.Updated);
 
         // Assert
         Assert.Equal(
@@ -184,10 +184,10 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_capital_N_toggles_the_not_run_filter()
+    public void Pressing_right_bracket_on_the_last_filter_turns_it_off()
     {
         // Act
-        var action = ActionFor(Shifted(KeyCode.N));
+        var action = ActionFor(RightBracket, activeFilter: ExplorerFilter.NotRun);
 
         // Assert
         Assert.Equal(
@@ -196,20 +196,56 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
-    public void Pressing_1_toggles_no_filter()
+    public void Pressing_left_bracket_steps_back_to_the_last_filter()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.D1));
+        var action = ActionFor(LeftBracket);
+
+        // Assert
+        Assert.Equal(
+            new TestPanelAction.Dispatch(new ExplorerCommand.ToggleFilter(ExplorerFilter.NotRun)),
+            action);
+    }
+
+    [Fact]
+    public void Pressing_left_bracket_steps_back_from_the_filter_in_use()
+    {
+        // Act
+        var action = ActionFor(LeftBracket, activeFilter: ExplorerFilter.Failing);
+
+        // Assert
+        Assert.Equal(
+            new TestPanelAction.Dispatch(new ExplorerCommand.ToggleFilter(ExplorerFilter.Updated)),
+            action);
+    }
+
+    [Fact]
+    public void Pressing_left_bracket_on_the_first_filter_turns_it_off()
+    {
+        // Act
+        var action = ActionFor(LeftBracket, activeFilter: ExplorerFilter.Updated);
+
+        // Assert
+        Assert.Equal(
+            new TestPanelAction.Dispatch(new ExplorerCommand.ToggleFilter(ExplorerFilter.Updated)),
+            action);
+    }
+
+    [Fact]
+    public void Pressing_capital_U_picks_no_filter()
+    {
+        // Act
+        var action = ActionFor(Shifted(KeyCode.U));
 
         // Assert
         Assert.Null(action);
     }
 
     [Fact]
-    public void Pressing_capital_U_without_focus_does_nothing()
+    public void Pressing_right_bracket_without_focus_does_nothing()
     {
         // Act
-        var action = ActionFor(Shifted(KeyCode.U), hasFocus: false);
+        var action = ActionFor(RightBracket, hasFocus: false);
 
         // Assert
         Assert.Null(action);
@@ -245,11 +281,16 @@ public sealed class WhenPressingAKeyInTheTestPanel
         Assert.Null(action);
     }
 
+    private static Key RightBracket => new((KeyCode)']');
+
+    private static Key LeftBracket => new((KeyCode)'[');
+
     private static Key Shifted(KeyCode keyCode) => new(keyCode | KeyCode.ShiftMask);
 
     private static TestPanelAction? ActionFor(
         Key key,
         string searchQuery = "",
-        bool hasFocus = true) =>
-        TestPanelKeyBindings.ActionFor(key, searchQuery, hasFocus);
+        bool hasFocus = true,
+        ExplorerFilter? activeFilter = null) =>
+        TestPanelKeyBindings.ActionFor(key, searchQuery, hasFocus, activeFilter);
 }

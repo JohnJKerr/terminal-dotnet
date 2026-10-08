@@ -1,6 +1,7 @@
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using TerminalDotnet.Explorer;
+using TerminalDotnet.Filters;
 using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
@@ -18,11 +19,12 @@ public static class TestPanelKeyBindings
     public static TestPanelAction? ActionFor(
         Key key,
         string searchQuery,
-        bool hasFocus)
+        bool hasFocus,
+        ExplorerFilter? activeFilter = null)
     {
-        if (hasFocus && FilterKeyBindings.TestFilterFor(key) is { } filter)
+        if (hasFocus && FilterKeyBindings.StepFor(key) is { } step)
         {
-            return Dispatched(new ExplorerCommand.ToggleFilter(filter));
+            return Dispatched(new ExplorerCommand.ToggleFilter(PanelFilters.TestToggleFor(activeFilter, step)));
         }
 
         if (hasFocus && Is(key, KeyCode.F))

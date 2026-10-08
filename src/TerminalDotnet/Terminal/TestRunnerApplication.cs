@@ -694,7 +694,8 @@ internal sealed class TestRunnerApplication(
         var action = TestPanelKeyBindings.ActionFor(
             key,
             session.State.SearchQuery,
-            ActiveList.HasFocus);
+            ActiveList.HasFocus,
+            session.State.ActiveFilter);
         if (action is null)
         {
             return;
