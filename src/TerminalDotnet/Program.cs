@@ -59,7 +59,8 @@ var application = new TestRunnerApplication(
     new PanelSessions(session, fileSession, folderSession, changesetSession, commentSession, issueSession),
     target,
     editorLauncher,
-    workspaceWatcher);
+    workspaceWatcher,
+    clipboard);
 application.Run();
 foreach (var diagnostic in application.Diagnostics)
 {

@@ -1,4 +1,5 @@
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Input;
 using Terminal.Gui.Views;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -18,6 +19,11 @@ internal sealed class ColoredTextView : TextView
         ReadOnly = true;
         WordWrap = wordWrap;
     }
+
+    /// <summary>The wheel still scrolls, but the buttons are left to the
+    /// panel, which selects across this view as it does across the others.
+    /// </summary>
+    protected override bool OnMouseEvent(Mouse mouse) => mouse.IsWheel && base.OnMouseEvent(mouse);
 
     protected override void OnDrawReadOnlyColor(List<Cell> line, int idxCol, int idxRow) =>
         SetAttribute(NearestAttribute(line, idxCol) ?? GetAttributeForRole(VisualRole.ReadOnly));

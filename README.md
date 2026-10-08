@@ -348,6 +348,7 @@ message sits beneath the source.
 | `Esc` | Close what is open, leave full screen, or clear the search |
 | Capital letters | Toggle the focused panel's filters, as named in its title |
 | Click | Go to a panel, or select a row in it |
+| Drag (in the preview) | Select text and copy it to the clipboard |
 | `Ctrl+R` | Refresh every panel and rebuild the project |
 | `?` | Show every command |
 | `q` | Quit, asking first if comments would be lost |

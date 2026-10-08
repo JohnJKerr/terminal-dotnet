@@ -22,7 +22,8 @@ internal sealed class TestRunnerApplication(
     PanelSessions panels,
     string target,
     IFileOpener editorLauncher,
-    IWorkspaceWatcher workspaceWatcher)
+    IWorkspaceWatcher workspaceWatcher,
+    ICommentClipboard clipboard)
 {
     private const int ContentInset = 1;
     private const int StatusRow = ShortcutLines.Rows + 1;
@@ -80,6 +81,12 @@ internal sealed class TestRunnerApplication(
     private readonly Stopwatch sinceRebuildStarted = new();
     private ToastPanel toast = new(ContentInset);
     private readonly Stopwatch sinceWatching = new();
+    private bool scrollingUnderTheDrag;
+
+    /// <summary>The terminal follows the end of a drag with a click where it
+    /// ended, which is not a click the reader made on whatever lies there.
+    /// </summary>
+    private bool dragJustCopied;
     private bool openSourceRequested;
     private bool panelsWereEdited;
     private bool reloadingWhatIsOnDisk;
@@ -153,6 +160,7 @@ internal sealed class TestRunnerApplication(
         application.Init(TerminalDriver());
         running = application;
         previewed = null;
+        scrollingUnderTheDrag = false;
         var outsideTheLoop = SynchronizationContext.Current;
         var loop = new TerminalLoopContext(work => application.Invoke(work));
         SynchronizationContext.SetSynchronizationContext(loop);
@@ -193,6 +201,7 @@ internal sealed class TestRunnerApplication(
             HandleKey(application, key);
             HoldTheFocus(key);
         };
+        application.Mouse.MouseEvent += (_, mouse) => SelectWithTheMouse(application, mouse);
         Render();
         SettleOnceTheFirstFrameIsDrawn(application);
         FocusActivePanel();
@@ -342,6 +351,84 @@ internal sealed class TestRunnerApplication(
         }
 
         OpenPanel(application, panel);
+    }
+
+    /// <summary>A drag across the preview selects the text under it, and
+    /// letting go copies it. The mouse is followed from the application
+    /// rather than from the preview's views, so a drag keeps selecting once
+    /// it has left them, and is kept from the panels it passes over, which
+    /// would take the focus and with it what the preview shows.</summary>
+    private void SelectWithTheMouse(IApplication application, Mouse mouse)
+    {
+        if (dialogs.AnyOpen)
+        {
+            return;
+        }
+
+        if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed | MouseFlags.PositionReport))
+        {
+            preview.SelectTo(mouse.ScreenPosition);
+            mouse.Handled = preview.Selecting;
+        }
+        else if (mouse.Flags.HasFlag(MouseFlags.LeftButtonPressed))
+        {
+            dragJustCopied = false;
+            preview.SelectFrom(mouse.View, mouse.ScreenPosition);
+            ScrollUnderTheDrag(application);
+        }
+        else if (mouse.Flags.HasFlag(MouseFlags.LeftButtonReleased) && preview.Selecting)
+        {
+            preview.LetGo();
+            dragJustCopied = CopySelection(application);
+            mouse.Handled = dragJustCopied;
+        }
+        else if (dragJustCopied && mouse.IsSingleDoubleOrTripleClicked)
+        {
+            mouse.Handled = true;
+        }
+    }
+
+    /// <summary>The terminal says nothing of a mouse held still, so a drag
+    /// is asked after on a clock for as long as the button is down. One clock
+    /// serves a drag whose release never arrived and the drag after it.
+    /// </summary>
+    private void ScrollUnderTheDrag(IApplication application)
+    {
+        if (scrollingUnderTheDrag || !preview.Selecting)
+        {
+            return;
+        }
+
+        scrollingUnderTheDrag = true;
+        application.AddTimeout(PreviewDragScroll.Interval, () =>
+        {
+            preview.ScrollUnderTheDrag();
+            application.LayoutAndDraw();
+            scrollingUnderTheDrag = preview.Selecting;
+            return scrollingUnderTheDrag;
+        });
+    }
+
+    /// <returns>Whether there was a selection to copy. A press let go where
+    /// it went down selects nothing, and is left to be the click it was.
+    /// </returns>
+    private bool CopySelection(IApplication application)
+    {
+        if (preview.SelectedText is not { Length: > 0 } selected)
+        {
+            return false;
+        }
+
+        panelWork.Track(CopySelectionAsync(application, selected));
+        return true;
+    }
+
+    private async Task CopySelectionAsync(IApplication application, string selected)
+    {
+        var copied = await clipboard.TryCopyAsync(selected);
+        application.Invoke(() => toast.Show(
+            application,
+            copied ? SelectionToast.Copied(selected) : SelectionToast.NotCopied()));
     }
 
     /// <summary>A row picked with the mouse moves the panel's own selection,
