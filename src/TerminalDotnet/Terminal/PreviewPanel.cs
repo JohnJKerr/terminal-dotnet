@@ -38,6 +38,10 @@ internal sealed class PreviewPanel
     private readonly View marks;
     private IReadOnlyList<string> shownLines = [];
     private PreviewSelection? selection;
+
+    /// <summary>Where on the screen the drag underway was last reported.
+    /// </summary>
+    private Point? draggedTo;
     private int highlightedLine = 1;
     private bool highlighting;
     private RowTone detailTone;
@@ -183,25 +187,54 @@ internal sealed class PreviewPanel
 
     /// <summary>Starts a selection at a cell of the text on show. A press
     /// anywhere else, such as on a scroll bar or in another panel, lets go of
-    /// the one there was.</summary>
+    /// the one there was. The text is also under the line picked out and
+    /// under the marks of the last selection, which take the mouse where
+    /// they are drawn.</summary>
     public void SelectFrom(View? pressed, Point screen)
     {
         var cell = CellAt(screen);
-        var onTheText = pressed == Shown || pressed == highlight;
+        var onTheText = pressed == Shown || pressed == highlight || pressed == marks;
         Select(onTheText ? new PreviewSelection(cell, cell, ShowingDiff ? DiffTabStop : 1) : null, shownLines);
+        draggedTo = onTheText ? screen : null;
     }
 
     /// <summary>Carries the selection on to wherever the drag has reached. A
     /// drag that leaves the text keeps to the nearest cell of it.</summary>
     public void SelectTo(Point screen)
     {
-        if (selection is null)
+        if (selection is null || draggedTo is null)
         {
             return;
         }
 
+        draggedTo = screen;
         Select(selection with { To = CellAt(screen) }, shownLines);
     }
+
+    /// <summary>Whether a drag is underway, the button not yet let go.</summary>
+    public bool Selecting => draggedTo is not null;
+
+    /// <summary>Scrolls the text under a drag held past its top or bottom,
+    /// and carries the selection on to the row that comes into view.</summary>
+    public void ScrollUnderTheDrag()
+    {
+        if (selection is null || draggedTo is not { } held)
+        {
+            return;
+        }
+
+        var rows = PreviewDragScroll.RowsFor(Shown.ScreenToViewport(held).Y, Shown.Viewport.Height);
+        if (rows == 0)
+        {
+            return;
+        }
+
+        Scroll(rows);
+        SelectTo(held);
+    }
+
+    /// <summary>Ends the drag, leaving what it selected marked.</summary>
+    public void LetGo() => draggedTo = null;
 
     /// <summary>The text the last drag selected, or none.</summary>
     public string SelectedText => selection?.TextIn(shownLines) ?? "";
@@ -218,6 +251,7 @@ internal sealed class PreviewPanel
     private void Select(PreviewSelection? selected, IReadOnlyList<string> lines)
     {
         shownLines = lines;
+        draggedTo = selected is null ? null : draggedTo;
         if (selection == selected)
         {
             return;
