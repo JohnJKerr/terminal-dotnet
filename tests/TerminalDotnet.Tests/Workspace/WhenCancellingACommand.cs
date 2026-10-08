@@ -5,7 +5,12 @@ namespace TerminalDotnet.Tests.Workspace;
 
 public sealed class WhenCancellingACommand
 {
-    [Fact]
+    // The command is a shell script whose child is found through /proc. The
+    // shell Windows runners have starts that child outside the script's
+    // process tree, where it outlives the cancellation and holds the folder.
+    private const string NeedsAPosixShell = "The sleeping command is a POSIX shell script.";
+
+    [PosixFact(NeedsAPosixShell)]
     public async Task It_stops_the_whole_process_tree_it_started()
     {
         // Arrange
@@ -23,7 +28,7 @@ public sealed class WhenCancellingACommand
         Assert.Equal([false, false], await GoneAsync(processIds));
     }
 
-    [Fact]
+    [PosixFact(NeedsAPosixShell)]
     public async Task It_reports_the_cancellation_to_the_caller()
     {
         // Arrange
