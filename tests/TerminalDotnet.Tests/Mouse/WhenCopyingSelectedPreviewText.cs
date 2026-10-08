@@ -8,7 +8,7 @@ namespace TerminalDotnet.Tests.Mouse;
 public sealed class WhenCopyingSelectedPreviewText
 {
     [Fact]
-    public void Text_from_one_line_is_counted_in_characters()
+    public void It_says_how_many_characters_were_copied()
     {
         // Act
         var toast = SelectionToast.Copied("sealed");
@@ -18,13 +18,13 @@ public sealed class WhenCopyingSelectedPreviewText
     }
 
     [Fact]
-    public void Text_from_several_lines_is_counted_in_lines()
+    public void Text_from_several_lines_is_counted_in_characters_too()
     {
         // Act
         var toast = SelectionToast.Copied("class Cart\n{\n    private");
 
         // Assert
-        Assert.Equal("Copied 3 lines", toast.Text);
+        Assert.Equal("Copied 24 characters", toast.Text);
     }
 
     [Fact]

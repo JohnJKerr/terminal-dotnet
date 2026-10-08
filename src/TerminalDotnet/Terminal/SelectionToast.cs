@@ -8,14 +8,9 @@ namespace TerminalDotnet.Terminal;
 /// </summary>
 public static class SelectionToast
 {
-    public static Toast Copied(string text)
-    {
-        var lines = text.Split('\n').Length;
-        var copied = lines > 1
-            ? CountedNoun.Of(lines, "line")
-            : CountedNoun.Of(new StringInfo(text).LengthInTextElements, "character");
-        return new($"Copied {copied}", ToastTone.Succeeded);
-    }
+    public static Toast Copied(string text) => new(
+        $"Copied {CountedNoun.Of(new StringInfo(text).LengthInTextElements, "character")}",
+        ToastTone.Succeeded);
 
     public static Toast NotCopied() => new("Could not copy the selection", ToastTone.Failed);
 }
