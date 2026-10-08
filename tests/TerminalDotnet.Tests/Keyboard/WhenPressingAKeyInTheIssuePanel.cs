@@ -9,33 +9,53 @@ namespace TerminalDotnet.Tests.Keyboard;
 public sealed class WhenPressingAKeyInTheIssuePanel
 {
     [Fact]
-    public void Pressing_capital_X_narrows_the_issues_to_the_errors()
+    public void Pressing_right_bracket_steps_to_the_errors()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.X | KeyCode.ShiftMask));
+        var action = ActionFor(new Key((KeyCode)']'));
 
         // Assert
         Assert.Equal(new IssuePanelAction.Dispatch(new IssueCommand.ToggleErrors()), action);
     }
 
     [Fact]
-    public void Pressing_capital_W_narrows_the_issues_to_the_warnings()
+    public void Pressing_right_bracket_steps_on_from_the_errors_to_the_warnings()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.W | KeyCode.ShiftMask));
+        var action = ActionFor(new Key((KeyCode)']'), IssueFilter.Errors);
 
         // Assert
         Assert.Equal(new IssuePanelAction.Dispatch(new IssueCommand.ToggleWarnings()), action);
     }
 
     [Fact]
-    public void Pressing_capital_F_narrows_the_issues_to_the_flags()
+    public void Pressing_right_bracket_on_the_flags_turns_them_off()
     {
         // Act
-        var action = ActionFor(new Key(KeyCode.F | KeyCode.ShiftMask));
+        var action = ActionFor(new Key((KeyCode)']'), IssueFilter.Flags);
 
         // Assert
         Assert.Equal(new IssuePanelAction.Dispatch(new IssueCommand.ToggleFlags()), action);
+    }
+
+    [Fact]
+    public void Pressing_left_bracket_steps_back_to_the_flags()
+    {
+        // Act
+        var action = ActionFor(new Key((KeyCode)'['));
+
+        // Assert
+        Assert.Equal(new IssuePanelAction.Dispatch(new IssueCommand.ToggleFlags()), action);
+    }
+
+    [Fact]
+    public void Pressing_capital_X_narrows_nothing()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.X | KeyCode.ShiftMask));
+
+        // Assert
+        Assert.Null(action);
     }
 
     [Fact]
@@ -61,6 +81,6 @@ public sealed class WhenPressingAKeyInTheIssuePanel
         Assert.Null(action);
     }
 
-    private static IssuePanelAction? ActionFor(Key key) =>
-        IssuePanelKeyBindings.ActionFor(key, null, searchActive: false);
+    private static IssuePanelAction? ActionFor(Key key, IssueFilter? activeFilter = null) =>
+        IssuePanelKeyBindings.ActionFor(key, null, searchActive: false, activeFilter);
 }

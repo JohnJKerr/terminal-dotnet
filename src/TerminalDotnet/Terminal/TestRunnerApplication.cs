@@ -886,7 +886,11 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        var action = IssuePanelKeyBindings.ActionFor(key, SelectedIssue(), search.HasFocus);
+        var action = IssuePanelKeyBindings.ActionFor(
+            key,
+            SelectedIssue(),
+            search.HasFocus,
+            issueSession.State.ActiveFilter);
         if (action is IssuePanelAction.Edit edit)
         {
             key.Handled = true;
