@@ -76,11 +76,11 @@ public sealed class WhenCreatingAnIssuePanelSnapshot
         var snapshot = IssuePanelSnapshot.From(state);
 
         // Assert
-        Assert.Contains(new FilterChip("F Flags", true), snapshot.Filters);
+        Assert.Contains(new FilterChip("Flags", true), snapshot.Filters);
     }
 
     [Fact]
-    public void It_names_each_filter_by_its_capital_letter()
+    public void It_names_each_filter()
     {
         // Arrange
         var state = new IssueState([]);
@@ -89,7 +89,7 @@ public sealed class WhenCreatingAnIssuePanelSnapshot
         var snapshot = IssuePanelSnapshot.From(state);
 
         // Assert
-        Assert.Equal(["X Errors", "W Warnings", "F Flags"], snapshot.Filters.Select(chip => chip.Text));
+        Assert.Equal(["Errors", "Warnings", "Flags"], snapshot.Filters.Select(chip => chip.Text));
     }
 
     [Fact]

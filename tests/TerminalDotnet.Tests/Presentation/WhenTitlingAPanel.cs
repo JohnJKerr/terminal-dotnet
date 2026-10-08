@@ -22,17 +22,17 @@ public sealed class WhenTitlingAPanel
         var title = PanelTitle.For(PanelKind.Explorer, Filters(), "", focused: true);
 
         // Assert
-        Assert.Equal("[1]─Explorer A All files U Updated", title);
+        Assert.Equal("[1]─Explorer - All files - Updated", title);
     }
 
     [Fact]
-    public void It_shows_only_the_keys_of_unused_filters_on_other_panels()
+    public void It_leaves_unused_filters_off_other_panels()
     {
         // Act
         var title = PanelTitle.For(PanelKind.Explorer, Filters(), "", focused: false);
 
         // Assert
-        Assert.Equal("[1]─Explorer A U", title);
+        Assert.Equal("[1]─Explorer", title);
     }
 
     [Fact]
@@ -41,12 +41,12 @@ public sealed class WhenTitlingAPanel
         // Act
         var title = PanelTitle.For(
             PanelKind.Explorer,
-            [new FilterChip("A All files", false), new FilterChip("U Updated", true)],
+            [new FilterChip("All files", false), new FilterChip("Updated", true)],
             "",
             focused: false);
 
         // Assert
-        Assert.Equal("[1]─Explorer A U Updated", title);
+        Assert.Equal("[1]─Explorer - Updated", title);
     }
 
     [Fact]
@@ -55,13 +55,13 @@ public sealed class WhenTitlingAPanel
         // Act
         var segments = PanelTitle.Segments(
             PanelKind.Explorer,
-            [new FilterChip("A All files", true), new FilterChip("U Updated", false)],
+            [new FilterChip("All files", true), new FilterChip("Updated", false)],
             "",
             focused: true);
 
         // Assert
         Assert.Equal(
-            [("[1]─Explorer", false), ("A All files", true), ("U Updated", false)],
+            [("[1]─Explorer", false), ("-", false), ("All files", true), ("-", false), ("Updated", false)],
             segments.Select(segment => (segment.Text, segment.IsActive)));
     }
 
@@ -72,7 +72,7 @@ public sealed class WhenTitlingAPanel
         var title = PanelTitle.For(PanelKind.Explorer, Filters(), "order", focused: false);
 
         // Assert
-        Assert.Equal("[1]─Explorer A U ─ /order", title);
+        Assert.Equal("[1]─Explorer ─ /order", title);
     }
 
     [Fact]
@@ -106,7 +106,7 @@ public sealed class WhenTitlingAPanel
     }
 
     private static IReadOnlyList<FilterChip> Filters() =>
-        [new FilterChip("A All files", false), new FilterChip("U Updated", false)];
+        [new FilterChip("All files", false), new FilterChip("Updated", false)];
 
     [Fact]
     public void A_name_too_long_for_the_frame_is_cut_to_fit()
@@ -123,10 +123,30 @@ public sealed class WhenTitlingAPanel
     {
         // Act
         var fitted = PanelTitle.Fitted(
-            [new TitleSegment("[2]─Tests", false), new TitleSegment("U Updated", false)],
+            [new TitleSegment("[2]─Tests", false), new TitleSegment("-", false), new TitleSegment("Updated", false)],
             room: 15);
 
         // Assert
         Assert.Equal(["[2]─Tests"], fitted.Select(segment => segment.Text));
+    }
+
+    [Fact]
+    public void The_panel_name_stands_for_the_unfiltered_list_while_no_filter_is_in_use()
+    {
+        // Act
+        var segments = PanelTitle.Segments(PanelKind.Explorer, Filters(), "", focused: true);
+
+        // Assert
+        Assert.True(segments[0].IsActive);
+    }
+
+    [Fact]
+    public void A_panel_with_no_filters_leaves_its_name_unmarked()
+    {
+        // Act
+        var segments = PanelTitle.Segments(PanelKind.Changes, [], "", focused: true);
+
+        // Assert
+        Assert.False(segments[0].IsActive);
     }
 }

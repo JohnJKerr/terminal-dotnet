@@ -25,7 +25,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Enter/e edit", "+ full screen", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "[ ] filter", "↑/k up", "↓/j down", "Enter/e edit", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -42,7 +42,7 @@ public sealed class WhenListingPanelShortcuts
 
         // Assert
         Assert.Equal(
-            ["Tab pane", "/ search", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "+ full screen", "^R refresh", "? commands", "q quit"],
+            ["Tab pane", "/ search", "[ ] filter", "↑/k up", "↓/j down", "Space/Enter fold", "z fold all", "+ full screen", "^R refresh", "? commands", "q quit"],
             shortcuts);
     }
 
@@ -327,7 +327,7 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
-    public void It_offers_the_flags_filter_in_the_issues()
+    public void It_offers_stepping_through_the_filters_in_the_issues()
     {
         // Act
         var shortcuts = PanelShortcuts.For(
@@ -339,7 +339,7 @@ public sealed class WhenListingPanelShortcuts
             issueState: new IssueState([]));
 
         // Assert
-        Assert.Contains("F flags", shortcuts);
+        Assert.Contains("[ ] filter", shortcuts);
     }
 
     [Fact]
@@ -393,6 +393,37 @@ public sealed class WhenListingPanelShortcuts
     private static CommentsState EmptyComments() => new([]);
 
     private static ChangesetState EmptyChangeset() => new([]);
+
+    [Fact]
+    public void It_offers_stepping_through_the_filters_in_the_tests()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Tests,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments());
+
+        // Assert
+        Assert.Contains("[ ] filter", shortcuts);
+    }
+
+    [Fact]
+    public void It_leaves_the_issues_capital_letters_out()
+    {
+        // Act
+        var shortcuts = PanelShortcuts.For(
+            PanelKind.Issues,
+            new FileExplorerState([]),
+            EmptyChangeset(),
+            EmptyTestState(),
+            EmptyComments(),
+            issueState: new IssueState([]));
+
+        // Assert
+        Assert.DoesNotContain("X errors", shortcuts);
+    }
 
     private static ExplorerState EmptyTestState() =>
         new(ExplorerStatus.Ready, [], 0, "Ready");

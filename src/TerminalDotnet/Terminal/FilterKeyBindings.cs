@@ -1,15 +1,20 @@
 using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
-using TerminalDotnet.Filters;
+using static TerminalDotnet.Terminal.KeyMatch;
 
 namespace TerminalDotnet.Terminal;
 
 public static class FilterKeyBindings
 {
-    public static ExplorerFilter? FilterFor(Key key) => FilterFor(key, PanelFilters.Lettered);
+    /// <summary>How far a key steps along the panel's filters: ] on to the
+    /// next, [ back to the one before.</summary>
+    public static int? StepFor(Key key)
+    {
+        if (Is(key, (KeyCode)']'))
+        {
+            return 1;
+        }
 
-    public static ExplorerFilter? TestFilterFor(Key key) => FilterFor(key, PanelFilters.LetteredTest);
-
-    private static ExplorerFilter? FilterFor(Key key, Func<string, ExplorerFilter?> lettered) =>
-        key.IsShift ? lettered(((char)key.NoShift.KeyCode).ToString()) : null;
+        return Is(key, (KeyCode)'[') ? -1 : null;
+    }
 }

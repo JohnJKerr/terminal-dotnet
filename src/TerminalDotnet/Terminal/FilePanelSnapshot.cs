@@ -19,7 +19,7 @@ public sealed record FilePanelSnapshot(
         state.SearchQuery,
         state.VisibleFileCount,
         StatusSegmentsFrom(state.Changes, state.Notice),
-        [new FilterChip("A All files", showsAllFiles), .. PanelFilters.Chips(state.ActiveFilter)],
+        [new FilterChip("All files", showsAllFiles), .. PanelFilters.Chips(state.ActiveFilter)],
         EmptyMessageFrom(state));
 
     private static string EmptyMessageFrom(FileExplorerState state) => state.Loading

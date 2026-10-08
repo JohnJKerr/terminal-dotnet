@@ -74,8 +74,7 @@ public static class CommandMenu
         new("Space/Enter", "fold or unfold a folder"),
         new("z", "fold or unfold every folder"),
         new("Enter/e", "edit the file"),
-        new("A", "show every file"),
-        new("U", "show only updated files")
+        FilterStep
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Tests =
@@ -90,11 +89,7 @@ public static class CommandMenu
         new("c", "cancel the run"),
         new("o", "show the captured output"),
         new("e", "edit the test"),
-        new("U", "show only updated tests"),
-        new("F", "show only failing tests"),
-        new("P", "show only passing tests"),
-        new("L", "show only the last run"),
-        new("N", "show only tests not yet run")
+        FilterStep
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Changes =
@@ -111,9 +106,7 @@ public static class CommandMenu
         .. Navigation,
         new("Enter/e", "edit the issue's file"),
         new("y", "copy the issue"),
-        new("X", "filter errors"),
-        new("W", "filter warnings"),
-        new("F", "filter flags")
+        FilterStep
     ];
 
     private static readonly IReadOnlyList<CommandMenuEntry> Comments =
@@ -137,6 +130,9 @@ public static class CommandMenu
         new("e", "edit the file"),
         new("c", "comment on the file")
     ];
+
+    private static CommandMenuEntry FilterStep =>
+        new("[/]", "step back or on through the filters in the title");
 
     private static IReadOnlyList<CommandMenuEntry> Navigation =>
     [

@@ -22,6 +22,7 @@ public static class PanelShortcuts
         [
             "Tab pane",
             .. panel == PanelKind.Preview ? Array.Empty<string>() : ["/ search"],
+            .. panel is PanelKind.Explorer or PanelKind.Tests or PanelKind.Issues ? ["[ ] filter"] : Array.Empty<string>(),
             .. PanelShortcutsFor(panel, fileState, changesetState, testState, commentState, issueState),
             fullScreen ? "+ tiles" : "+ full screen",
             "^R refresh",
@@ -50,8 +51,8 @@ public static class PanelShortcuts
         PanelKind.Explorer => ExplorerShortcuts(fileState),
         PanelKind.Changes => ChangesetShortcuts(changesetState),
         PanelKind.Issues => issueState is { Issues.Count: > 0 }
-            ? [.. Navigation(), "Enter/e edit", "y copy", "X errors", "W warnings", "F flags"]
-            : ["X errors", "W warnings", "F flags"],
+            ? [.. Navigation(), "Enter/e edit", "y copy"]
+            : [],
         PanelKind.Comments => CommentShortcuts(commentState),
         PanelKind.Preview => PreviewShortcuts,
         _ => TestShortcuts(testState)

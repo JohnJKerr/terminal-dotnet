@@ -13,16 +13,22 @@ public abstract record IssuePanelAction
 
 public static class IssuePanelKeyBindings
 {
-    public static IssuePanelAction? ActionFor(Key key, CompilationIssue? issue, bool searchActive)
+    private static readonly IssueFilter[] Filters = Enum.GetValues<IssueFilter>();
+
+    public static IssuePanelAction? ActionFor(
+        Key key,
+        CompilationIssue? issue,
+        bool searchActive,
+        IssueFilter? activeFilter = null)
     {
         if (searchActive)
         {
             return null;
         }
 
-        if (FilterFor(key) is { } filter)
+        if (FilterKeyBindings.StepFor(key) is { } step)
         {
-            return new IssuePanelAction.Dispatch(filter);
+            return new IssuePanelAction.Dispatch(ToggleFor(activeFilter, step));
         }
 
         if (issue is null)
@@ -38,11 +44,14 @@ public static class IssuePanelKeyBindings
         };
     }
 
-    private static IssueCommand? FilterFor(Key key) => !key.IsShift ? null : key.NoShift.KeyCode switch
-    {
-        KeyCode.X => new IssueCommand.ToggleErrors(),
-        KeyCode.W => new IssueCommand.ToggleWarnings(),
-        KeyCode.F => new IssueCommand.ToggleFlags(),
-        _ => null
-    };
+    /// <summary>The toggle that takes a step along the filters. Stepping off
+    /// either end toggles the filter in use, which turns it off and returns
+    /// the panel to every issue.</summary>
+    private static IssueCommand ToggleFor(IssueFilter? active, int step) =>
+        (FilterRing.Stepped(Filters, active, step) ?? active) switch
+        {
+            IssueFilter.Warnings => new IssueCommand.ToggleWarnings(),
+            IssueFilter.Flags => new IssueCommand.ToggleFlags(),
+            _ => new IssueCommand.ToggleErrors()
+        };
 }

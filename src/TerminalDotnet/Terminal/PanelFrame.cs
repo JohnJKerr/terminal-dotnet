@@ -15,7 +15,7 @@ namespace TerminalDotnet.Terminal;
 /// </summary>
 internal sealed class PanelFrame
 {
-    private const int MaxTitleSegments = 8;
+    private const int MaxTitleSegments = 12;
     private const int CornerWidth = 1;
     private static readonly Rune NoHotKey = new(0xFFFF);
 
