@@ -36,7 +36,7 @@ Runs on Linux, macOS and Windows. See [platform support](docs/platforms.md).
   them by severity, and opens or copies each one.
 - **Git changes.** Lists added, modified and deleted files, previews each
   one's diff or the file as it now stands, and restores deleted files.
-- **Change-aware filters.** One key narrows the Explorer to the files git
+- **Change-aware filters.** A filter narrows the Explorer to the files git
   reports as changed, and the Tests panel to the suites whose source changed,
   so `Enter` on the project runs only those.
 - **Flags.** Gathers `TODO`, `FIXME`, `HACK` and similar markers from every
@@ -203,10 +203,12 @@ Every panel is on the screen at once:
   keep it full screen as you move, and `+` or `Esc` returns to the tiles.
   A panel name too long for its frame is cut short rather than hidden.
 - **Focus.** The panel taking the keys has a green frame, and its title spells
-  out its filters. The others show only the filters' letters.
-- **Filters.** Capital letters toggle the focused panel's filters, one at a
-  time. The filter in use is green, both in the panel's title and in the list
-  of the focused panel's filters beside the search box.
+  out its filters after its name. The others name only a filter in use.
+- **Filters.** `]` steps on through the focused panel's filters and `[` steps
+  back, one filter at a time; a step past either end returns to the
+  unfiltered list. The one in use is green, both in the panel's title and in
+  the list of the focused panel's filters beside the search box. The panel's
+  name is green while nothing is filtered.
 - **Bottom rows.** The search box and the filters, then the focused panel's
   counts or run status, then the keys that apply to the focused panel and its
   selection. `/` searches the focused panel, and `?` lists every command.
@@ -216,16 +218,17 @@ Every panel is on the screen at once:
 
 ### Explorer
 
-<!-- Screenshot: the Explorer focused with the U (Updated) filter on, showing the green filter in its title, with a changed file selected in the Preview -->
+<!-- Screenshot: the Explorer focused with the Updated filter on, showing the green filter in its title, with a changed file selected in the Preview -->
 ![Explorer panel](docs/images/explorer.png)
 
 Panel `1`. The solution's projects as a tree of folders and source files,
 mirroring the layout on disk. Build output (`bin`, `obj`) is left out. Files git
 reports as new are green and edited files are blue.
-- `A` (**All files**) shows every file beneath the directory you launched
-  from, whether or not a project claims it: scripts, docs, workflows and
+- `[` and `]` step through its listings.
+- **All files** shows every file beneath the directory you launched from,
+  whether or not a project claims it: scripts, docs, workflows and
   configuration.
-- `U` (**Updated**) keeps only the files git reports as changed.
+- **Updated** keeps only the project files git reports as changed.
 - `Space` or `Enter` folds a folder, and `z` folds or unfolds them all.
 - `Enter` or `e` edits the selected file. The Preview shows it as you move.
 
@@ -244,8 +247,8 @@ Panel `2`. The discovered tests, grouped by project, class and test.
 - **Failures.** `f` selects the next failed test, and the Preview shows its
   source with the failing line picked out. `e` opens it in your editor.
 - **Output.** `o` shows the captured output of the run.
-- **Filters.** `U` updated, `F` failing, `P` passing, `L` last run and `N` not
-  run.
+- **Filters.** `[` and `]` step through updated, failing, passing, last run
+  and not run.
 - **Summary.** After a run, the status line counts the failed, passed and
   skipped tests beside the total discovered.
 
@@ -271,7 +274,7 @@ Panel `4`. Compiler errors (red) and warnings (yellow) from
 `dotnet build --no-restore`, followed by the flags: comment markers from
 tracked files. The preview shows the reported line, with the full message
 beneath it. Search matches the full message.
-- `X`, `W` and `F` filter to errors, warnings and flags.
+- `[` and `]` step through the errors, the warnings and the flags.
 - `Enter` or `e` opens the source at the reported line.
 - `y` copies the issue to the clipboard.
 
@@ -346,7 +349,7 @@ message sits beneath the source.
 | `/` | Search the focused panel |
 | `Enter` (in search) | Leave the search, keeping it |
 | `Esc` | Close what is open, leave full screen, or clear the search |
-| Capital letters | Toggle the focused panel's filters, as named in its title |
+| `[` / `]` | Step back or on through the focused panel's filters, as named in its title |
 | Click | Go to a panel, or select a row in it |
 | Drag (in the preview) | Select text and copy it to the clipboard |
 | `Ctrl+R` | Refresh every panel and rebuild the project |
@@ -358,10 +361,10 @@ message sits beneath the source.
 | Panel | Keys |
 | --- | --- |
 | All lists | `↑`/`k` up, `↓`/`j` down |
-| Explorer | `Space`/`Enter` fold a folder, `z` fold all, `Enter`/`e` edit, `A` all files, `U` updated |
-| Tests | `Space` fold a suite, `z` fold all, `Enter`/`r` run, `l` rerun last, `u` rerun failures, `f` next failure, `c` cancel, `o` output, `e` edit, `U`/`F`/`P`/`L`/`N` filters |
+| Explorer | `Space`/`Enter` fold a folder, `z` fold all, `Enter`/`e` edit, `[`/`]` filters |
+| Tests | `Space` fold a suite, `z` fold all, `Enter`/`r` run, `l` rerun last, `u` rerun failures, `f` next failure, `c` cancel, `o` output, `e` edit, `[`/`]` filters |
 | Changes | `Enter`/`d` preview the diff, `p` preview the file, `e` edit, `r` restore deleted |
-| Issues | `Enter`/`e` edit, `y` copy, `X` errors, `W` warnings, `F` flags |
+| Issues | `Enter`/`e` edit, `y` copy, `[`/`]` filters |
 | Comments | `Enter`/`v` read, `e` edit, `d` delete, `y` copy all, `w` save all, `x` clear all |
 | Preview | `PgUp`/`PgDn` page, `Home`/`End` ends, `n`/`N` next/previous preview, `e` edit, `c` comment |
 

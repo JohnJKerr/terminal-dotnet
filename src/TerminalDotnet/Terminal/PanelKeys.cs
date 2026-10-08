@@ -1,8 +1,7 @@
 namespace TerminalDotnet.Terminal;
 
 /// <summary>
-/// The number that reaches each panel. The capital letters belong to the
-/// panels' filters, so the panels are reached by the numbers beside them.
+/// The number that reaches each panel, as its title shows beside its name.
 /// </summary>
 public static class PanelKeys
 {
