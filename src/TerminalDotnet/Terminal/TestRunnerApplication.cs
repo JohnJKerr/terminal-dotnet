@@ -759,7 +759,13 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        if (FilePanelKeyBindings.ActionFor(key, SelectedFile(fileExplorer), search.HasFocus) is { } action)
+        var action = FilePanelKeyBindings.ActionFor(
+            key,
+            SelectedFile(fileExplorer),
+            search.HasFocus,
+            shell.State.ShowsAllFiles,
+            fileExplorer.State.ActiveFilter);
+        if (action is not null)
         {
             key.Handled = true;
             HandleFileAction(application, action, fileExplorer);
@@ -783,17 +789,30 @@ internal sealed class TestRunnerApplication(
     {
         switch (action)
         {
-            case FilePanelAction.ToggleFilter toggle:
-                panelWork.Track(DispatchFileAsync(fileExplorer, new FileExplorerCommand.ToggleFilter(toggle.Filter)));
-                return;
-            case FilePanelAction.ToggleAllFiles:
-                shell.ToggleAllFiles();
-                Render();
+            case FilePanelAction.ShowFiles show:
+                panelWork.Track(ShowFilesAsync(show));
                 return;
             case FilePanelAction.OpenFile open:
                 RequestOpen(application, open.Path, line: 1);
                 return;
         }
+    }
+
+    /// <summary>Only the projects' files are narrowed to a filter; every
+    /// file beneath the launch folder is always listed whole.</summary>
+    private async Task ShowFilesAsync(FilePanelAction.ShowFiles show)
+    {
+        if (shell.State.ShowsAllFiles != show.AllFiles)
+        {
+            shell.ToggleAllFiles();
+        }
+
+        if (fileSession.State.ActiveFilter != show.Filter)
+        {
+            await fileSession.DispatchAsync(new FileExplorerCommand.ToggleFilter(ExplorerFilter.Updated));
+        }
+
+        RenderOnTheLoop();
     }
 
     private static VisibleFileNode? SelectedFile(FileExplorerSession fileExplorer) =>

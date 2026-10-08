@@ -37,16 +37,6 @@ public sealed class WhenListingPanelFilters
     }
 
     [Fact]
-    public void It_has_no_filter_beyond_the_ones_it_offers()
-    {
-        // Act
-        var filter = PanelFilters.Lettered("F");
-
-        // Assert
-        Assert.Null(filter);
-    }
-
-    [Fact]
     public void The_test_panel_names_its_run_filters_after_updated()
     {
         // Act

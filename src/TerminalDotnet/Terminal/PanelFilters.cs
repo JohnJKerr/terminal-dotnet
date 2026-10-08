@@ -21,16 +21,11 @@ public static class PanelFilters
         .Select(filter => new FilterChip($"{filter.Key()} {filter.DisplayName()}", filter == active))
         .ToArray();
 
-    public static ExplorerFilter? Lettered(string letter) => Lettered(letter, FileFilters);
-
     /// <summary>The test filter to toggle so the panel takes a step along
     /// its filters. Stepping off either end toggles the filter in use, which
     /// turns it off and returns the panel to every test.</summary>
     public static ExplorerFilter TestToggleFor(ExplorerFilter? active, int step) =>
         FilterRing.Stepped(TestFilters, active, step) ?? active ?? TestFilters[0];
-
-    private static ExplorerFilter? Lettered(string letter, IReadOnlyList<ExplorerFilter> offered) =>
-        offered.Cast<ExplorerFilter?>().FirstOrDefault(filter => filter!.Value.Key() == letter);
 }
 
 /// <summary>
