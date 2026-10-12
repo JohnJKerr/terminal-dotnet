@@ -18,8 +18,34 @@ public sealed class WhenUsingTheDotnetCliTestBackend
 
         // Assert
         Assert.Equal(
-            ["dotnet", "test", "/repo/Shop.sln", "--list-tests", "--nologo", "--tl:off"],
+            ["dotnet", "test", "/repo/Shop.sln", "--list-tests", "--nologo", "--tl:off", "-m:1"],
             [runner.LastRequest!.FileName, .. runner.LastRequest.Arguments]);
+    }
+
+    [Fact]
+    public async Task It_does_not_discover_build_output_as_a_test()
+    {
+        // Arrange
+        var runner = new RecordingCommandRunner(new CommandResult(0, $"""
+            Test run for {TestPaths.In("Api.IntegrationTests", "bin", "Debug", "net8.0", "Api.IntegrationTests.dll")} (.NETCoreApp,Version=v8.0)
+            The following Tests are available:
+                Api.IntegrationTests.Orgs.WhenGettingUserOrg.It_integrates_correctly
+              Application.Tests -> {TestPaths.In("Application.Tests", "bin", "Debug", "net8.0", "Application.Tests.dll")}
+            Test run for {TestPaths.In("Application.Tests", "bin", "Debug", "net8.0", "Application.Tests.dll")} (.NETCoreApp,Version=v8.0)
+            The following Tests are available:
+                Application.Tests.WhenCreatingAnOrg.It_uses_provided_name
+            """, ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+
+        // Act
+        var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
+
+        // Assert
+        Assert.Equal(
+        [
+            "Api.IntegrationTests.Orgs.WhenGettingUserOrg.It_integrates_correctly",
+            "Application.Tests.WhenCreatingAnOrg.It_uses_provided_name"
+        ], tests.Select(test => test.FullyQualifiedName));
     }
 
     [Fact]

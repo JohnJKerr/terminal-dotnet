@@ -20,7 +20,7 @@ public sealed partial class DotnetCliTestBackend(
     {
         var request = new CommandRequest(
             "dotnet",
-            ["test", target, "--list-tests", "--nologo", "--tl:off"],
+            ["test", target, "--list-tests", "--nologo", "--tl:off", "-m:1"],
             Path.GetDirectoryName(Path.GetFullPath(target))!);
         var result = await commandRunner.RunAsync(request, cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0)
@@ -58,7 +58,8 @@ public sealed partial class DotnetCliTestBackend(
     private static bool IsRunHeader(string line) => line.StartsWith(RunHeader, StringComparison.Ordinal);
 
     private static bool NamesATest(string line) =>
-        !string.IsNullOrWhiteSpace(line) && char.IsWhiteSpace(line[0]);
+        line.Length > 4 && line.StartsWith("    ", StringComparison.Ordinal) &&
+        !char.IsWhiteSpace(line[4]);
 
     private static TestCase DiscoveredTest(string discoveredName, string target)
     {
