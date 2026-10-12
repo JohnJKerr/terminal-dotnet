@@ -79,7 +79,7 @@ internal sealed class PreviewPanel
         highlight = Highlight();
         details = Details();
         marks = Marks();
-        View = new View
+        View = new PreviewScrollView(() => Shown)
         {
             BorderStyle = LineStyle.Single,
             CanFocus = true
