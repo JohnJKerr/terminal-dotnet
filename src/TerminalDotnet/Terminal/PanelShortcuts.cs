@@ -113,6 +113,7 @@ public static class PanelShortcuts
         }
 
         shortcuts.Add("e edit");
+        shortcuts.Add("y copy");
         return shortcuts;
     }
 

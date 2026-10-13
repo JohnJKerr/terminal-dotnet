@@ -206,6 +206,16 @@ public sealed class WhenListingEveryCommand
     }
 
     [Fact]
+    public void It_lists_the_copy_command_under_tests()
+    {
+        // Act
+        var tests = CommandMenu.Sections().Single(section => section.Title == "Tests");
+
+        // Assert
+        Assert.Contains(tests.Entries, entry => entry.Keys == "y" && entry.Description == "copy tests under the selection");
+    }
+
+    [Fact]
     public void It_lists_stepping_through_the_filters_under_tests()
     {
         // Act

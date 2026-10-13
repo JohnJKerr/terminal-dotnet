@@ -89,6 +89,7 @@ public static class CommandMenu
         new("c", "cancel the run"),
         new("o", "show the captured output"),
         new("e", "edit the test"),
+        new("y", "copy tests under the selection"),
         FilterStep
     ];
 

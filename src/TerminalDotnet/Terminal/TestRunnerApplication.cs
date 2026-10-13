@@ -43,6 +43,7 @@ internal sealed class TestRunnerApplication(
     private readonly ChangesetSession changesetSession = panels.Changes;
     private readonly CommentSession commentSession = panels.Comments;
     private readonly IssueSession issueSession = panels.Issues;
+    private readonly TestSelectionCopier testSelectionCopier = new(clipboard);
 
     private readonly PanelStartup startup = new(
         panels.ProjectFiles,
@@ -722,10 +723,26 @@ internal sealed class TestRunnerApplication(
             case TestPanelAction.CancelRun:
                 runCancellation?.Cancel();
                 return;
+            case TestPanelAction.CopySelection:
+                panelWork.Track(CopySelectedTestsAsync(application));
+                return;
             case TestPanelAction.Dispatch dispatch:
                 panelWork.Track(DispatchAsync(application, dispatch.Command));
                 return;
         }
+    }
+
+    private async Task CopySelectedTestsAsync(IApplication application)
+    {
+        var copied = await testSelectionCopier.CopyAsync(session.State);
+        if (copied is null)
+        {
+            return;
+        }
+
+        application.Invoke(() => toast.Show(application, copied.Value
+            ? new Toast("Copied selected tests", ToastTone.Succeeded)
+            : new Toast("Could not copy selected tests", ToastTone.Failed)));
     }
 
     /// <summary>The Explorer browses the projects' files or every file beneath

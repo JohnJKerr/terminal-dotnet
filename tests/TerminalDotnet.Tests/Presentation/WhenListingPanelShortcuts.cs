@@ -83,6 +83,23 @@ public sealed class WhenListingPanelShortcuts
     }
 
     [Fact]
+    public void It_offers_copying_the_selected_test_tree()
+    {
+        // Arrange
+        var test = Test();
+        var state = TestState() with
+        {
+            VisibleNodes = [new VisibleTestNode(1, TestNodeKind.Test, test.DisplayName, [test])]
+        };
+
+        // Act
+        var shortcuts = PanelShortcuts.For(PanelKind.Tests, new FileExplorerState([]), EmptyChangeset(), state, EmptyComments());
+
+        // Assert
+        Assert.Contains("y copy", shortcuts);
+    }
+
+    [Fact]
     public void It_leaves_previewing_out_of_the_tests()
     {
         // Act

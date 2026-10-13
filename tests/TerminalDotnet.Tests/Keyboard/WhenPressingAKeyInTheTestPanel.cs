@@ -90,6 +90,16 @@ public sealed class WhenPressingAKeyInTheTestPanel
     }
 
     [Fact]
+    public void Pressing_y_copies_the_selected_tests()
+    {
+        // Act
+        var action = ActionFor(new Key(KeyCode.Y));
+
+        // Assert
+        Assert.Equal(new TestPanelAction.CopySelection(), action);
+    }
+
+    [Fact]
     public void Pressing_e_opens_the_source()
     {
         // Act

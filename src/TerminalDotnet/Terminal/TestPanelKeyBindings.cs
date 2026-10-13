@@ -10,6 +10,7 @@ public abstract record TestPanelAction
 {
     public sealed record Dispatch(ExplorerCommand Command) : TestPanelAction;
     public sealed record CancelRun : TestPanelAction;
+    public sealed record CopySelection : TestPanelAction;
     public sealed record OpenSource : TestPanelAction;
     public sealed record ShowOutput : TestPanelAction;
 }
@@ -65,6 +66,11 @@ public static class TestPanelKeyBindings
         if (Is(key, KeyCode.Z))
         {
             return Dispatched(new ExplorerCommand.ToggleAllExpanded());
+        }
+
+        if (Is(key, KeyCode.Y))
+        {
+            return new TestPanelAction.CopySelection();
         }
 
         if (Is(key, KeyCode.Enter) || Is(key, KeyCode.R))
