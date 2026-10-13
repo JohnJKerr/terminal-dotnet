@@ -1,5 +1,6 @@
 using System.Runtime.Versioning;
 using TerminalDotnet.Files;
+using TerminalDotnet.Git;
 using TerminalDotnet.Testing;
 using Xunit;
 
@@ -108,6 +109,21 @@ public sealed class WhenDiscoveringFolderFiles
             [FileGitStatus.Modified],
             files.Where(file => Path.GetFileName(file.Path) == "build.sh")
                 .Select(file => file.GitStatus));
+    }
+
+    [Fact]
+    public async Task It_leaves_a_file_unmarked_when_only_its_line_endings_changed()
+    {
+        // Arrange
+        using var folder = LaunchFolder.At("TerminalDotnet.slnx", "scripts/build.sh")
+            .Changed(" M scripts/build.sh\0")
+            .WithMeaningfulPaths("");
+
+        // Act
+        var files = await folder.DiscoverAsync();
+
+        // Assert
+        Assert.Equal(FileGitStatus.Unchanged, files.Single(file => Path.GetFileName(file.Path) == "build.sh").GitStatus);
     }
 
     [Fact]
@@ -252,6 +268,7 @@ public sealed class WhenDiscoveringFolderFiles
     private sealed class LaunchFolder : IDisposable
     {
         private string status = "";
+        private string? meaningfulPaths;
         private bool tracked = true;
 
         private LaunchFolder(string root, string target, IReadOnlyList<string> trackedPaths)
@@ -294,6 +311,12 @@ public sealed class WhenDiscoveringFolderFiles
             return this;
         }
 
+        public LaunchFolder WithMeaningfulPaths(string paths)
+        {
+            meaningfulPaths = paths;
+            return this;
+        }
+
         /// <summary>Every command git was asked to run, settings included.</summary>
         public List<IReadOnlyList<string>> Invocations { get; } = [];
 
@@ -328,6 +351,13 @@ public sealed class WhenDiscoveringFolderFiles
                 if (request.Arguments.Contains("--show-toplevel"))
                 {
                     return folder.Root;
+                }
+
+                if (request.Arguments.Contains("--name-only"))
+                {
+                    return folder.meaningfulPaths ?? string.Concat(GitStatusOutput.EntriesFrom(folder.status)
+                        .Where(entry => entry.Kind == GitChangeKind.Modified)
+                        .Select(entry => entry.RelativePath + '\0'));
                 }
 
                 return request.Arguments.Contains("ls-files")

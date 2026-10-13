@@ -25,9 +25,18 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
             GitRequest.For(["status", "--porcelain=v1", "-z", "--untracked-files=all"], repositoryRoot),
             cancellationToken).ConfigureAwait(false);
 
-        return result.ExitCode == 0
-            ? StatusesFrom(result.StandardOutput, repositoryRoot)
-            : GitStatuses.None;
+        if (result.ExitCode != 0)
+        {
+            return GitStatuses.None;
+        }
+
+        var entries = await GitMeaningfulChanges.FromAsync(
+            commandRunner,
+            repositoryRoot,
+            repositoryRoot,
+            GitStatusOutput.EntriesFrom(result.StandardOutput),
+            cancellationToken).ConfigureAwait(false);
+        return StatusesFrom(entries, repositoryRoot);
     }
 
     /// <summary>Falls back to the files on disk when git cannot answer, so a
@@ -68,8 +77,8 @@ internal sealed class GitFileListing(ICommandRunner commandRunner)
             !segments.Contains("obj", StringComparer.OrdinalIgnoreCase);
     }
 
-    private static GitStatuses StatusesFrom(string output, string repositoryRoot) => new(
-        GitStatusOutput.EntriesFrom(output).ToDictionary(
+    private static GitStatuses StatusesFrom(IReadOnlyList<GitStatusEntry> entries, string repositoryRoot) => new(
+        entries.ToDictionary(
             entry => Path.GetFullPath(entry.RelativePath, repositoryRoot),
             entry => StatusFrom(entry.Kind),
             StringComparer.Ordinal));

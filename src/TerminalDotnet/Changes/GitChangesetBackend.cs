@@ -31,7 +31,13 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             return [];
         }
 
-        return MarkingRecreatedFiles(GitStatusOutput.EntriesFrom(status.StandardOutput)
+        var entries = await GitMeaningfulChanges.FromAsync(
+            commandRunner,
+            repositoryRoot,
+            scopeDirectory,
+            GitStatusOutput.EntriesFrom(status.StandardOutput),
+            cancellationToken).ConfigureAwait(false);
+        return MarkingRecreatedFiles(entries
             .Select(entry => ChangedFileFrom(entry, repositoryRoot, scopeDirectory))
             .OrderBy(file => file.DisplayPath, StringComparer.Ordinal)
             .ToArray());

@@ -1,4 +1,5 @@
 using TerminalDotnet.Changes;
+using TerminalDotnet.Git;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Tests.Builders;
 using Xunit;
@@ -24,6 +25,51 @@ public sealed class WhenDiscoveringChangedFiles
                 (Path.Combine("src", "Gone.cs"), ChangeKind.Deleted)
             ],
             files.Select(file => (file.DisplayPath, file.Kind)));
+    }
+
+    [Fact]
+    public async Task It_ignores_a_file_changed_only_by_line_endings()
+    {
+        // Arrange
+        var runner = new GitCommandRunner(TestPaths.Repo, " M src/Changed.cs\0") { MeaningfulPaths = "" };
+
+        // Act
+        var files = await new GitChangesetBackend(runner).DiscoverAsync(TestPaths.In("App.slnx"));
+
+        // Assert
+        Assert.Empty(files);
+    }
+
+    [Fact]
+    public async Task It_keeps_a_staged_edit_even_when_the_working_tree_has_no_remaining_change()
+    {
+        // Arrange
+        var runner = new GitCommandRunner(TestPaths.Repo, "MM src/Changed.cs\0")
+        {
+            StagedPaths = "src/Changed.cs\0",
+            UnstagedPaths = ""
+        };
+
+        // Act
+        var files = await new GitChangesetBackend(runner).DiscoverAsync(TestPaths.In("App.slnx"));
+
+        // Assert
+        Assert.Equal(ChangeKind.Modified, files.Single().Kind);
+    }
+
+    [Fact]
+    public async Task It_ignores_carriage_returns_without_ignoring_other_trailing_whitespace()
+    {
+        // Arrange
+        var runner = new GitCommandRunner(TestPaths.Repo, " M src/Changed.cs\0");
+
+        // Act
+        await new GitChangesetBackend(runner).DiscoverAsync(TestPaths.In("App.slnx"));
+
+        // Assert
+        Assert.All(
+            runner.Requests.Where(arguments => arguments.Contains("--name-only")),
+            arguments => Assert.Contains("--ignore-cr-at-eol", arguments));
     }
 
     [Fact]
@@ -330,6 +376,12 @@ public sealed class WhenDiscoveringChangedFiles
 
         public string Diff { get; init; } = "";
 
+        public string? MeaningfulPaths { get; init; }
+
+        public string? StagedPaths { get; init; }
+
+        public string? UnstagedPaths { get; init; }
+
         /// <summary>Each command as git is asked to run it, settings included.</summary>
         public List<IReadOnlyList<string>> Invocations { get; } = [];
 
@@ -351,6 +403,11 @@ public sealed class WhenDiscoveringChangedFiles
                 "rev-parse" => new CommandResult(RootExitCode, root, ""),
                 "status" => new CommandResult(0, status, ""),
                 "restore" => new CommandResult(RestoreExitCode, "", ""),
+                "diff" when command.Contains("--name-only") => new CommandResult(0,
+                    (command.Contains("--cached") ? StagedPaths : UnstagedPaths) ?? MeaningfulPaths ??
+                    string.Concat(GitStatusOutput.EntriesFrom(status)
+                        .Where(entry => entry.Kind == GitChangeKind.Modified)
+                        .Select(entry => entry.RelativePath + '\0')), ""),
                 _ => new CommandResult(0, Diff, "")
             });
         }

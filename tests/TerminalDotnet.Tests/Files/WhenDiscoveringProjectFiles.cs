@@ -1,4 +1,5 @@
 using TerminalDotnet.Files;
+using TerminalDotnet.Git;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Tests.Builders;
 using Xunit;
@@ -279,6 +280,8 @@ public sealed class WhenDiscoveringProjectFiles
     private sealed class RepositoryCommandRunner(string root, string status, string listing = "")
         : ICommandRunner
     {
+        public string? MeaningfulPaths { get; init; }
+
         public Task<CommandResult> RunAsync(
             CommandRequest request,
             CancellationToken cancellationToken = default) =>
@@ -289,6 +292,13 @@ public sealed class WhenDiscoveringProjectFiles
             if (request.Arguments.Contains("--show-toplevel"))
             {
                 return root;
+            }
+
+            if (request.Arguments.Contains("--name-only"))
+            {
+                return MeaningfulPaths ?? string.Concat(GitStatusOutput.EntriesFrom(status)
+                    .Where(entry => entry.Kind == GitChangeKind.Modified)
+                    .Select(entry => entry.RelativePath + '\0'));
             }
 
             return request.Arguments.Contains("ls-files") ? listing : status;

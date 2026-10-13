@@ -12,6 +12,8 @@ public sealed record GitStatusEntry(string RelativePath, GitChangeKind Kind)
     public GitChangeKind? Staged { get; init; }
 
     public GitChangeKind? Unstaged { get; init; }
+
+    public bool PathChanged { get; init; }
 }
 
 public static class GitStatusOutput
@@ -47,7 +49,8 @@ public static class GitStatusOutput
         KindFrom(record[..2]))
     {
         Staged = StagedKindFrom(record[0]),
-        Unstaged = UnstagedKindFrom(record[1])
+        Unstaged = UnstagedKindFrom(record[1]),
+        PathChanged = RenamesAPath(record)
     };
 
     private static GitChangeKind? StagedKindFrom(char code) =>
