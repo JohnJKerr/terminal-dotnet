@@ -109,6 +109,72 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_runs_each_project_in_a_selection_spanning_projects()
+    {
+        // Arrange
+        var runner = new QueuedCommandRunner();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+        var cart = new TestCase("Shop.CartTests.Adds_item", "Adds item", "/repo/Cart.Tests.csproj");
+        var orders = new TestCase("Shop.OrderTests.Submits_order", "Submits order", "/repo/Orders.Tests.csproj");
+
+        // Act
+        await backend.RunAsync([cart, orders]);
+
+        // Assert
+        Assert.Equal([cart.ProjectPath, orders.ProjectPath], runner.Requests.Select(request => request.Arguments[1]));
+    }
+
+    [Fact]
+    public async Task It_builds_each_project_in_a_selection_spanning_projects()
+    {
+        // Arrange
+        var runner = new QueuedCommandRunner();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+        var cart = new TestCase("Shop.CartTests.Adds_item", "Adds item", "/repo/Cart.Tests.csproj");
+        var orders = new TestCase("Shop.OrderTests.Submits_order", "Submits order", "/repo/Orders.Tests.csproj");
+
+        // Act
+        await backend.RunAsync([cart, orders]);
+
+        // Assert
+        Assert.All(runner.Requests, request => Assert.DoesNotContain("--no-build", request.Arguments));
+    }
+
+    [Fact]
+    public async Task It_combines_results_from_each_project()
+    {
+        // Arrange
+        var cart = new TestCase("Shop.CartTests.Adds_item", "Adds item", "/repo/Cart.Tests.csproj");
+        var orders = new TestCase("Shop.OrderTests.Submits_order", "Submits order", "/repo/Orders.Tests.csproj");
+        var backend = new DotnetCliTestBackend(
+            new QueuedCommandRunner(),
+            new InMemoryTestResultStore(PassingResultsFor(cart, orders)));
+
+        // Act
+        var run = await backend.RunAsync([cart, orders]);
+
+        // Assert
+        Assert.Equal([cart, orders], run.Results.Select(result => result.Test));
+    }
+
+    [Fact]
+    public async Task It_reports_a_failure_in_any_project()
+    {
+        // Arrange
+        var cart = new TestCase("Shop.CartTests.Adds_item", "Adds item", "/repo/Cart.Tests.csproj");
+        var orders = new TestCase("Shop.OrderTests.Submits_order", "Submits order", "/repo/Orders.Tests.csproj");
+        var backend = new DotnetCliTestBackend(
+            new QueuedCommandRunner(new CommandResult(0, "", ""), new CommandResult(1, "", "")),
+            new InMemoryTestResultStore(PassingResultsFor(cart, orders)));
+
+        // Act
+        var run = await backend.RunAsync([cart, orders]);
+
+        // Assert
+        Assert.False(run.Passed);
+    }
+
+    [Fact]
     public async Task It_keeps_each_command_within_the_windows_command_line_limit()
     {
         // Arrange

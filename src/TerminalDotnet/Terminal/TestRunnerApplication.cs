@@ -1156,7 +1156,9 @@ internal sealed class TestRunnerApplication(
         var selected = session.State.VisibleNodes.Count > 0
             ? session.State.VisibleNodes[session.State.SelectedIndex]
             : null;
-        var selectedTarget = selected?.Tests[0].ProjectPath ?? target;
+        var selectedTarget = selected?.Kind == TestNodeKind.Root
+            ? target
+            : selected?.Tests[0].ProjectPath ?? target;
         var started = false;
         var toastGeneration = 0;
         try

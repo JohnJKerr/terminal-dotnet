@@ -13,6 +13,7 @@ public enum ExplorerStatus
 
 public enum TestNodeKind
 {
+    Root,
     Project,
     Class,
     Test

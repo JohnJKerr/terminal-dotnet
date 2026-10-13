@@ -21,6 +21,7 @@ public sealed class TestExplorerSession(
         new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
 
     private const string DiscoveringMessage = "Discovering tests...";
+    private const string RootNodeId = "all-tests";
 
     public ExplorerState State { get; private set; } =
         new(ExplorerStatus.Loading, [], 0, DiscoveringMessage);
@@ -222,10 +223,13 @@ public sealed class TestExplorerSession(
         };
     }
 
-    private static IReadOnlyList<string> GroupNodeIds(IReadOnlyList<TestCase> tests) => tests
-        .GroupBy(test => test.ProjectPath)
-        .SelectMany(ProjectGroupIds)
-        .ToArray();
+    private static IReadOnlyList<string> GroupNodeIds(IReadOnlyList<TestCase> tests)
+    {
+        var projects = tests.GroupBy(test => test.ProjectPath).ToArray();
+        return projects.Length > 1
+            ? [RootNodeId, .. projects.SelectMany(ProjectGroupIds)]
+            : [.. projects.SelectMany(ProjectGroupIds)];
+    }
 
     private static IEnumerable<string> ProjectGroupIds(IGrouping<string, TestCase> project) =>
     [
@@ -299,11 +303,27 @@ public sealed class TestExplorerSession(
         .Select(result => result.Test)
         .ToArray() ?? [];
 
-    private IReadOnlyList<VisibleTestNode> VisibleNodes(IReadOnlyList<TestCase> tests) => Snapshot.Of(tests
-        .GroupBy(test => test.ProjectPath)
-        .OrderBy(project => project.Key)
-        .SelectMany(ProjectNodes)
-        .Select(NodeWithOutcome));
+    private IReadOnlyList<VisibleTestNode> VisibleNodes(IReadOnlyList<TestCase> tests)
+    {
+        var projects = tests
+            .GroupBy(test => test.ProjectPath)
+            .OrderBy(project => project.Key)
+            .ToArray();
+        var nodes = projects.Length > 1
+            ? RootNodes(tests, projects)
+            : projects.SelectMany(project => ProjectNodes(project, 0));
+        return Snapshot.Of(nodes.Select(NodeWithOutcome));
+    }
+
+    private IEnumerable<VisibleTestNode> RootNodes(
+        IReadOnlyList<TestCase> tests,
+        IReadOnlyList<IGrouping<string, TestCase>> projects)
+    {
+        var root = new VisibleTestNode(0, TestNodeKind.Root, "All tests", tests);
+        return folded.IsExpanded(RootNodeId)
+            ? [root, .. projects.SelectMany(project => ProjectNodes(project, 1))]
+            : [root with { IsExpanded = false }];
+    }
 
     private VisibleTestNode NodeWithOutcome(VisibleTestNode node)
     {
@@ -341,10 +361,12 @@ public sealed class TestExplorerSession(
     private TestNodeOutcome? OutcomeOf(TestCase test) =>
         completedOutcomes.GetValueOrDefault(test);
 
-    private static string NodeId(VisibleTestNode node) => NodeId(
-        node.Tests[0].ProjectPath,
-        node.Kind,
-        node.Kind == TestNodeKind.Class ? node.Tests[0].TestClass : node.Name);
+    private static string NodeId(VisibleTestNode node) => node.Kind == TestNodeKind.Root
+        ? RootNodeId
+        : NodeId(
+            node.Tests[0].ProjectPath,
+            node.Kind,
+            node.Kind == TestNodeKind.Class ? node.Tests[0].TestClass : node.Name);
 
     private static string NodeId(string projectPath, TestNodeKind kind, string name) =>
         $"{projectPath}:{kind}:{name}";
@@ -465,11 +487,11 @@ public sealed class TestExplorerSession(
             : TestNodeOutcome.Passed;
     }
 
-    private IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project)
+    private IEnumerable<VisibleTestNode> ProjectNodes(IGrouping<string, TestCase> project, int depth)
     {
         var projectTests = Snapshot.Of(project);
         var projectNode = new VisibleTestNode(
-            0,
+            depth,
             TestNodeKind.Project,
             Path.GetFileNameWithoutExtension(project.Key),
             projectTests);
@@ -477,18 +499,18 @@ public sealed class TestExplorerSession(
         var classNodes = projectTests
             .GroupBy(test => test.TestClass)
             .OrderBy(testClass => testClass.Key, StringComparer.Ordinal)
-            .SelectMany(ClassNodes);
+            .SelectMany(testClass => ClassNodes(testClass, depth + 1));
 
         return projectCollapsed
             ? [projectNode with { IsExpanded = false }]
             : [projectNode, .. classNodes];
     }
 
-    private IEnumerable<VisibleTestNode> ClassNodes(IGrouping<string, TestCase> testClass)
+    private IEnumerable<VisibleTestNode> ClassNodes(IGrouping<string, TestCase> testClass, int depth)
     {
         var classTests = Snapshot.Of(testClass);
         var classNode = new VisibleTestNode(
-            1,
+            depth,
             TestNodeKind.Class,
             classTests[0].ClassName,
             classTests,
@@ -497,7 +519,7 @@ public sealed class TestExplorerSession(
         var testNodes = classTests
             .OrderBy(test => test.DisplayName)
             .Select(test => new VisibleTestNode(
-                2,
+                depth + 1,
                 TestNodeKind.Test,
                 test.DisplayName,
                 [test],

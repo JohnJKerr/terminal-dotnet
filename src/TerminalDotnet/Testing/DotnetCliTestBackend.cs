@@ -111,15 +111,25 @@ public sealed partial class DotnetCliTestBackend(
             throw new ArgumentException("At least one test is required.", nameof(tests));
         }
 
-        var target = tests.First().ProjectPath;
-        if (tests.Any(test => test.ProjectPath != target))
+        var runs = new List<TestRun>();
+        foreach (var project in tests.GroupBy(test => test.ProjectPath))
         {
-            throw new ArgumentException("All tests in a run must have the same target.", nameof(tests));
+            cancellationToken.ThrowIfCancellationRequested();
+            runs.Add(await RunProjectAsync(project.Key, project.ToArray(), cancellationToken).ConfigureAwait(false));
         }
 
+        return Combined(runs);
+    }
+
+    private async Task<TestRun> RunProjectAsync(
+        string target,
+        IReadOnlyCollection<TestCase> tests,
+        CancellationToken cancellationToken)
+    {
         var runs = new List<TestRun>();
         foreach (var batch in FilterBatches(tests))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var build = runs.Count == 0;
             runs.Add(await RunBatchAsync(target, batch, build, cancellationToken).ConfigureAwait(false));
         }

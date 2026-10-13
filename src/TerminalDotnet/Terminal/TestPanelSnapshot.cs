@@ -82,6 +82,7 @@ public sealed record TestPanelSnapshot(
         var project = Path.GetFileNameWithoutExtension(selected.Tests[0].ProjectPath);
         return selected.Kind switch
         {
+            TestNodeKind.Root => "All tests",
             TestNodeKind.Project => project,
             TestNodeKind.Class => $"{project} › {selected.Name}",
             _ => $"{project} › {selected.Tests[0].ClassName} › {selected.Name}"
