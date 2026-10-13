@@ -79,6 +79,8 @@ internal sealed class TestRunnerApplication(
     private readonly EditBurst outsideEdits = new();
     private readonly EditsSinceTheBuild editsSinceTheBuild = new();
     private readonly Stopwatch sinceRebuildStarted = new();
+    private readonly Stopwatch sinceTestRunStarted = new();
+    private int testRunToastGeneration;
     private ToastPanel toast = new(ContentInset);
     private readonly Stopwatch sinceWatching = new();
     private bool scrollingUnderTheDrag;
@@ -1155,10 +1157,21 @@ internal sealed class TestRunnerApplication(
             ? session.State.VisibleNodes[session.State.SelectedIndex]
             : null;
         var selectedTarget = selected?.Tests[0].ProjectPath ?? target;
+        var started = false;
+        var toastGeneration = 0;
         try
         {
             var run = session.DispatchAsync(command, cancellation.Token);
             Render();
+            started = session.State.Status == ExplorerStatus.Running;
+            if (started)
+            {
+                toastGeneration = ++testRunToastGeneration;
+                sinceTestRunStarted.Restart();
+                toast.Show(application, TestRunToast.Running(session.State, TimeSpan.Zero));
+                toast.KeepTurning(application, () => TestRunToast.Running(session.State, sinceTestRunStarted.Elapsed));
+            }
+
             await run;
             if (session.State.Diagnostic is { } diagnostic)
             {
@@ -1167,10 +1180,22 @@ internal sealed class TestRunnerApplication(
                     $"first: {selected?.Tests[0].FullyQualifiedName ?? "none"}{Environment.NewLine}" +
                     $"Output: {session.State.Message}");
             }
+
         }
         finally
         {
             runCancellation = null;
+            if (started)
+            {
+                sinceTestRunStarted.Stop();
+                application.Invoke(() =>
+                {
+                    if (toastGeneration == testRunToastGeneration)
+                    {
+                        toast.Show(application, TestRunToast.Finished(session.State));
+                    }
+                });
+            }
         }
 
         RenderOnTheLoop();
