@@ -42,11 +42,11 @@ var folderSession = new FileExplorerSession(folderBackend, FileGrouping.Folder);
 var changesetSession = new ChangesetSession(changesetBackend);
 var commentSession = new CommentSession(clipboard, new FileCommentStore());
 var issueSession = new IssueSession(
-    new DotnetBuildIssueBackend(commandRunner),
+    new BackgroundIssueBackend(new DotnetBuildIssueBackend(commandRunner)),
     clipboard,
     new FileFlagBackend(folderBackend));
 var session = new TestExplorerSession(
-    new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore()),
+    new BackgroundTestBackend(new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore())),
     new FileTestSourceLocator(),
     new ChangesetUpdatedSourceProvider(changesetBackend));
 
