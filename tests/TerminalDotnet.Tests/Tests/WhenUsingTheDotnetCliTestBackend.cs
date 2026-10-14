@@ -87,6 +87,69 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_attributes_an_interleaved_list_to_each_owning_project()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, InterleavedSolutionList(repeatDomainTest: false), "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
+
+        // Assert
+        Assert.Equal(
+        [
+            ProjectFile("Storage.Tests"),
+            ProjectFile("Api.Tests"),
+            ProjectFile("Api.IntegrationTests"),
+            ProjectFile("Application.Tests"),
+            ProjectFile("Domain.Tests")
+        ], tests.Select(test => test.ProjectPath));
+    }
+
+    [Fact]
+    public async Task It_counts_a_repeated_interleaved_test_once()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, InterleavedSolutionList(repeatDomainTest: true), "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
+
+        // Assert
+        Assert.Equal(
+            1,
+            tests.Count(test => test.FullyQualifiedName == "Domain.Tests.WhenCreatingAnAccount.It_maintains_the_id"));
+    }
+
+    [Fact]
+    public async Task It_runs_an_interleaved_list_against_each_owning_project()
+    {
+        // Arrange
+        var runner = new QueuedCommandRunner(
+            new CommandResult(0, InterleavedSolutionList(repeatDomainTest: false), ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+        var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
+        runner.Requests.Clear();
+
+        // Act
+        await backend.RunAsync(tests);
+
+        // Assert
+        Assert.Equal(
+        [
+            (ProjectFile("Storage.Tests"), "FullyQualifiedName=Storage.Tests.WhenChecking.It_belongs_to_this_project"),
+            (ProjectFile("Api.Tests"), "FullyQualifiedName=Api.Tests.WhenChecking.It_belongs_to_this_project"),
+            (ProjectFile("Api.IntegrationTests"), "FullyQualifiedName=Api.IntegrationTests.WhenLinkingAnAccount.It_successfully_integrates"),
+            (ProjectFile("Application.Tests"), "FullyQualifiedName=Application.Tests.WhenAddingAFilter.It_successfully_integrates"),
+            (ProjectFile("Domain.Tests"), "FullyQualifiedName=Domain.Tests.WhenCreatingAnAccount.It_maintains_the_id")
+        ], runner.Requests.Select(request => (request.Arguments[1], request.Arguments[3])));
+    }
+
+    [Fact]
     public async Task It_reports_an_assembly_that_listed_no_tests_as_a_failure()
     {
         // Arrange
@@ -707,6 +770,36 @@ public sealed class WhenUsingTheDotnetCliTestBackend
 
         // Assert
         Assert.Equal([InMemoryTestResultStore.ResultPath], store.Discarded);
+    }
+
+    private static string ProjectFile(string project) => TestPaths.In(project, $"{project}.csproj");
+
+    private static string ListedAssembly(string project) =>
+        TestPaths.In(project, "bin", "Debug", "net10.0", $"{project}.dll");
+
+    private static string InterleavedSolutionList(bool repeatDomainTest)
+    {
+        var domainTest = "    Domain.Tests.WhenCreatingAnAccount.It_maintains_the_id";
+        return $"""
+            Test run for {ListedAssembly("Storage.Tests")} (.NETCoreApp,Version=v10.0)
+            Test run for {ListedAssembly("Api.Tests")} (.NETCoreApp,Version=v10.0)
+              Domain.Tests -> {ListedAssembly("Domain.Tests")}
+            Test run for {ListedAssembly("Api.IntegrationTests")} (.NETCoreApp,Version=v10.0)
+            Test run for {ListedAssembly("Application.Tests")} (.NETCoreApp,Version=v10.0)
+            Test run for {ListedAssembly("Domain.Tests")} (.NETCoreApp,Version=v10.0)
+            The following Tests are available:
+            The following Tests are available:
+            The following Tests are available:
+            The following Tests are available:
+            The following Tests are available:
+            No test is available in {ListedAssembly("Locked.Tests")}. Make sure that test discoverer & executors are registered and platform & framework version settings are appropriate and try again.
+                Storage.Tests.WhenChecking.It_belongs_to_this_project
+                Api.Tests.WhenChecking.It_belongs_to_this_project
+                Api.IntegrationTests.WhenLinkingAnAccount.It_successfully_integrates
+                Application.Tests.WhenAddingAFilter.It_successfully_integrates
+            {domainTest}
+            {(repeatDomainTest ? domainTest : "")}
+            """;
     }
 
     private static async Task Cancelled(Task run)
