@@ -10,8 +10,6 @@ public sealed record CommandRequest(
 {
     public string StandardInput { get; init; } = "";
 
-    /// <summary>Variables added to the process's own environment. Empty leaves
-    /// the process with the environment it inherited.</summary>
     public IReadOnlyDictionary<string, string> Environment { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
 }
@@ -35,10 +33,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
             RedirectStandardInput = true,
             UseShellExecute = false
         };
-        foreach (var variable in request.Environment)
-        {
-            startInfo.Environment[variable.Key] = variable.Value;
-        }
+        AddRequestedEnvironment(startInfo, request);
 
         foreach (var argument in request.Arguments)
         {
@@ -68,6 +63,14 @@ public sealed class ProcessCommandRunner : ICommandRunner
             process.ExitCode,
             await standardOutput.ConfigureAwait(false),
             await standardError.ConfigureAwait(false));
+    }
+
+    private static void AddRequestedEnvironment(ProcessStartInfo startInfo, CommandRequest request)
+    {
+        foreach (var variable in request.Environment)
+        {
+            startInfo.Environment[variable.Key] = variable.Value;
+        }
     }
 
     private static async Task WriteStandardInputAsync(Process process, CommandRequest request)

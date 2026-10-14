@@ -225,9 +225,6 @@ public sealed class WhenRebuildingTheProject
         return (issues, tests);
     }
 
-    /// <summary>The first build returns at once. The next one stays out until
-    /// the test lets it finish, which is where an editor refresh sits while
-    /// it waits on <c>dotnet build</c>.</summary>
     private sealed class HeldIssueBackend : IIssueBackend
     {
         private readonly TaskCompletionSource hold = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -241,11 +238,18 @@ public sealed class WhenRebuildingTheProject
             string target,
             CancellationToken cancellationToken = default)
         {
-            if (++calls == 1)
+            if (FirstBuild())
             {
                 return [];
             }
 
+            return await BuildThatStaysOut();
+        }
+
+        private bool FirstBuild() => ++calls == 1;
+
+        private async Task<IReadOnlyList<CompilationIssue>> BuildThatStaysOut()
+        {
             Entered.TrySetResult();
             await hold.Task;
             return [];

@@ -62,7 +62,7 @@ public sealed class TestExplorerSession(
             var discovered = await DiscoveredStateAsync(target, cancellationToken);
             if (rediscovering is not null && discovered.DiscoveredTestCount == 0)
             {
-                State = Kept(rediscovering, previouslyDiscovered, previouslyUpdated, "Discovery reported no tests.");
+                State = FailedLeavingTheRows(rediscovering, previouslyDiscovered, previouslyUpdated, "Discovery reported no tests.");
                 return;
             }
 
@@ -89,7 +89,7 @@ public sealed class TestExplorerSession(
         var listed = ListedTree(rediscovering, onScreen, previouslyDiscovered);
         return listed is null
             ? new ExplorerState(ExplorerStatus.Failed, [], 0, reason)
-            : Kept(listed, previouslyDiscovered, previouslyUpdated, reason);
+            : FailedLeavingTheRows(listed, previouslyDiscovered, previouslyUpdated, reason);
     }
 
     private ExplorerState? ListedTree(
@@ -115,10 +115,7 @@ public sealed class TestExplorerSession(
         return onScreen with { VisibleNodes = VisibleNodes(previouslyDiscovered) };
     }
 
-    /// <summary>A rediscovery that fails, or that comes back with nothing, has
-    /// not earned the right to take the tree the reader was looking at. The
-    /// reason is said on the status line; the rows stay.</summary>
-    private ExplorerState Kept(
+    private ExplorerState FailedLeavingTheRows(
         ExplorerState previous,
         IReadOnlyList<TestCase> tests,
         IReadOnlyDictionary<string, TestNodeUpdate> suites,

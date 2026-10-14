@@ -40,18 +40,15 @@ public sealed class TerminalLoopContext(Action<Action> invokeOnLoop) : Synchroni
         invokeOnLoop(() => RunOnce(work));
     }
 
-    /// <summary>Hands work to the loop. Once the loop has ended that handoff
-    /// waits for a loop that is no longer taking work, so it is skipped.
-    /// </summary>
     public void Invoke(Action work)
     {
-        if (released)
+        if (StillTakingWork())
         {
-            return;
+            invokeOnLoop(work);
         }
-
-        invokeOnLoop(work);
     }
+
+    private bool StillTakingWork() => !released;
 
     public override SynchronizationContext CreateCopy() => this;
 

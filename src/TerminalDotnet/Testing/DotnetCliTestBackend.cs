@@ -40,14 +40,13 @@ public sealed partial class DotnetCliTestBackend(
         output.Contains("No test is available", StringComparison.Ordinal) &&
         !output.Split('\n').Any(NamesATest);
 
-    /// <summary>The compiler writes its errors to standard output, so a
-    /// failure reported from standard error alone is a blank sentence.</summary>
     private static string Described(CommandResult result) =>
-        string.Join(
-            Environment.NewLine,
-            new[] { result.StandardOutput, result.StandardError }
-                .Select(part => part.Trim())
-                .Where(part => part.Length > 0));
+        string.Join(Environment.NewLine, OutputAndError(result));
+
+    private static IEnumerable<string> OutputAndError(CommandResult result) =>
+        new[] { result.StandardOutput, result.StandardError }
+            .Select(part => part.Trim())
+            .Where(part => part.Length > 0);
 
     private const string RunHeader = "Test run for ";
 

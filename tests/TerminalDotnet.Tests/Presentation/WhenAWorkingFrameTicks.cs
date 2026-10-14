@@ -3,8 +3,6 @@ using Xunit;
 
 namespace TerminalDotnet.Tests.Presentation;
 
-/// <summary>A build or a run turns a marker every frame. The timeout already
-/// woke the loop, so the tick only has to move that marker.</summary>
 public sealed class WhenAWorkingFrameTicks
 {
     [Fact]

@@ -21,12 +21,11 @@ public static class WorkspaceEdits
     public static bool Matters(string path) =>
         !Segments(path).Any(UnwatchedFolders.Contains) && !IsScratch(path);
 
-    /// <summary>An overflow names no file. While a build is running that is
-    /// the build filling the watcher, and reloading for it would start another
-    /// pass over the tree before this one has finished. A real edit still
-    /// counts, and an overflow once the build has finished does too.</summary>
     public static bool CountsWhileBuilding(string path, bool building) =>
-        !(building && path.Length == 0) && Matters(path);
+        !OverflowWhileBuilding(path, building) && Matters(path);
+
+    private static bool OverflowWhileBuilding(string path, bool building) =>
+        building && path.Length == 0;
 
     private static IEnumerable<string> Segments(string path) =>
         path.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);

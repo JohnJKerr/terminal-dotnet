@@ -280,17 +280,14 @@ internal sealed class TestRunnerApplication(
         panelWork.Track(FillPanelsAsync(application, loadCancellation.Token));
     }
 
-    /// <summary>
-    /// Turns the marker beside "Discovering tests..." while discovery is out.
-    /// The timeout already woke the loop, so the tick only has to move the
-    /// label; redrawing the whole window on every frame stalls a large one.
-    /// </summary>
     private void TurnActivityMarker(IApplication application) =>
         WorkingIndicator.Turn(
             new ApplicationFrameClock(application),
-            () => session.State.Status == ExplorerStatus.Loading,
+            TestsAreBeingDiscovered,
             RenderTests,
             () => sinceLoadStarted.Stop());
+
+    private bool TestsAreBeingDiscovered() => session.State.Status == ExplorerStatus.Loading;
 
     private Task FillPanelsAsync(
         IApplication application,

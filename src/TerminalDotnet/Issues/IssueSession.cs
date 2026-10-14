@@ -18,9 +18,6 @@ public sealed class IssueSession(
     private IReadOnlyList<CompilationIssue> flagged = [];
     public IssueState State { get; private set; } = new([]);
 
-    /// <summary>The last build reported an error, or did not finish. The
-    /// panel's own list is filtered, so a reader looking at warnings only
-    /// would otherwise hide a broken build.</summary>
     public bool BuildFailed { get; private set; }
 
     /// <summary>Stands the panel back up as building. The issues the last build
@@ -36,7 +33,7 @@ public sealed class IssueSession(
         try
         {
             built = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
-            BuildFailed = built.Any(issue => issue.Severity == IssueSeverity.Error);
+            BuildFailed = ReportedAnError(built);
             State = WithIssues(State with { Loading = false, Notice = "" }, standingOn);
         }
         catch (OperationCanceledException)
@@ -51,6 +48,9 @@ public sealed class IssueSession(
             State = State with { Issues = Matching(), SelectedIndex = 0, Loading = false, Notice = exception.Message };
         }
     }
+
+    private static bool ReportedAnError(IReadOnlyList<CompilationIssue> built) =>
+        built.Any(issue => issue.Severity == IssueSeverity.Error);
 
     /// <summary>A tree that cannot be read has no flags to offer, which is no
     /// reason to take the build's issues away with them.</summary>

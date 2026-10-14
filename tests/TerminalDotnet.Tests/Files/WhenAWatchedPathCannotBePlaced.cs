@@ -3,8 +3,6 @@ using Xunit;
 
 namespace TerminalDotnet.Tests.Files;
 
-/// <summary>The watcher hears every path the operating system reports, including
-/// ones that do not belong under the folder it was asked to watch.</summary>
 public sealed class WhenAWatchedPathCannotBePlaced
 {
     [Fact]

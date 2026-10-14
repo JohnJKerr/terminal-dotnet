@@ -62,16 +62,17 @@ internal sealed class ToastPanel
         });
     }
 
-    /// <summary>Turns a working toast every frame. The timeout already woke
-    /// the loop, so the tick only replaces the text.</summary>
     public void KeepTurning(IApplication application, Func<Toast> current)
     {
         var shown = shownCount;
         WorkingIndicator.Turn(
             new ApplicationFrameClock(application),
-            () => shown == shownCount && showing is { Tone: ToastTone.Working },
+            () => StillTheWorkingToast(shown),
             () => ShowText(current()));
     }
+
+    private bool StillTheWorkingToast(int shown) =>
+        shown == shownCount && showing is { Tone: ToastTone.Working };
 
     private void Hide(IApplication application)
     {
