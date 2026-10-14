@@ -456,7 +456,7 @@ dotnet test TerminalDotnet.slnx -m:1
 `-m:1` avoids MSBuild worker communication failures in restricted
 environments. The unit suite never launches a real `dotnet test`: every
 external command goes through `ICommandRunner`, which tests replace with an
-in-memory runner. Contributor guidance is in [CLAUDE.md](CLAUDE.md).
+in-memory runner. Contributor guidance is in [AGENTS.md](AGENTS.md).
 
 ### Failure-to-source demo
 
