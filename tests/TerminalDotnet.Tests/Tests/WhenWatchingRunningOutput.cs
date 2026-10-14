@@ -33,6 +33,25 @@ public sealed class WhenWatchingRunningOutput
     }
 
     [Fact]
+    public async Task It_shows_the_output_as_soon_as_the_project_reports_it()
+    {
+        // Arrange
+        var backend = new ReportingSecondProject(Cart, Orders);
+        var session = await GivenA.TestExplorer().WithBackend(backend).LoadedAsync();
+        var shownWhenReported = "";
+        backend.OnReported = () => shownWhenReported = session.State.RunningOutput;
+
+        // Act
+        var run = session.DispatchAsync(new ExplorerCommand.RunSelected());
+        await backend.Reported.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        backend.Finish();
+        await run;
+
+        // Assert
+        Assert.Equal("Submits order running", shownWhenReported);
+    }
+
+    [Fact]
     public async Task It_labels_that_output_with_the_batch_in_progress()
     {
         // Arrange
@@ -57,6 +76,8 @@ public sealed class WhenWatchingRunningOutput
 
         public TaskCompletionSource Reported { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
+        public Action? OnReported { get; set; }
+
         public void Finish() => finished.TrySetResult();
 
         public Task<IReadOnlyList<TestCase>> DiscoverAsync(
@@ -77,6 +98,7 @@ public sealed class WhenWatchingRunningOutput
             if (tests.Any(test => test.ProjectPath == second.ProjectPath))
             {
                 progress?.Report(new TestRunUpdate("Orders.Tests (batch 1 of 1)", "Submits order running"));
+                OnReported?.Invoke();
                 Reported.TrySetResult();
                 return Hold(tests);
             }

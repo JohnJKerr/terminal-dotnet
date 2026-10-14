@@ -478,7 +478,7 @@ public sealed class TestExplorerSession(
         lastRunMembers = tests.ToHashSet();
         var projects = tests.GroupBy(test => test.ProjectPath).ToArray();
         var runs = new List<TestRun>();
-        var progress = new Progress<TestRunUpdate>(ShowRunningOutput);
+        var progress = new ShownAsReported(ShowRunningOutput);
         try
         {
             for (var index = 0; index < projects.Length; index++)
@@ -683,5 +683,10 @@ public sealed class TestExplorerSession(
         return classCollapsed
             ? [classNode with { IsExpanded = false }]
             : [classNode, .. testNodes];
+    }
+
+    private sealed class ShownAsReported(Action<TestRunUpdate> show) : IProgress<TestRunUpdate>
+    {
+        public void Report(TestRunUpdate value) => show(value);
     }
 }
