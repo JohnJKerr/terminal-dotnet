@@ -26,6 +26,37 @@ public sealed class WhenRunningOneDotnetCommandAtATime
         Assert.Equal(1, runningTogether);
     }
 
+    [Fact]
+    public async Task Cancelling_the_command_that_holds_the_gate_lets_the_next_command_start()
+    {
+        // Arrange
+        var inner = new CancelledWhenHolding();
+        var runner = new SerialCommandRunner(inner);
+        using var cancellation = new CancellationTokenSource();
+        var first = runner.RunAsync(Command("first"), cancellation.Token);
+        await inner.Entered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+        var second = runner.RunAsync(Command("second"));
+
+        // Act
+        await cancellation.CancelAsync();
+        await ObserveCancellationAsync(first);
+        await second.WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Assert
+        Assert.Equal(2, inner.EnteredCount);
+    }
+
+    private static async Task ObserveCancellationAsync(Task run)
+    {
+        try
+        {
+            await run;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     private static CommandRequest Command(string name) => new(name, [], Environment.CurrentDirectory);
 
     private sealed class HoldingRunner : ICommandRunner
@@ -43,6 +74,26 @@ public sealed class WhenRunningOneDotnetCommandAtATime
             EnteredCount++;
             Entered.TrySetResult();
             await hold.Task;
+            return new CommandResult(0, "", "");
+        }
+    }
+
+    private sealed class CancelledWhenHolding : ICommandRunner
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int EnteredCount { get; private set; }
+
+        public async Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default)
+        {
+            var holding = EnteredCount == 0;
+            EnteredCount++;
+            Entered.TrySetResult();
+            if (holding)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+
             return new CommandResult(0, "", "");
         }
     }

@@ -8,8 +8,10 @@ namespace TerminalDotnet.Explorer;
 public sealed class TestExplorerSession(
     ITestBackend backend,
     ITestSourceLocator testSourceLocator,
-    IUpdatedSourceProvider updatedSourceProvider)
+    IUpdatedSourceProvider updatedSourceProvider,
+    TimeSpan? projectRunLimit = null)
 {
+    private readonly TimeSpan runLimit = projectRunLimit ?? TimeSpan.FromMinutes(30);
     private readonly FoldedGroups folded = new();
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
     private readonly HashSet<TestCase> activeTests = [];
@@ -479,7 +481,7 @@ public sealed class TestExplorerSession(
                 cancellationToken.ThrowIfCancellationRequested();
                 var projectTests = Snapshot.Of(projects[index]);
                 ShowProjectRunning(projectTests, index, projects.Length);
-                var run = await backend.RunAsync(projectTests, cancellationToken);
+                var run = await RunProjectWithinLimitAsync(projectTests, cancellationToken);
                 runs.Add(run);
                 RecordProject(run);
             }
@@ -501,6 +503,42 @@ public sealed class TestExplorerSession(
             completed.Output,
             completed.Diagnostic);
         State = State with { LastRun = completed, SourceLocation = FailureSourceFrom(completed) };
+    }
+
+    private async Task<TestRun> RunProjectWithinLimitAsync(
+        IReadOnlyList<TestCase> projectTests,
+        CancellationToken cancellationToken)
+    {
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        limit.CancelAfter(runLimit);
+        try
+        {
+            return await backend.RunAsync(projectTests, limit.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return UnfinishedProject(projectTests);
+        }
+    }
+
+    private static TestRun UnfinishedProject(IReadOnlyList<TestCase> projectTests)
+    {
+        var name = Path.GetFileNameWithoutExtension(projectTests[0].ProjectPath);
+        var reason = $"{name} did not finish";
+        return new TestRun(
+            false,
+            reason,
+            [.. projectTests.Select(test => new TestResult(
+                test,
+                TestOutcome.Failed,
+                TimeSpan.Zero,
+                reason,
+                null,
+                null,
+                null))])
+        {
+            Diagnostic = reason
+        };
     }
 
     private void ShowProjectRunning(IReadOnlyList<TestCase> projectTests, int index, int projectCount)
