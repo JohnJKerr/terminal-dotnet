@@ -51,6 +51,31 @@ public sealed class WhenRebuildingTheProject
     }
 
     [Fact]
+    public async Task It_leaves_the_tests_alone_when_errors_are_filtered_out_of_view()
+    {
+        // Arrange
+        var log = new List<string>();
+        var issues = GivenA.IssuePanel()
+            .WithIssueBackend(new LoggingIssueBackend(log, [Broken, Unused]))
+            .Build();
+        await issues.LoadAsync("Shop.sln");
+        await issues.DispatchAsync(new IssueCommand.ToggleWarnings());
+        var tests = GivenA.TestExplorer()
+            .WithBackend(new LoggingTestBackend(log))
+            .Build();
+        await tests.LoadAsync("Shop.sln");
+        log.Clear();
+        var rebuild = new ProjectRebuild(issues, tests, "Shop.sln");
+        rebuild.Start();
+
+        // Act
+        await rebuild.RunAsync(() => Task.CompletedTask);
+
+        // Assert
+        Assert.DoesNotContain("discover", log);
+    }
+
+    [Fact]
     public async Task It_leaves_the_tests_alone_when_the_build_is_broken()
     {
         // Arrange
@@ -148,6 +173,27 @@ public sealed class WhenRebuildingTheProject
     }
 
     [Fact]
+    public async Task An_editor_refresh_that_is_building_is_already_rebuilding()
+    {
+        // Arrange
+        var backend = new HeldIssueBackend();
+        var issues = GivenA.IssuePanel().WithIssueBackend(backend).Build();
+        await issues.LoadAsync("Shop.sln");
+        var tests = GivenA.TestExplorer().Build();
+        await tests.LoadAsync("Shop.sln");
+        var refreshing = issues.LoadAsync("Shop.sln");
+        await backend.Entered.Task.WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Act
+        var started = new ProjectRebuild(issues, tests, "Shop.sln").Start();
+        backend.Release();
+        await refreshing;
+
+        // Assert
+        Assert.Equal(RebuildStart.AlreadyRebuilding, started);
+    }
+
+    [Fact]
     public async Task A_rebuild_already_underway_is_not_started_again()
     {
         // Arrange
@@ -177,6 +223,33 @@ public sealed class WhenRebuildingTheProject
         await tests.DispatchAsync(new ExplorerCommand.SelectIndex(tests.State.VisibleNodes.Count - 1));
         _ = tests.DispatchAsync(new ExplorerCommand.RunSelected());
         return (issues, tests);
+    }
+
+    /// <summary>The first build returns at once. The next one stays out until
+    /// the test lets it finish, which is where an editor refresh sits while
+    /// it waits on <c>dotnet build</c>.</summary>
+    private sealed class HeldIssueBackend : IIssueBackend
+    {
+        private readonly TaskCompletionSource hold = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int calls;
+
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void Release() => hold.TrySetResult();
+
+        public async Task<IReadOnlyList<CompilationIssue>> DiscoverAsync(
+            string target,
+            CancellationToken cancellationToken = default)
+        {
+            if (++calls == 1)
+            {
+                return [];
+            }
+
+            Entered.TrySetResult();
+            await hold.Task;
+            return [];
+        }
     }
 
     /// <summary>A run that stays out at `dotnet test`, so the rebuild can be

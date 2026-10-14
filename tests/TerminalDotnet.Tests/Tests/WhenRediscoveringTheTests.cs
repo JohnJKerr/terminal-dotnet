@@ -2,6 +2,7 @@ using TerminalDotnet.Explorer;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Tests;
@@ -144,6 +145,24 @@ public sealed class WhenRediscoveringTheTests
 
         // Assert
         Assert.Contains(session.State.VisibleNodes, node => node.Name == "Adds item");
+    }
+
+    [Fact]
+    public async Task It_does_not_start_a_run_while_the_tests_are_being_rediscovered()
+    {
+        // Arrange
+        var backend = new HeldTestBackend(Adds);
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
+        session.Rediscovering();
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RunSelected())
+            .WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Assert
+        Assert.Equal(0, backend.RunCount);
     }
 
     [Fact]

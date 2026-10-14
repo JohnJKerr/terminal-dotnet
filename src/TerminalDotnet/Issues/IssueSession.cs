@@ -18,6 +18,11 @@ public sealed class IssueSession(
     private IReadOnlyList<CompilationIssue> flagged = [];
     public IssueState State { get; private set; } = new([]);
 
+    /// <summary>The last build reported an error, or did not finish. The
+    /// panel's own list is filtered, so a reader looking at warnings only
+    /// would otherwise hide a broken build.</summary>
+    public bool BuildFailed { get; private set; }
+
     /// <summary>Stands the panel back up as building. The issues the last build
     /// found stay in front of the reader while it runs, because a build takes
     /// long enough that emptying the panel would leave them with nothing to read.
@@ -26,15 +31,23 @@ public sealed class IssueSession(
 
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
+        var standingOn = Selected();
+        State = State with { Loading = true, Notice = "" };
         try
         {
-            var standingOn = Selected();
             built = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
+            BuildFailed = built.Any(issue => issue.Severity == IssueSeverity.Error);
             State = WithIssues(State with { Loading = false, Notice = "" }, standingOn);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException)
+        {
+            State = State with { Loading = false };
+            throw;
+        }
+        catch (Exception exception)
         {
             built = [];
+            BuildFailed = true;
             State = State with { Issues = Matching(), SelectedIndex = 0, Loading = false, Notice = exception.Message };
         }
     }

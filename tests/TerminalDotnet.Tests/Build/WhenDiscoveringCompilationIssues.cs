@@ -41,6 +41,35 @@ public sealed class WhenDiscoveringCompilationIssues
     }
 
     [Fact]
+    public async Task It_reads_a_package_error_that_names_no_source_line()
+    {
+        // Arrange
+        var backend = new DotnetBuildIssueBackend(new RecordingCommandRunner(new CommandResult(1, """
+            /repo/Shop.csproj : error NU1101: Unable to find package Missing. No packages exist with this id in source(s): nuget.org
+            """, "")));
+
+        // Act
+        var issues = await backend.DiscoverAsync("/repo/Shop.slnx");
+
+        // Assert
+        Assert.Equal(IssueSeverity.Error, issues.Single().Severity);
+    }
+
+    [Fact]
+    public async Task It_treats_a_failed_build_that_named_no_issue_as_an_error()
+    {
+        // Arrange
+        var backend = new DotnetBuildIssueBackend(
+            new RecordingCommandRunner(new CommandResult(1, "Build FAILED.", "")));
+
+        // Act
+        var issues = await backend.DiscoverAsync("/repo/Shop.slnx");
+
+        // Assert
+        Assert.Equal(IssueSeverity.Error, issues.Single().Severity);
+    }
+
+    [Fact]
     public async Task It_reads_errors_and_warnings_from_build_output()
     {
         // Arrange

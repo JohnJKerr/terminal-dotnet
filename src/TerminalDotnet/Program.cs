@@ -17,6 +17,7 @@ if (launchTarget is not LaunchTarget.Found { Path: var target })
 
 var launchFolder = Path.GetDirectoryName(Path.GetFullPath(target))!;
 var commandRunner = new ProcessCommandRunner();
+var dotnet = new SerialCommandRunner(commandRunner);
 
 // The panels build the solution as soon as they start, and building runs code
 // the solution defines, so nothing starts until the folder is trusted.
@@ -42,11 +43,11 @@ var folderSession = new FileExplorerSession(folderBackend, FileGrouping.Folder);
 var changesetSession = new ChangesetSession(changesetBackend);
 var commentSession = new CommentSession(clipboard, new FileCommentStore());
 var issueSession = new IssueSession(
-    new BackgroundIssueBackend(new DotnetBuildIssueBackend(commandRunner)),
+    new BackgroundIssueBackend(new DotnetBuildIssueBackend(dotnet)),
     clipboard,
     new FileFlagBackend(folderBackend));
 var session = new TestExplorerSession(
-    new BackgroundTestBackend(new DotnetCliTestBackend(commandRunner, new TemporaryTrxResultStore())),
+    new BackgroundTestBackend(new DotnetCliTestBackend(dotnet, new TemporaryTrxResultStore())),
     new FileTestSourceLocator(),
     new ChangesetUpdatedSourceProvider(changesetBackend));
 

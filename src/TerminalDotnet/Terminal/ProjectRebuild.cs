@@ -60,7 +60,7 @@ public sealed class ProjectRebuild(IssueSession issues, TestExplorerSession test
 
     private Task RediscoverUnlessBrokenAsync(CancellationToken cancellationToken)
     {
-        if (issues.State.Issues.Any(issue => issue.Severity == IssueSeverity.Error))
+        if (issues.BuildFailed)
         {
             tests.LeaveAsDiscovered();
             return Task.CompletedTask;

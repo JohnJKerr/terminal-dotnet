@@ -411,7 +411,7 @@ public sealed class TestExplorerSession(
         IReadOnlyList<TestCase> tests,
         CancellationToken cancellationToken)
     {
-        if (running)
+        if (running || State.Status == ExplorerStatus.Loading)
         {
             return;
         }
