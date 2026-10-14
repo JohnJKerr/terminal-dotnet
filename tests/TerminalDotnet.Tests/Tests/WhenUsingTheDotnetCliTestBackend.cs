@@ -18,8 +18,25 @@ public sealed class WhenUsingTheDotnetCliTestBackend
 
         // Assert
         Assert.Equal(
-            ["dotnet", "test", "/repo/Shop.sln", "--list-tests", "--nologo", "--tl:off", "-m:1"],
+            [
+                "dotnet", "test", "/repo/Shop.sln", "--list-tests", "--no-build",
+                "--nologo", "--tl:off", "-nodeReuse:false", DotnetProcess.CpuSwitch()
+            ],
             [runner.LastRequest!.FileName, .. runner.LastRequest.Arguments]);
+    }
+
+    [Fact]
+    public async Task It_asks_the_sdk_for_english_when_discovering()
+    {
+        // Arrange
+        var runner = ListingCartTests();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+
+        // Act
+        await backend.DiscoverAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal("en", runner.LastRequest!.Environment[DotnetProcess.LanguageVariable]);
     }
 
     [Fact]
@@ -153,9 +170,25 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             "--logger",
             "trx;LogFileName=/tmp/terminal-dotnet.trx",
             "--nologo",
-            "--tl:on"
+            "--tl:on",
+            "-nodeReuse:false",
+            DotnetProcess.CpuSwitch()
         ],
             runner.LastRequest!.Arguments);
+    }
+
+    [Fact]
+    public async Task It_asks_the_sdk_for_english_when_running_tests()
+    {
+        // Arrange
+        var runner = new RecordingCommandRunner(new CommandResult(0, "1 test passed", ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+
+        // Act
+        await backend.RunAsync([new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.sln")]);
+
+        // Assert
+        Assert.Equal("en", runner.LastRequest!.Environment[DotnetProcess.LanguageVariable]);
     }
 
     [Fact]

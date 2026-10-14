@@ -19,8 +19,25 @@ public sealed class WhenDiscoveringCompilationIssues
 
         // Assert
         Assert.Equal(
-            ["build", "/repo/Shop.slnx", "--nologo", "--tl:off", "--no-incremental"],
+            [
+                "build", "/repo/Shop.slnx", "--no-incremental",
+                "--nologo", "--tl:off", "-nodeReuse:false", DotnetProcess.CpuSwitch()
+            ],
             runner.LastRequest!.Arguments);
+    }
+
+    [Fact]
+    public async Task It_asks_the_sdk_for_english()
+    {
+        // Arrange
+        var runner = RunnerWithIssues();
+        var backend = new DotnetBuildIssueBackend(runner);
+
+        // Act
+        await backend.DiscoverAsync("/repo/Shop.slnx");
+
+        // Assert
+        Assert.Equal("en", runner.LastRequest!.Environment[DotnetProcess.LanguageVariable]);
     }
 
     [Fact]

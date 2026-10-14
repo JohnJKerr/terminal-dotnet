@@ -11,6 +11,11 @@ public sealed record CommandRequest(
     /// <summary>Text the command reads instead of a terminal. Empty leaves the
     /// command attached to whatever standard input it inherited.</summary>
     public string StandardInput { get; init; } = "";
+
+    /// <summary>Variables added to the process's own environment. Empty leaves
+    /// the process with the environment it inherited.</summary>
+    public IReadOnlyDictionary<string, string> Environment { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 public sealed record CommandResult(int ExitCode, string StandardOutput, string StandardError);
@@ -32,6 +37,11 @@ public sealed class ProcessCommandRunner : ICommandRunner
             RedirectStandardInput = request.StandardInput.Length > 0,
             UseShellExecute = false
         };
+        foreach (var variable in request.Environment)
+        {
+            startInfo.Environment[variable.Key] = variable.Value;
+        }
+
         foreach (var argument in request.Arguments)
         {
             startInfo.ArgumentList.Add(argument);

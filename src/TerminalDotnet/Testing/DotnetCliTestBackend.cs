@@ -18,9 +18,8 @@ public sealed partial class DotnetCliTestBackend(
         string target,
         CancellationToken cancellationToken = default)
     {
-        var request = new CommandRequest(
-            "dotnet",
-            ["test", target, "--list-tests", "--nologo", "--tl:off", "-m:1"],
+        var request = DotnetProcess.Request(
+            ["test", target, "--list-tests", "--no-build", .. DotnetProcess.Switches()],
             Path.GetDirectoryName(Path.GetFullPath(target))!);
         var result = await commandRunner.RunAsync(request, cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0 || ListedNothing(result.StandardOutput))
@@ -207,8 +206,7 @@ public sealed partial class DotnetCliTestBackend(
     {
         var filter = string.Join('|', tests.Select(FilterClause));
         var result = await commandRunner.RunAsync(
-            new CommandRequest(
-                "dotnet",
+            DotnetProcess.Request(
                 [
                     "test",
                     target,
@@ -218,6 +216,8 @@ public sealed partial class DotnetCliTestBackend(
                     $"trx;LogFileName={resultPath}",
                     "--nologo",
                     "--tl:on",
+                    "-nodeReuse:false",
+                    DotnetProcess.CpuSwitch(),
                     .. BuildSwitches(build)
                 ],
                 Path.GetDirectoryName(Path.GetFullPath(target))!),

@@ -16,10 +16,11 @@ public sealed partial class DotnetBuildIssueBackend(ICommandRunner runner) : IIs
         CancellationToken cancellationToken = default)
     {
         var directory = Path.GetDirectoryName(Path.GetFullPath(target))!;
-        var result = await runner.RunAsync(new CommandRequest(
-            "dotnet",
-            ["build", target, "--nologo", "--tl:off", "--no-incremental"],
-            directory), cancellationToken).ConfigureAwait(false);
+        var result = await runner.RunAsync(
+            DotnetProcess.Request(
+                ["build", target, "--no-incremental", .. DotnetProcess.Switches()],
+                directory),
+            cancellationToken).ConfigureAwait(false);
         return [.. Lines(result.StandardOutput, result.StandardError)
             .Select(line => Parsed(line, directory))
             .OfType<CompilationIssue>()
