@@ -1,4 +1,5 @@
 using TerminalDotnet.Explorer;
+using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Tests.Builders;
 using Xunit;
@@ -50,6 +51,23 @@ public sealed class WhenDiscoveryFails
 
         // Assert
         Assert.Empty(session.State.VisibleNodes);
+    }
+
+    [Fact]
+    public async Task It_says_why_where_the_tree_would_be()
+    {
+        // Arrange
+        var session = GivenA.TestExplorer()
+            .WithBackend(new FailingTestBackend("Test discovery failed: no SDK"))
+            .Build();
+
+        // Act
+        await session.LoadAsync("Shop.sln");
+
+        // Assert
+        Assert.Equal(
+            "Test discovery failed: no SDK",
+            TestPanelSnapshot.From(session.State, "Shop.sln").EmptyMessage);
     }
 
     private sealed class FailingTestBackend(string reason) : ITestBackend

@@ -21,6 +21,12 @@ public static class WorkspaceEdits
     public static bool Matters(string path) =>
         !Segments(path).Any(UnwatchedFolders.Contains) && !IsScratch(path);
 
+    public static bool CountsWhileBuilding(string path, bool building) =>
+        !OverflowWhileBuilding(path, building) && Matters(path);
+
+    private static bool OverflowWhileBuilding(string path, bool building) =>
+        building && path.Length == 0;
+
     private static IEnumerable<string> Segments(string path) =>
         path.Split(['/', '\\'], StringSplitOptions.RemoveEmptyEntries);
 

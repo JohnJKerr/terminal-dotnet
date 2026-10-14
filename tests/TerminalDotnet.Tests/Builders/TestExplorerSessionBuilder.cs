@@ -14,6 +14,7 @@ internal sealed class TestExplorerSessionBuilder
     private ITestBackend backend = new InMemoryTestBackend([]);
     private ITestSourceLocator sources = new FixedTestSource();
     private IUpdatedSourceProvider updatedSources = new FixedUpdatedSources();
+    private TimeSpan? projectRunLimit;
 
     public TestExplorerSessionBuilder WithTests(params TestCase[] tests) =>
         WithBackend(new InMemoryTestBackend(tests));
@@ -46,7 +47,13 @@ internal sealed class TestExplorerSessionBuilder
         return this;
     }
 
-    public TestExplorerSession Build() => new(backend, sources, updatedSources);
+    public TestExplorerSessionBuilder FinishingAProjectWithin(TimeSpan limit)
+    {
+        projectRunLimit = limit;
+        return this;
+    }
+
+    public TestExplorerSession Build() => new(backend, sources, updatedSources, projectRunLimit);
 
     /// <summary>The session once it has discovered its tests.</summary>
     public async Task<TestExplorerSession> LoadedAsync(string target = Target)

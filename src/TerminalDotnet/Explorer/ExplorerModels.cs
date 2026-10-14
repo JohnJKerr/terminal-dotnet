@@ -76,6 +76,10 @@ public sealed record ExplorerState(
     /// something did. It is kept apart from <see cref="LastRun"/> so a run
     /// that never produced results cannot hide behind an older one.</summary>
     public string? Diagnostic { get; init; }
+
+    public string RunningOutput { get; init; } = "";
+
+    public string? RunningLabel { get; init; }
 }
 
 public abstract record ExplorerCommand

@@ -13,4 +13,10 @@ public sealed class BackgroundTestBackend(ITestBackend backend) : ITestBackend
         IReadOnlyCollection<TestCase> tests,
         CancellationToken cancellationToken = default) =>
         Task.Run(() => backend.RunAsync(tests, cancellationToken), cancellationToken);
+
+    public Task<TestRun> RunAsync(
+        IReadOnlyCollection<TestCase> tests,
+        IProgress<TestRunUpdate>? progress,
+        CancellationToken cancellationToken = default) =>
+        Task.Run(() => backend.RunAsync(tests, progress, cancellationToken), cancellationToken);
 }

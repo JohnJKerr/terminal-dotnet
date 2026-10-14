@@ -41,14 +41,30 @@ public sealed record TestPanelSnapshot(
     // says what it is waiting for, with a marker that turns, rather than
     // sitting blank or claiming there are no tests. A rediscovery keeps the
     // tree it had, and the message is not laid over it.
-    private static string EmptyMessageFrom(ExplorerState state, TimeSpan elapsed) =>
-        state.Status == ExplorerStatus.Loading && state.VisibleNodes.Count == 0
-            ? ActivityMarker.Marking(state.Message, elapsed)
-            : PanelEmptyState.For(
-                "tests",
-                state.VisibleNodes.Count,
-                state.SearchQuery,
-                state.ActiveFilter);
+    private static string EmptyMessageFrom(ExplorerState state, TimeSpan elapsed)
+    {
+        if (WaitingToListTheFirstTests(state))
+        {
+            return ActivityMarker.Marking(state.Message, elapsed);
+        }
+
+        if (FailedWithNoRows(state))
+        {
+            return state.Message;
+        }
+
+        return PanelEmptyState.For(
+            "tests",
+            state.VisibleNodes.Count,
+            state.SearchQuery,
+            state.ActiveFilter);
+    }
+
+    private static bool WaitingToListTheFirstTests(ExplorerState state) =>
+        state.Status == ExplorerStatus.Loading && state.VisibleNodes.Count == 0;
+
+    private static bool FailedWithNoRows(ExplorerState state) =>
+        state.Status == ExplorerStatus.Failed && state.VisibleNodes.Count == 0;
 
     // A run that failed, was cancelled, or came back without results leaves
     // the run before it on the state. The diagnostic is shown ahead of that
@@ -122,6 +138,11 @@ public sealed record TestPanelSnapshot(
 
     private static string SelectedOutputTitleFrom(ExplorerState state)
     {
+        if (state.Status == ExplorerStatus.Running && state.RunningLabel is { Length: > 0 } label)
+        {
+            return $"Test Output — {label}";
+        }
+
         if (state.LastRun is null || state.VisibleNodes.Count == 0)
         {
             return "Test Output";
@@ -135,6 +156,11 @@ public sealed record TestPanelSnapshot(
     // that explains it. Only a completed run may fall back to its own output.
     private static string SelectedOutputFrom(ExplorerState state)
     {
+        if (state.Status == ExplorerStatus.Running)
+        {
+            return state.RunningOutput.Length > 0 ? state.RunningOutput : "Waiting for test output...";
+        }
+
         if (state.Diagnostic is not null)
         {
             return state.Message;

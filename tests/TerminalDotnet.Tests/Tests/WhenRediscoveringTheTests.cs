@@ -2,6 +2,7 @@ using TerminalDotnet.Explorer;
 using TerminalDotnet.Terminal;
 using TerminalDotnet.Testing;
 using TerminalDotnet.Tests.Builders;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Tests;
@@ -88,6 +89,122 @@ public sealed class WhenRediscoveringTheTests
     }
 
     [Fact]
+    public async Task It_keeps_the_listed_tests_when_discovery_fails()
+    {
+        // Arrange
+        var backend = new ChangingTestBackend(Adds, Removes);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
+        await session.LoadAsync("Shop.sln");
+        backend.FailWith("Test discovery failed: No test is available in Cart.Tests.dll.");
+
+        // Act
+        await session.LoadAsync("Shop.sln");
+
+        // Assert
+        Assert.Contains(session.State.VisibleNodes, node => node.Name == "Adds item");
+    }
+
+    [Fact]
+    public async Task It_keeps_a_passed_test_passed_when_discovery_fails()
+    {
+        // Arrange
+        var backend = new ChangingTestBackend(Adds, Removes);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
+        await session.LoadAsync("Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+        backend.FailWith("Test discovery failed: No test is available in Cart.Tests.dll.");
+
+        // Act
+        await session.LoadAsync("Shop.sln");
+
+        // Assert
+        Assert.Equal(
+            TestNodeOutcome.Passed,
+            session.State.VisibleNodes.Single(node => node.Name == "Adds item").Outcome);
+    }
+
+    [Fact]
+    public async Task It_keeps_the_tree_when_rediscovery_fails()
+    {
+        // Arrange
+        var backend = new ChangingTestBackend(Adds, Removes);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
+        await session.LoadAsync("Shop.sln");
+        session.Rediscovering();
+        backend.FailWith("Test discovery failed: No test is available in Cart.Tests.dll.");
+
+        // Act
+        await session.LoadAsync("Shop.sln");
+
+        // Assert
+        Assert.Contains(session.State.VisibleNodes, node => node.Name == "Adds item");
+    }
+
+    [Fact]
+    public async Task It_says_why_rediscovery_failed()
+    {
+        // Arrange
+        var backend = new ChangingTestBackend(Adds, Removes);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
+        await session.LoadAsync("Shop.sln");
+        session.Rediscovering();
+        backend.FailWith("Test discovery failed: No test is available in Cart.Tests.dll.");
+
+        // Act
+        await session.LoadAsync("Shop.sln");
+
+        // Assert
+        Assert.Equal(
+            "Test discovery failed: No test is available in Cart.Tests.dll.",
+            session.State.Message);
+    }
+
+    [Fact]
+    public async Task It_keeps_the_tree_when_rediscovery_reports_nothing()
+    {
+        // Arrange
+        var backend = new ChangingTestBackend(Adds, Removes);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
+        await session.LoadAsync("Shop.sln");
+        session.Rediscovering();
+        backend.Tests = [];
+
+        // Act
+        await session.LoadAsync("Shop.sln");
+
+        // Assert
+        Assert.Contains(session.State.VisibleNodes, node => node.Name == "Adds item");
+    }
+
+    [Fact]
+    public async Task It_does_not_start_a_run_while_the_tests_are_being_rediscovered()
+    {
+        // Arrange
+        var backend = new HeldTestBackend(Adds);
+        var session = await GivenA.TestExplorer()
+            .WithBackend(backend)
+            .LoadedAsync();
+        session.Rediscovering();
+
+        // Act
+        await session.DispatchAsync(new ExplorerCommand.RunSelected())
+            .WaitAsync(TimeSpan.FromSeconds(1));
+
+        // Assert
+        Assert.Equal(0, backend.RunCount);
+    }
+
+    [Fact]
     public async Task It_keeps_the_row_the_reader_was_on()
     {
         // Arrange
@@ -111,14 +228,30 @@ public sealed class WhenRediscoveringTheTests
     {
         public IReadOnlyList<TestCase> Tests { get; set; } = tests;
 
+        private string? failure;
+
+        public void FailWith(string reason) => failure = reason;
+
         public Task<IReadOnlyList<TestCase>> DiscoverAsync(
             string target,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(Tests);
+            failure is { } reason
+                ? Task.FromException<IReadOnlyList<TestCase>>(new InvalidOperationException(reason))
+                : Task.FromResult(Tests);
 
         public Task<TestRun> RunAsync(
             IReadOnlyCollection<TestCase> tests,
             CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+            Task.FromResult(new TestRun(
+                true,
+                "Passed",
+                [.. tests.Select(test => new TestResult(
+                    test,
+                    TestOutcome.Passed,
+                    TimeSpan.Zero,
+                    null,
+                    null,
+                    null,
+                    null))]));
     }
 }

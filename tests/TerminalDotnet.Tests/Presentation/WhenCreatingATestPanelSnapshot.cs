@@ -209,4 +209,67 @@ public class WhenCreatingATestPanelSnapshot
         // Assert
         Assert.Equal("1 test passed", snapshot.SelectedOutput);
     }
+
+    [Fact]
+    public void It_shows_the_output_of_the_run_in_progress()
+    {
+        // Arrange
+        var test = new TestCase("Shop.CartTests.Adds_item", "Adds item", "/repo/Cart.Tests.csproj");
+        var state = new ExplorerState(
+            ExplorerStatus.Running,
+            [new VisibleTestNode(0, TestNodeKind.Project, "Cart.Tests", [test])],
+            0,
+            "Running Cart.Tests (1 of 2)...",
+            new TestRun(true, "previous run"))
+        {
+            RunningOutput = "Adds item running"
+        };
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal("Adds item running", snapshot.SelectedOutput);
+    }
+
+    [Fact]
+    public void It_names_the_batch_the_running_output_belongs_to()
+    {
+        // Arrange
+        var state = new ExplorerState(
+            ExplorerStatus.Running,
+            [],
+            0,
+            "Running Cart.Tests (1 of 2)...")
+        {
+            RunningLabel = "Cart.Tests (batch 1 of 2)"
+        };
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal("Test Output — Cart.Tests (batch 1 of 2)", snapshot.SelectedOutputTitle);
+    }
+
+    [Fact]
+    public void It_says_when_the_running_project_has_not_written_yet()
+    {
+        // Arrange
+        var state = new ExplorerState(
+            ExplorerStatus.Running,
+            [],
+            0,
+            "Running Cart.Tests (1 of 2)...",
+            new TestRun(true, "previous run"))
+        {
+            RunningLabel = "Cart.Tests"
+        };
+
+        // Act
+        var snapshot = TestPanelSnapshot.From(state, "Example.slnx");
+
+        // Assert
+        Assert.Equal("Waiting for test output...", snapshot.SelectedOutput);
+    }
 }

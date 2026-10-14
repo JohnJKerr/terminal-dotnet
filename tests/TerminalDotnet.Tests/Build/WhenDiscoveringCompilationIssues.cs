@@ -19,8 +19,54 @@ public sealed class WhenDiscoveringCompilationIssues
 
         // Assert
         Assert.Equal(
-            ["build", "/repo/Shop.slnx", "--nologo", "--tl:off", "--no-incremental"],
+            [
+                "build", "/repo/Shop.slnx", "--no-incremental",
+                "--nologo", "--tl:off", "-nodeReuse:false", DotnetProcess.CpuSwitch()
+            ],
             runner.LastRequest!.Arguments);
+    }
+
+    [Fact]
+    public async Task It_asks_the_sdk_for_english()
+    {
+        // Arrange
+        var runner = RunnerWithIssues();
+        var backend = new DotnetBuildIssueBackend(runner);
+
+        // Act
+        await backend.DiscoverAsync("/repo/Shop.slnx");
+
+        // Assert
+        Assert.Equal("en", runner.LastRequest!.Environment[DotnetProcess.LanguageVariable]);
+    }
+
+    [Fact]
+    public async Task It_reads_a_package_error_that_names_no_source_line()
+    {
+        // Arrange
+        var backend = new DotnetBuildIssueBackend(new RecordingCommandRunner(new CommandResult(1, """
+            /repo/Shop.csproj : error NU1101: Unable to find package Missing. No packages exist with this id in source(s): nuget.org
+            """, "")));
+
+        // Act
+        var issues = await backend.DiscoverAsync("/repo/Shop.slnx");
+
+        // Assert
+        Assert.Equal(IssueSeverity.Error, issues.Single().Severity);
+    }
+
+    [Fact]
+    public async Task It_treats_a_failed_build_that_named_no_issue_as_an_error()
+    {
+        // Arrange
+        var backend = new DotnetBuildIssueBackend(
+            new RecordingCommandRunner(new CommandResult(1, "Build FAILED.", "")));
+
+        // Act
+        var issues = await backend.DiscoverAsync("/repo/Shop.slnx");
+
+        // Assert
+        Assert.Equal(IssueSeverity.Error, issues.Single().Severity);
     }
 
     [Fact]

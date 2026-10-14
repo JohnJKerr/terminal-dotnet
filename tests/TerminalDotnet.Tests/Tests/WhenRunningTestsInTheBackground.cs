@@ -1,4 +1,5 @@
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Tests;
@@ -42,6 +43,21 @@ public sealed class WhenRunningTestsInTheBackground
         Assert.NotEqual(caller, backend.RunThread);
     }
 
+    [Fact]
+    public async Task It_passes_running_output_through()
+    {
+        // Arrange
+        var reported = new RecordedProgress();
+        var test = new TestCase("Shop.Tests.Adds", "Adds", "Shop.csproj");
+
+        // Act
+        await new BackgroundTestBackend(new ReportingTests())
+            .RunAsync([test], reported);
+
+        // Assert
+        Assert.Equal("Cart.Tests (batch 1 of 1)", reported.Updates.Single().Label);
+    }
+
     private sealed class RecordingTests : ITestBackend
     {
         public int DiscoveryThread { get; private set; }
@@ -61,6 +77,28 @@ public sealed class WhenRunningTestsInTheBackground
         {
             RunThread = Environment.CurrentManagedThreadId;
             return Task.FromResult(new TestRun(true, "Passed", []));
+        }
+    }
+
+    private sealed class ReportingTests : ITestBackend
+    {
+        public Task<IReadOnlyList<TestCase>> DiscoverAsync(
+            string target,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<TestCase>>([]);
+
+        public Task<TestRun> RunAsync(
+            IReadOnlyCollection<TestCase> tests,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(new TestRun(true, "Passed"));
+
+        public Task<TestRun> RunAsync(
+            IReadOnlyCollection<TestCase> tests,
+            IProgress<TestRunUpdate>? progress,
+            CancellationToken cancellationToken = default)
+        {
+            progress?.Report(new TestRunUpdate("Cart.Tests (batch 1 of 1)", "running"));
+            return Task.FromResult(new TestRun(true, "Passed"));
         }
     }
 }

@@ -36,16 +36,21 @@ public sealed class FileSystemWorkspaceWatcher : IWorkspaceWatcher
                 NotifyFilters.LastWrite |
                 NotifyFilters.Size
         };
-        watcher.Changed += (_, edit) => onEdit(Relative(folder, edit.FullPath));
-        watcher.Created += (_, edit) => onEdit(Relative(folder, edit.FullPath));
-        watcher.Deleted += (_, edit) => onEdit(Relative(folder, edit.FullPath));
-        watcher.Renamed += (_, edit) => onEdit(Relative(folder, edit.FullPath));
+        watcher.Changed += (_, edit) => Report(folder, edit.FullPath, onEdit);
+        watcher.Created += (_, edit) => Report(folder, edit.FullPath, onEdit);
+        watcher.Deleted += (_, edit) => Report(folder, edit.FullPath, onEdit);
+        watcher.Renamed += (_, edit) => Report(folder, edit.FullPath, onEdit);
         watcher.Error += (_, _) => onEdit(Overflowed);
         watcher.EnableRaisingEvents = true;
     }
 
-    private static string Relative(string folder, string path) =>
-        Path.GetRelativePath(folder, path);
+    private static void Report(string folder, string path, Action<string> onEdit)
+    {
+        if (WorkspacePath.RelativeTo(folder, path) is { } relative)
+        {
+            onEdit(relative);
+        }
+    }
 
     public void Dispose()
     {

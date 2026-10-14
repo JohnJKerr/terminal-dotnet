@@ -75,6 +75,8 @@ public sealed record TestRun(bool Passed, string Output, IReadOnlyList<TestResul
         counts.TryGetValue(outcome, out var count) ? count : 0;
 }
 
+public sealed record TestRunUpdate(string Label, string Output);
+
 public interface ITestBackend
 {
     Task<IReadOnlyList<TestCase>> DiscoverAsync(string target, CancellationToken cancellationToken = default);
@@ -82,4 +84,10 @@ public interface ITestBackend
     Task<TestRun> RunAsync(
         IReadOnlyCollection<TestCase> tests,
         CancellationToken cancellationToken = default);
+
+    Task<TestRun> RunAsync(
+        IReadOnlyCollection<TestCase> tests,
+        IProgress<TestRunUpdate>? progress,
+        CancellationToken cancellationToken = default) =>
+        RunAsync(tests, cancellationToken);
 }

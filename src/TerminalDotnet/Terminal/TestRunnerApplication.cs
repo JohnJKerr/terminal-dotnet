@@ -111,6 +111,7 @@ internal sealed class TestRunnerApplication(
     private View workspace = new();
     private PreviewPanel preview = new();
     private IApplication? running;
+    private TerminalLoopContext? loopContext;
 
     /// <summary>What the preview panel was last asked to show, so it loads
     /// again only when the selection it follows moves.</summary>
@@ -149,10 +150,18 @@ internal sealed class TestRunnerApplication(
             Path.GetDirectoryName(Path.GetFullPath(target))!,
             path =>
             {
+                if (!WorkspaceEdits.CountsWhileBuilding(path, Building()))
+                {
+                    return;
+                }
+
                 outsideEdits.Noticed(path, sinceWatching.Elapsed);
                 editsSinceTheBuild.Noticed(path);
             });
     }
+
+    private bool Building() =>
+        issueSession.State.Loading || session.State.Status == ExplorerStatus.Loading;
 
     private bool RunTerminal()
     {
@@ -166,6 +175,7 @@ internal sealed class TestRunnerApplication(
         scrollingUnderTheDrag = false;
         var outsideTheLoop = SynchronizationContext.Current;
         var loop = new TerminalLoopContext(work => application.Invoke(work));
+        loopContext = loop;
         SynchronizationContext.SetSynchronizationContext(loop);
         try
         {
@@ -173,6 +183,7 @@ internal sealed class TestRunnerApplication(
         }
         finally
         {
+            loopContext = null;
             SynchronizationContext.SetSynchronizationContext(outsideTheLoop);
         }
     }
@@ -269,25 +280,14 @@ internal sealed class TestRunnerApplication(
         panelWork.Track(FillPanelsAsync(application, loadCancellation.Token));
     }
 
-    /// <summary>
-    /// Repaints while discovery is out at `dotnet test`, so the marker beside
-    /// "Discovering tests..." turns instead of the panel sitting blank. The
-    /// draw is asked for explicitly because nothing else wakes the loop while
-    /// the reader is waiting.
-    /// </summary>
     private void TurnActivityMarker(IApplication application) =>
-        application.AddTimeout(ActivityMarker.FrameDuration, () =>
-        {
-            if (session.State.Status != ExplorerStatus.Loading)
-            {
-                sinceLoadStarted.Stop();
-                return false;
-            }
+        WorkingIndicator.Turn(
+            new ApplicationFrameClock(application),
+            TestsAreBeingDiscovered,
+            RenderTests,
+            () => sinceLoadStarted.Stop());
 
-            RenderTests();
-            application.LayoutAndDraw(true);
-            return true;
-        });
+    private bool TestsAreBeingDiscovered() => session.State.Status == ExplorerStatus.Loading;
 
     private Task FillPanelsAsync(
         IApplication application,
@@ -429,7 +429,7 @@ internal sealed class TestRunnerApplication(
     private async Task CopySelectionAsync(IApplication application, string selected)
     {
         var copied = await clipboard.TryCopyAsync(selected);
-        application.Invoke(() => toast.Show(
+        OnTheLoop(() => toast.Show(
             application,
             copied ? SelectionToast.Copied(selected) : SelectionToast.NotCopied()));
     }
@@ -740,7 +740,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        application.Invoke(() => toast.Show(application, copied.Value
+        OnTheLoop(() => toast.Show(application, copied.Value
             ? new Toast("Copied selected tests", ToastTone.Succeeded)
             : new Toast("Could not copy selected tests", ToastTone.Failed)));
     }
@@ -1188,7 +1188,11 @@ internal sealed class TestRunnerApplication(
                 toastGeneration = ++testRunToastGeneration;
                 sinceTestRunStarted.Restart();
                 toast.Show(application, TestRunToast.Running(session.State, TimeSpan.Zero));
-                toast.KeepTurning(application, () => TestRunToast.Running(session.State, sinceTestRunStarted.Elapsed));
+                toast.KeepTurning(application, () =>
+                {
+                    RenderTests();
+                    return TestRunToast.Running(session.State, sinceTestRunStarted.Elapsed);
+                });
             }
 
             await run;
@@ -1207,7 +1211,7 @@ internal sealed class TestRunnerApplication(
             if (started)
             {
                 sinceTestRunStarted.Stop();
-                application.Invoke(() =>
+                OnTheLoop(() =>
                 {
                     if (toastGeneration == testRunToastGeneration)
                     {
@@ -1231,7 +1235,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        application.Invoke(() => RequestOpen(application, source.Path, source.HighlightLine));
+        OnTheLoop(() => RequestOpen(application, source.Path, source.HighlightLine));
     }
 
     private static string TooLargeToPreview(string path) =>
@@ -1258,12 +1262,23 @@ internal sealed class TestRunnerApplication(
     private void ShowTestOutput(IApplication application)
     {
         var snapshot = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
-        dialogs.ShowText(
-            application,
-            $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close",
-            AnsiTestOutput.ToCells(snapshot.SelectedOutput),
-            wordWrap: true);
+        var title = OutputTitle(snapshot);
+        var lines = AnsiTestOutput.ToCells(snapshot.SelectedOutput);
+        if (session.State.Status != ExplorerStatus.Running)
+        {
+            dialogs.ShowText(application, title, lines, wordWrap: true);
+            return;
+        }
+
+        dialogs.ShowFollowing(application, title, lines, wordWrap: true, () =>
+        {
+            var live = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
+            return (OutputTitle(live), live.SelectedOutput);
+        });
     }
+
+    private static string OutputTitle(TestPanelSnapshot snapshot) =>
+        $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close";
 
     private void ShowCommands(IApplication application) => dialogs.ShowText(
         application,
@@ -1360,7 +1375,7 @@ internal sealed class TestRunnerApplication(
         CancellationToken cancellationToken)
     {
         await rebuild.RunAsync(PanelLanded, cancellationToken);
-        application.Invoke(() => toast.Show(application, RebuildToast.Finished(issueSession.State, session.State)));
+        OnTheLoop(() => toast.Show(application, RebuildToast.Finished(issueSession.State, session.State)));
     }
 
     /// <summary>The issues are left out: an agent saves often enough that a
@@ -1416,7 +1431,9 @@ internal sealed class TestRunnerApplication(
 
     /// <summary>Work that has awaited something draws through the loop, which
     /// passes it over once the terminal it would draw on has gone.</summary>
-    private void RenderOnTheLoop() => running?.Invoke(Render);
+    private void RenderOnTheLoop() => OnTheLoop(Render);
+
+    private void OnTheLoop(Action work) => loopContext?.Invoke(work);
 
     private void Render()
     {
@@ -1568,7 +1585,7 @@ internal sealed class TestRunnerApplication(
     private async Task PreviewDiffAsync(PreviewSubject subject)
     {
         await changesetSession.DispatchAsync(new ChangesetCommand.LoadSelectedDiff());
-        running?.Invoke(() =>
+        OnTheLoop(() =>
         {
             if (previewed != subject)
             {
@@ -1590,7 +1607,7 @@ internal sealed class TestRunnerApplication(
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             diagnostics.Add($"Test preview failed: {exception}");
-            running?.Invoke(() =>
+            OnTheLoop(() =>
             {
                 if (previewed == subject)
                 {
@@ -1600,7 +1617,7 @@ internal sealed class TestRunnerApplication(
             return;
         }
 
-        running?.Invoke(() =>
+        OnTheLoop(() =>
         {
             if (previewed != subject)
             {

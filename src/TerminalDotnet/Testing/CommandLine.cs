@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace TerminalDotnet.Testing;
 
@@ -8,9 +9,14 @@ public sealed record CommandRequest(
     string WorkingDirectory,
     bool CaptureOutput = true)
 {
-    /// <summary>Text the command reads instead of a terminal. Empty leaves the
-    /// command attached to whatever standard input it inherited.</summary>
     public string StandardInput { get; init; } = "";
+
+    public Action<string>? OnOutput { get; init; }
+
+    public int? OutputLimit { get; init; }
+
+    public IReadOnlyDictionary<string, string> Environment { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
 }
 
 public sealed record CommandResult(int ExitCode, string StandardOutput, string StandardError);
@@ -29,9 +35,11 @@ public sealed class ProcessCommandRunner : ICommandRunner
             WorkingDirectory = request.WorkingDirectory,
             RedirectStandardOutput = request.CaptureOutput,
             RedirectStandardError = request.CaptureOutput,
-            RedirectStandardInput = request.StandardInput.Length > 0,
+            RedirectStandardInput = true,
             UseShellExecute = false
         };
+        AddRequestedEnvironment(startInfo, request);
+
         foreach (var argument in request.Arguments)
         {
             startInfo.ArgumentList.Add(argument);
@@ -41,10 +49,10 @@ public sealed class ProcessCommandRunner : ICommandRunner
             throw new InvalidOperationException($"Could not start {request.FileName}.");
         await WriteStandardInputAsync(process, request).ConfigureAwait(false);
         var standardOutput = request.CaptureOutput
-            ? process.StandardOutput.ReadToEndAsync(CancellationToken.None)
+            ? ReadAllAsync(process.StandardOutput, request)
             : Task.FromResult(string.Empty);
         var standardError = request.CaptureOutput
-            ? process.StandardError.ReadToEndAsync(CancellationToken.None)
+            ? ReadAllAsync(process.StandardError, request)
             : Task.FromResult(string.Empty);
         try
         {
@@ -62,17 +70,49 @@ public sealed class ProcessCommandRunner : ICommandRunner
             await standardError.ConfigureAwait(false));
     }
 
-    /// <summary>The stream is closed once the text is written, because a
-    /// command that reads standard input waits for its end before it acts.
-    /// </summary>
+    private static void AddRequestedEnvironment(ProcessStartInfo startInfo, CommandRequest request)
+    {
+        foreach (var variable in request.Environment)
+        {
+            startInfo.Environment[variable.Key] = variable.Value;
+        }
+    }
+
+    private static async Task<string> ReadAllAsync(StreamReader reader, CommandRequest request)
+    {
+        var builder = new StringBuilder();
+        var buffer = new char[4096];
+        while (true)
+        {
+            var read = await reader.ReadAsync(buffer.AsMemory()).ConfigureAwait(false);
+            if (read == 0)
+            {
+                return KeptEnd(builder, request.OutputLimit).ToString();
+            }
+
+            var chunk = new string(buffer, 0, read);
+            builder.Append(chunk);
+            if (builder.Length > 2 * request.OutputLimit)
+            {
+                KeptEnd(builder, request.OutputLimit);
+            }
+
+            request.OnOutput?.Invoke(chunk);
+        }
+    }
+
+    private static StringBuilder KeptEnd(StringBuilder builder, int? limit) =>
+        limit is { } kept && builder.Length > kept
+            ? builder.Remove(0, builder.Length - kept)
+            : builder;
+
     private static async Task WriteStandardInputAsync(Process process, CommandRequest request)
     {
-        if (request.StandardInput.Length == 0)
+        if (request.StandardInput.Length > 0)
         {
-            return;
+            await process.StandardInput.WriteAsync(request.StandardInput).ConfigureAwait(false);
         }
 
-        await process.StandardInput.WriteAsync(request.StandardInput).ConfigureAwait(false);
         process.StandardInput.Close();
     }
 
@@ -83,14 +123,6 @@ public sealed class ProcessCommandRunner : ICommandRunner
         await Task.WhenAll(readers).ConfigureAwait(false);
     }
 
-    private static void KillProcessTree(Process process)
-    {
-        try
-        {
-            process.Kill(entireProcessTree: true);
-        }
-        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException)
-        {
-        }
-    }
+    private static void KillProcessTree(Process process) =>
+        ProcessTree.Stop(() => process.Kill(entireProcessTree: true));
 }

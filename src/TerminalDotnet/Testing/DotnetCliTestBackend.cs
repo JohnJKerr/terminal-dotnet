@@ -18,30 +18,45 @@ public sealed partial class DotnetCliTestBackend(
         string target,
         CancellationToken cancellationToken = default)
     {
-        var request = new CommandRequest(
-            "dotnet",
-            ["test", target, "--list-tests", "--nologo", "--tl:off", "-m:1"],
+        var request = DotnetProcess.Request(
+            ["test", target, "--list-tests", "--no-build", .. DotnetProcess.OneProjectAtATimeSwitches()],
             Path.GetDirectoryName(Path.GetFullPath(target))!);
         var result = await commandRunner.RunAsync(request, cancellationToken).ConfigureAwait(false);
-        if (result.ExitCode != 0)
+        if (result.ExitCode != 0 || ListedNothing(result.StandardOutput))
         {
-            throw new InvalidOperationException($"Test discovery failed: {result.StandardError}");
+            throw new InvalidOperationException($"Test discovery failed: {Described(result)}");
         }
 
         return DiscoveredTests(result.StandardOutput.Split('\n'), target);
     }
 
+    private static bool ListedNothing(string output) =>
+        NeverListedASuite(output) || HostListedNoTest(output);
+
+    private static bool NeverListedASuite(string output) =>
+        !output.Contains("The following Tests are available:", StringComparison.Ordinal);
+
+    private static bool HostListedNoTest(string output) =>
+        output.Contains("No test is available", StringComparison.Ordinal) &&
+        !output.Split('\n').Any(NamesATest);
+
+    private static string Described(CommandResult result) =>
+        string.Join(Environment.NewLine, OutputAndError(result));
+
+    private static IEnumerable<string> OutputAndError(CommandResult result) =>
+        new[] { result.StandardOutput, result.StandardError }
+            .Select(part => part.Trim())
+            .Where(part => part.Length > 0);
+
     private const string RunHeader = "Test run for ";
 
-    /// <summary>A solution lists each test project in a section of its own,
-    /// headed by the assembly it built, so each section's tests are claimed by
-    /// that project.</summary>
     private static IReadOnlyList<TestCase> DiscoveredTests(string[] lines, string target)
     {
         int[] starts = [0, .. lines.Index().Where(line => IsRunHeader(line.Item)).Select(line => line.Index)];
         return starts
             .Zip([.. starts.Skip(1), lines.Length], (start, end) => lines[start..end])
             .SelectMany(section => TestsListedIn(section, target))
+            .DistinctBy(test => (test.FullyQualifiedName, test.DisplayName, test.ProjectPath))
             .ToArray();
     }
 
@@ -84,8 +99,8 @@ public sealed partial class DotnetCliTestBackend(
 
     private static string? TestTarget(string header)
     {
-        var framework = header.IndexOf(" (", RunHeader.Length, StringComparison.Ordinal);
-        return framework < 0 ? null : ProjectTarget(header[RunHeader.Length..framework]);
+        var framework = header.LastIndexOf(" (", StringComparison.Ordinal);
+        return framework < RunHeader.Length ? null : ProjectTarget(header[RunHeader.Length..framework]);
     }
 
     private static string ProjectTarget(string assemblyPath)
@@ -102,8 +117,14 @@ public sealed partial class DotnetCliTestBackend(
         return Path.Combine(projectDirectory, $"{projectName}.csproj");
     }
 
+    public Task<TestRun> RunAsync(
+        IReadOnlyCollection<TestCase> tests,
+        CancellationToken cancellationToken = default) =>
+        RunAsync(tests, progress: null, cancellationToken);
+
     public async Task<TestRun> RunAsync(
         IReadOnlyCollection<TestCase> tests,
+        IProgress<TestRunUpdate>? progress,
         CancellationToken cancellationToken = default)
     {
         if (tests.Count == 0)
@@ -115,7 +136,11 @@ public sealed partial class DotnetCliTestBackend(
         foreach (var project in tests.GroupBy(test => test.ProjectPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            runs.Add(await RunProjectAsync(project.Key, project.ToArray(), cancellationToken).ConfigureAwait(false));
+            runs.Add(await RunProjectAsync(
+                project.Key,
+                project.ToArray(),
+                progress,
+                cancellationToken).ConfigureAwait(false));
         }
 
         return Combined(runs);
@@ -124,18 +149,31 @@ public sealed partial class DotnetCliTestBackend(
     private async Task<TestRun> RunProjectAsync(
         string target,
         IReadOnlyCollection<TestCase> tests,
+        IProgress<TestRunUpdate>? progress,
         CancellationToken cancellationToken)
     {
+        var batches = FilterBatches(tests).ToArray();
+        var reported = new ReportedTail(progress);
         var runs = new List<TestRun>();
-        foreach (var batch in FilterBatches(tests))
+        for (var index = 0; index < batches.Length; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            reported.Label(BatchLabel(target, index, batches.Length));
             var build = runs.Count == 0;
-            runs.Add(await RunBatchAsync(target, batch, build, cancellationToken).ConfigureAwait(false));
+            runs.Add(await RunBatchAsync(
+                target,
+                batches[index],
+                build,
+                reported.Append,
+                cancellationToken).ConfigureAwait(false));
+            reported.Flush();
         }
 
         return Combined(runs);
     }
+
+    private static string BatchLabel(string target, int index, int batchCount) =>
+        $"{Path.GetFileNameWithoutExtension(target)} (batch {index + 1} of {batchCount})";
 
     private static IEnumerable<IReadOnlyList<TestCase>> FilterBatches(IReadOnlyCollection<TestCase> tests)
     {
@@ -168,12 +206,19 @@ public sealed partial class DotnetCliTestBackend(
         string target,
         IReadOnlyList<TestCase> tests,
         bool build,
+        Action<string> onOutput,
         CancellationToken cancellationToken)
     {
         var resultPath = resultStore.CreatePath();
         try
         {
-            return await RunBatchIntoAsync(resultPath, target, tests, build, cancellationToken).ConfigureAwait(false);
+            return await RunBatchIntoAsync(
+                resultPath,
+                target,
+                tests,
+                build,
+                onOutput,
+                cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -186,12 +231,12 @@ public sealed partial class DotnetCliTestBackend(
         string target,
         IReadOnlyList<TestCase> tests,
         bool build,
+        Action<string> onOutput,
         CancellationToken cancellationToken)
     {
         var filter = string.Join('|', tests.Select(FilterClause));
         var result = await commandRunner.RunAsync(
-            new CommandRequest(
-                "dotnet",
+            DotnetProcess.Request(
                 [
                     "test",
                     target,
@@ -200,17 +245,23 @@ public sealed partial class DotnetCliTestBackend(
                     "--logger",
                     $"trx;LogFileName={resultPath}",
                     "--nologo",
-                    "--tl:on",
+                    "--tl:off",
+                    "-nodeReuse:false",
+                    DotnetProcess.CpuSwitch(),
                     .. BuildSwitches(build)
                 ],
-                Path.GetDirectoryName(Path.GetFullPath(target))!),
+                Path.GetDirectoryName(Path.GetFullPath(target))!) with
+            {
+                OnOutput = onOutput,
+                OutputLimit = TestOutput.TailLength
+            },
             cancellationToken).ConfigureAwait(false);
 
         var output = string.IsNullOrWhiteSpace(result.StandardError)
             ? result.StandardOutput
             : $"{result.StandardOutput}{Environment.NewLine}{result.StandardError}";
         var recorded = await RecordedResultsAsync(resultPath, tests, cancellationToken).ConfigureAwait(false);
-        return new TestRun(result.ExitCode == 0 && recorded.Results.Count > 0, output.Trim(), recorded.Results)
+        return new TestRun(result.ExitCode == 0 && recorded.Results.Count > 0, TestOutput.Tail(output.Trim()), recorded.Results)
         {
             Diagnostic = recorded.Diagnostic
         };
@@ -225,7 +276,7 @@ public sealed partial class DotnetCliTestBackend(
             ? runs[0]
             : new TestRun(
                 runs.All(run => run.Passed),
-                string.Join(Environment.NewLine, runs.Select(run => run.Output)),
+                TestOutput.Tail(string.Join(Environment.NewLine, runs.Select(run => run.Output))),
                 runs.SelectMany(run => run.Results).ToArray())
             {
                 Diagnostic = runs.Select(run => run.Diagnostic).FirstOrDefault(diagnostic => diagnostic is not null)
@@ -364,4 +415,62 @@ public sealed partial class DotnetCliTestBackend(
 
     [GeneratedRegex(@" in (?<file>.+):line (?<line>\d+)")]
     private static partial Regex SourceLocation();
+
+    private sealed class ReportedTail(IProgress<TestRunUpdate>? progress)
+    {
+        private readonly object gate = new();
+        private string label = "";
+        private string tail = "";
+        private bool reported;
+        private DateTime reportedAt = DateTime.MinValue;
+
+        public void Label(string next)
+        {
+            lock (gate)
+            {
+                label = next;
+            }
+
+            Report(force: true);
+        }
+
+        public void Append(string chunk)
+        {
+            lock (gate)
+            {
+                tail = TestOutput.Tail(tail + chunk);
+            }
+
+            Report(force: false);
+        }
+
+        public void Flush() => Report(force: true);
+
+        private void Report(bool force)
+        {
+            TestRunUpdate? update = null;
+            lock (gate)
+            {
+                var sinceReported = DateTime.UtcNow - reportedAt;
+                if (!force && !TestOutput.ReportDue(reported, sinceReported))
+                {
+                    return;
+                }
+
+                if (label.Length == 0 && tail.Length == 0)
+                {
+                    return;
+                }
+
+                reported = true;
+                reportedAt = DateTime.UtcNow;
+                update = new TestRunUpdate(label, tail);
+            }
+
+            if (update is not null)
+            {
+                progress?.Report(update);
+            }
+        }
+    }
 }

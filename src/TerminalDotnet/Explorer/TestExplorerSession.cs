@@ -8,8 +8,10 @@ namespace TerminalDotnet.Explorer;
 public sealed class TestExplorerSession(
     ITestBackend backend,
     ITestSourceLocator testSourceLocator,
-    IUpdatedSourceProvider updatedSourceProvider)
+    IUpdatedSourceProvider updatedSourceProvider,
+    TimeSpan? projectRunLimit = null)
 {
+    private readonly TimeSpan runLimit = projectRunLimit ?? TimeSpan.FromMinutes(30);
     private readonly FoldedGroups folded = new();
     private readonly Dictionary<TestCase, TestNodeOutcome> completedOutcomes = [];
     private readonly HashSet<TestCase> activeTests = [];
@@ -21,6 +23,7 @@ public sealed class TestExplorerSession(
         new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
 
     private const string DiscoveringMessage = "Discovering tests...";
+    public const string WaitingForBuildMessage = "Tests are listed once the build succeeds.";
     private const string RootNodeId = "all-tests";
 
     public ExplorerState State { get; private set; } =
@@ -51,16 +54,88 @@ public sealed class TestExplorerSession(
         beforeRediscovery = null;
     }
 
+    public void WaitForBuild() =>
+        State = new ExplorerState(ExplorerStatus.Failed, [], 0, WaitingForBuildMessage);
+
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
+        var rediscovering = beforeRediscovery;
+        var onScreen = State;
+        var previouslyDiscovered = discoveredTests;
+        var previouslyUpdated = updatedSuites;
         try
         {
-            State = await DiscoveredStateAsync(target, cancellationToken);
+            var discovered = await DiscoveredStateAsync(target, cancellationToken);
+            if (rediscovering is not null && discovered.DiscoveredTestCount == 0)
+            {
+                State = FailedLeavingTheRows(rediscovering, previouslyDiscovered, previouslyUpdated, "Discovery reported no tests.");
+                return;
+            }
+
+            State = discovered;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            State = new ExplorerState(ExplorerStatus.Failed, [], 0, exception.Message);
+            State = FailedDiscovery(
+                rediscovering,
+                onScreen,
+                previouslyDiscovered,
+                previouslyUpdated,
+                exception.Message);
         }
+    }
+
+    private ExplorerState FailedDiscovery(
+        ExplorerState? rediscovering,
+        ExplorerState onScreen,
+        IReadOnlyList<TestCase> previouslyDiscovered,
+        IReadOnlyDictionary<string, TestNodeUpdate> previouslyUpdated,
+        string reason)
+    {
+        var listed = ListedTree(rediscovering, onScreen, previouslyDiscovered);
+        return listed is null
+            ? new ExplorerState(ExplorerStatus.Failed, [], 0, reason)
+            : FailedLeavingTheRows(listed, previouslyDiscovered, previouslyUpdated, reason);
+    }
+
+    private ExplorerState? ListedTree(
+        ExplorerState? rediscovering,
+        ExplorerState onScreen,
+        IReadOnlyList<TestCase> previouslyDiscovered)
+    {
+        if (rediscovering is { VisibleNodes.Count: > 0 } standing)
+        {
+            return standing;
+        }
+
+        if (onScreen.VisibleNodes.Count > 0)
+        {
+            return onScreen;
+        }
+
+        if (previouslyDiscovered.Count == 0)
+        {
+            return null;
+        }
+
+        return onScreen with { VisibleNodes = VisibleNodes(previouslyDiscovered) };
+    }
+
+    private ExplorerState FailedLeavingTheRows(
+        ExplorerState previous,
+        IReadOnlyList<TestCase> tests,
+        IReadOnlyDictionary<string, TestNodeUpdate> suites,
+        string reason)
+    {
+        discoveredTests = tests;
+        updatedSuites = suites;
+        beforeRediscovery = null;
+        return previous with
+        {
+            Status = ExplorerStatus.Failed,
+            Message = reason,
+            Diagnostic = reason
+        };
     }
 
     private async Task<ExplorerState> DiscoveredStateAsync(
@@ -379,7 +454,7 @@ public sealed class TestExplorerSession(
         IReadOnlyList<TestCase> tests,
         CancellationToken cancellationToken)
     {
-        if (running)
+        if (running || State.Status == ExplorerStatus.Loading)
         {
             return;
         }
@@ -401,19 +476,20 @@ public sealed class TestExplorerSession(
     {
         lastRunTests = Snapshot.Of(tests);
         lastRunMembers = tests.ToHashSet();
-        activeTests.Clear();
-        activeTests.UnionWith(tests);
-        State = State with
-        {
-            Status = ExplorerStatus.Running,
-            VisibleNodes = CurrentNodes(),
-            Message = $"Running {CountedNoun.Of(tests.Count, "test")}...",
-            Diagnostic = null
-        };
-        TestRun run;
+        var projects = tests.GroupBy(test => test.ProjectPath).ToArray();
+        var runs = new List<TestRun>();
+        var progress = new ShownAsReported(ShowRunningOutput);
         try
         {
-            run = await backend.RunAsync(tests, cancellationToken);
+            for (var index = 0; index < projects.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var projectTests = Snapshot.Of(projects[index]);
+                ShowProjectRunning(projectTests, index, projects.Length);
+                var run = await RunProjectWithinLimitAsync(projectTests, progress, cancellationToken);
+                runs.Add(run);
+                RecordProject(run);
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -426,14 +502,91 @@ public sealed class TestExplorerSession(
             return;
         }
 
+        var completed = Combined(runs);
+        EndRun(
+            completed.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
+            completed.Output,
+            completed.Diagnostic);
+        State = State with { LastRun = completed, SourceLocation = FailureSourceFrom(completed) };
+    }
+
+    private async Task<TestRun> RunProjectWithinLimitAsync(
+        IReadOnlyList<TestCase> projectTests,
+        IProgress<TestRunUpdate> progress,
+        CancellationToken cancellationToken)
+    {
+        using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        limit.CancelAfter(runLimit);
+        try
+        {
+            return await backend.RunAsync(projectTests, progress, limit.Token);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            return UnfinishedProject(projectTests);
+        }
+    }
+
+    private static TestRun UnfinishedProject(IReadOnlyList<TestCase> projectTests)
+    {
+        var name = Path.GetFileNameWithoutExtension(projectTests[0].ProjectPath);
+        var reason = $"{name} did not finish";
+        return new TestRun(
+            false,
+            reason,
+            [.. projectTests.Select(test => new TestResult(
+                test,
+                TestOutcome.Failed,
+                TimeSpan.Zero,
+                reason,
+                null,
+                null,
+                null))])
+        {
+            Diagnostic = reason
+        };
+    }
+
+    private void ShowProjectRunning(IReadOnlyList<TestCase> projectTests, int index, int projectCount)
+    {
+        activeTests.Clear();
+        activeTests.UnionWith(projectTests);
+        var name = Path.GetFileNameWithoutExtension(projectTests[0].ProjectPath);
+        State = State with
+        {
+            Status = ExplorerStatus.Running,
+            VisibleNodes = CurrentNodes(),
+            Message = $"Running {name} ({index + 1} of {projectCount})...",
+            Diagnostic = null,
+            RunningOutput = "",
+            RunningLabel = name
+        };
+    }
+
+    private void ShowRunningOutput(TestRunUpdate update) =>
+        State = State with { RunningOutput = update.Output, RunningLabel = update.Label };
+
+    private void RecordProject(TestRun run)
+    {
         foreach (var (test, outcome) in CompletedOutcomes(run))
         {
             completedOutcomes[test] = outcome;
         }
 
-        EndRun(run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed, run.Output, run.Diagnostic);
-        State = State with { LastRun = run, SourceLocation = FailureSourceFrom(run) };
+        activeTests.Clear();
+        State = State with { VisibleNodes = CurrentNodes() };
     }
+
+    private static TestRun Combined(IReadOnlyList<TestRun> runs) =>
+        runs.Count == 1
+            ? runs[0]
+            : new TestRun(
+                runs.All(run => run.Passed),
+                TestOutput.Tail(string.Join(Environment.NewLine, runs.Select(run => run.Output))),
+                runs.SelectMany(run => run.Results).ToArray())
+            {
+                Diagnostic = runs.Select(run => run.Diagnostic).FirstOrDefault(diagnostic => diagnostic is not null)
+            };
 
     private void EndRun(ExplorerStatus status, string message, string? diagnostic)
     {
@@ -443,7 +596,9 @@ public sealed class TestExplorerSession(
             Status = status,
             VisibleNodes = CurrentNodes(),
             Message = message,
-            Diagnostic = diagnostic
+            Diagnostic = diagnostic,
+            RunningOutput = "",
+            RunningLabel = null
         };
     }
 
@@ -528,5 +683,10 @@ public sealed class TestExplorerSession(
         return classCollapsed
             ? [classNode with { IsExpanded = false }]
             : [classNode, .. testNodes];
+    }
+
+    private sealed class ShownAsReported(Action<TestRunUpdate> show) : IProgress<TestRunUpdate>
+    {
+        public void Report(TestRunUpdate value) => show(value);
     }
 }

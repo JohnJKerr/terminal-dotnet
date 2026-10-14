@@ -18,8 +18,25 @@ public sealed class WhenUsingTheDotnetCliTestBackend
 
         // Assert
         Assert.Equal(
-            ["dotnet", "test", "/repo/Shop.sln", "--list-tests", "--nologo", "--tl:off", "-m:1"],
+            [
+                "dotnet", "test", "/repo/Shop.sln", "--list-tests", "--no-build",
+                "--nologo", "--tl:off", "-nodeReuse:false", "-m:1"
+            ],
             [runner.LastRequest!.FileName, .. runner.LastRequest.Arguments]);
+    }
+
+    [Fact]
+    public async Task It_asks_the_sdk_for_english_when_discovering()
+    {
+        // Arrange
+        var runner = ListingCartTests();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+
+        // Act
+        await backend.DiscoverAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal("en", runner.LastRequest!.Environment[DotnetProcess.LanguageVariable]);
     }
 
     [Fact]
@@ -46,6 +63,116 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             "Api.IntegrationTests.Orgs.WhenGettingUserOrg.It_integrates_correctly",
             "Application.Tests.WhenCreatingAnOrg.It_uses_provided_name"
         ], tests.Select(test => test.FullyQualifiedName));
+    }
+
+    [Fact]
+    public async Task It_keeps_tests_another_assembly_listed_when_one_could_not_be_loaded()
+    {
+        // Arrange
+        var output = """
+            Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+            The following Tests are available:
+                Shop.Tests.CartTests.Adds_item
+            No test is available in /repo/Locked.Tests/bin/Debug/net10.0/Locked.Tests.dll. Make sure that test discoverer & executors are registered and platform & framework version settings are appropriate and try again.
+            """;
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, output, "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var tests = await backend.DiscoverAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal(["Shop.Tests.CartTests.Adds_item"], tests.Select(test => test.FullyQualifiedName));
+    }
+
+    [Fact]
+    public async Task It_files_a_test_under_the_project_that_listed_it()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, ListedOutsideItsNamespace(), "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
+
+        // Assert
+        Assert.Equal(
+            [ProjectFile("External.Tests"), ProjectFile("Api.Tests")],
+            tests.Select(test => test.ProjectPath));
+    }
+
+    [Fact]
+    public async Task It_files_a_test_under_a_project_whose_folder_has_parentheses()
+    {
+        // Arrange
+        var assembly = TestPaths.In("Work (Shop)", "Cart.Tests", "bin", "Debug", "net10.0", "Cart.Tests.dll");
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, $"""
+                Test run for {assembly} (.NETCoreApp,Version=v10.0)
+                The following Tests are available:
+                    Cart.Tests.WhenAdding.It_adds_the_item
+                """, "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
+
+        // Assert
+        Assert.Equal(
+            [TestPaths.In("Work (Shop)", "Cart.Tests", "Cart.Tests.csproj")],
+            tests.Select(test => test.ProjectPath));
+    }
+
+    [Fact]
+    public async Task It_reports_an_assembly_that_listed_no_tests_as_a_failure()
+    {
+        // Arrange
+        var output = """
+            Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+            The following Tests are available:
+            No test is available in /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll. Make sure that test discoverer & executors are registered and platform & framework version settings are appropriate and try again.
+            """;
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, output, "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var failure = await DiscoveryFailureAsync(backend);
+
+        // Assert
+        Assert.Equal($"Test discovery failed: {output.Trim()}", failure);
+    }
+
+    [Fact]
+    public async Task It_reports_output_that_never_lists_a_suite_as_a_failure()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, "Build succeeded.", "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var failure = await DiscoveryFailureAsync(backend);
+
+        // Assert
+        Assert.Equal("Test discovery failed: Build succeeded.", failure);
+    }
+
+    [Fact]
+    public async Task It_reports_the_build_output_when_discovery_fails()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(1, "error CS1513: } expected", "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var failure = await DiscoveryFailureAsync(backend);
+
+        // Assert
+        Assert.Equal("Test discovery failed: error CS1513: } expected", failure);
     }
 
     [Fact]
@@ -103,9 +230,25 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             "--logger",
             "trx;LogFileName=/tmp/terminal-dotnet.trx",
             "--nologo",
-            "--tl:on"
+            "--tl:off",
+            "-nodeReuse:false",
+            DotnetProcess.CpuSwitch()
         ],
             runner.LastRequest!.Arguments);
+    }
+
+    [Fact]
+    public async Task It_asks_the_sdk_for_english_when_running_tests()
+    {
+        // Arrange
+        var runner = new RecordingCommandRunner(new CommandResult(0, "1 test passed", ""));
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+
+        // Act
+        await backend.RunAsync([new TestCase("Shop.Tests.CartTests.Adds_item", "Adds item", "/repo/Shop.sln")]);
+
+        // Assert
+        Assert.Equal("en", runner.LastRequest!.Environment[DotnetProcess.LanguageVariable]);
     }
 
     [Fact]
@@ -277,6 +420,36 @@ public sealed class WhenUsingTheDotnetCliTestBackend
 
         // Assert
         Assert.Equal("2 tests passed", run.Output);
+    }
+
+    [Fact]
+    public async Task It_asks_the_command_to_keep_only_the_tail_of_a_run()
+    {
+        // Arrange
+        var runner = new RecordingCommandRunner();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+
+        // Act
+        await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.Equal(TestOutput.TailLength, runner.LastRequest!.OutputLimit);
+    }
+
+    [Fact]
+    public async Task It_keeps_the_tail_of_a_long_run()
+    {
+        // Arrange
+        var written = new string('a', 8) + new string('b', TestOutput.TailLength);
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, written, "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.Equal(new string('b', TestOutput.TailLength), run.Output);
     }
 
     [Fact]
@@ -490,6 +663,19 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         ], run.Results.Select(result => result.Test.DisplayName));
     }
 
+    private static async Task<string> DiscoveryFailureAsync(DotnetCliTestBackend backend)
+    {
+        try
+        {
+            await backend.DiscoverAsync("/repo/Shop.sln");
+            return "";
+        }
+        catch (InvalidOperationException exception)
+        {
+            return exception.Message;
+        }
+    }
+
     private static RecordingCommandRunner ListingCartTests() => new(new CommandResult(0, """
         Determining projects to restore...
         The following Tests are available:
@@ -575,6 +761,21 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         // Assert
         Assert.Equal([InMemoryTestResultStore.ResultPath], store.Discarded);
     }
+
+    private static string ProjectFile(string project) => TestPaths.In(project, $"{project}.csproj");
+
+    private static string ListedAssembly(string project) =>
+        TestPaths.In(project, "bin", "Debug", "net10.0", $"{project}.dll");
+
+    private static string ListedOutsideItsNamespace() =>
+        $"""
+        Test run for {ListedAssembly("External.Tests")} (.NETCoreApp,Version=v10.0)
+        The following Tests are available:
+            External.Tests.WhenCreatingAUser.It_creates_the_user
+        Test run for {ListedAssembly("Api.Tests")} (.NETCoreApp,Version=v10.0)
+        The following Tests are available:
+            External.Tests.WhenCreatingALegacyUser.It_returns_the_id
+        """;
 
     private static async Task Cancelled(Task run)
     {

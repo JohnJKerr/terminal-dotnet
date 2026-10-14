@@ -40,6 +40,16 @@ public sealed class TerminalLoopContext(Action<Action> invokeOnLoop) : Synchroni
         invokeOnLoop(() => RunOnce(work));
     }
 
+    public void Invoke(Action work)
+    {
+        if (StillTakingWork())
+        {
+            invokeOnLoop(work);
+        }
+    }
+
+    private bool StillTakingWork() => !released;
+
     public override SynchronizationContext CreateCopy() => this;
 
     /// <summary>Work is claimed before it runs, so the loop and the release

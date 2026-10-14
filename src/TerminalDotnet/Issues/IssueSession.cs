@@ -18,6 +18,8 @@ public sealed class IssueSession(
     private IReadOnlyList<CompilationIssue> flagged = [];
     public IssueState State { get; private set; } = new([]);
 
+    public bool BuildFailed { get; private set; }
+
     /// <summary>Stands the panel back up as building. The issues the last build
     /// found stay in front of the reader while it runs, because a build takes
     /// long enough that emptying the panel would leave them with nothing to read.
@@ -26,18 +28,29 @@ public sealed class IssueSession(
 
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
+        var standingOn = Selected();
+        State = State with { Loading = true, Notice = "" };
         try
         {
-            var standingOn = Selected();
             built = Snapshot.Of(await backend.DiscoverAsync(target, cancellationToken));
+            BuildFailed = ReportedAnError(built);
             State = WithIssues(State with { Loading = false, Notice = "" }, standingOn);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (OperationCanceledException)
+        {
+            State = State with { Loading = false };
+            throw;
+        }
+        catch (Exception exception)
         {
             built = [];
+            BuildFailed = true;
             State = State with { Issues = Matching(), SelectedIndex = 0, Loading = false, Notice = exception.Message };
         }
     }
+
+    private static bool ReportedAnError(IReadOnlyList<CompilationIssue> built) =>
+        built.Any(issue => issue.Severity == IssueSeverity.Error);
 
     /// <summary>A tree that cannot be read has no flags to offer, which is no
     /// reason to take the build's issues away with them.</summary>
