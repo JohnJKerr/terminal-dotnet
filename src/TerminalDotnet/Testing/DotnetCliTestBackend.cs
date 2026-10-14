@@ -252,7 +252,8 @@ public sealed partial class DotnetCliTestBackend(
                 ],
                 Path.GetDirectoryName(Path.GetFullPath(target))!) with
             {
-                OnOutput = onOutput
+                OnOutput = onOutput,
+                OutputLimit = TestOutput.TailLength
             },
             cancellationToken).ConfigureAwait(false);
 

@@ -423,6 +423,20 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_asks_the_command_to_keep_only_the_tail_of_a_run()
+    {
+        // Arrange
+        var runner = new RecordingCommandRunner();
+        var backend = new DotnetCliTestBackend(runner, new InMemoryTestResultStore());
+
+        // Act
+        await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.Equal(TestOutput.TailLength, runner.LastRequest!.OutputLimit);
+    }
+
+    [Fact]
     public async Task It_keeps_the_tail_of_a_long_run()
     {
         // Arrange
