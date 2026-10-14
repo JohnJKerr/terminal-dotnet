@@ -52,73 +52,22 @@ public sealed partial class DotnetCliTestBackend(
 
     private static IReadOnlyList<TestCase> DiscoveredTests(string[] lines, string target)
     {
-        var announced = AnnouncedAssemblies(lines);
         int[] starts = [0, .. lines.Index().Where(line => IsRunHeader(line.Item)).Select(line => line.Index)];
         return starts
             .Zip([.. starts.Skip(1), lines.Length], (start, end) => lines[start..end])
-            .SelectMany(section => TestsListedIn(section, target, announced))
+            .SelectMany(section => TestsListedIn(section, target))
             .DistinctBy(test => (test.FullyQualifiedName, test.DisplayName, test.ProjectPath))
             .ToArray();
     }
 
-    private static IReadOnlyList<AnnouncedAssembly> AnnouncedAssemblies(string[] lines) =>
-        lines
-            .Where(IsRunHeader)
-            .Select(AnnouncedAssembly.From)
-            .OfType<AnnouncedAssembly>()
-            .DistinctBy(assembly => assembly.ProjectPath)
-            .ToArray();
-
-    private static IEnumerable<TestCase> TestsListedIn(
-        string[] section,
-        string target,
-        IReadOnlyList<AnnouncedAssembly> announced)
+    private static IEnumerable<TestCase> TestsListedIn(string[] section, string target)
     {
         var project = section is [var header, ..] && IsRunHeader(header) ? TestTarget(header) ?? target : target;
         return section
             .SkipWhile(line => !line.Contains("The following Tests are available:", StringComparison.Ordinal))
             .Skip(1)
             .Where(NamesATest)
-            .Select(line => DiscoveredTest(line.Trim(), OwningProject(line, project, announced)));
-    }
-
-    private static string OwningProject(
-        string discoveredName,
-        string sectionProject,
-        IReadOnlyList<AnnouncedAssembly> announced)
-    {
-        var fullyQualifiedName = FullyQualifiedNameFrom(discoveredName.Trim());
-        var matches = announced.Where(assembly => assembly.Owns(fullyQualifiedName)).ToArray();
-        if (matches.Length == 0)
-        {
-            return sectionProject;
-        }
-
-        var longest = matches.Max(assembly => assembly.Name.Length);
-        var best = matches.Where(assembly => assembly.Name.Length == longest).ToArray();
-        return best.Length == 1
-            ? best[0].ProjectPath
-            : best.FirstOrDefault(assembly => assembly.ProjectPath == sectionProject)?.ProjectPath ?? best[0].ProjectPath;
-    }
-
-    private sealed record AnnouncedAssembly(string Name, string ProjectPath)
-    {
-        public static AnnouncedAssembly? From(string header)
-        {
-            var project = TestTarget(header);
-            if (project is null)
-            {
-                return null;
-            }
-
-            var framework = header.IndexOf(" (", RunHeader.Length, StringComparison.Ordinal);
-            var name = Path.GetFileNameWithoutExtension(header[RunHeader.Length..framework].Trim());
-            return new AnnouncedAssembly(name, project);
-        }
-
-        public bool Owns(string fullyQualifiedName) =>
-            fullyQualifiedName.Equals(Name, StringComparison.Ordinal) ||
-            fullyQualifiedName.StartsWith(Name + ".", StringComparison.Ordinal);
+            .Select(line => DiscoveredTest(line.Trim(), project));
     }
 
     private static bool IsRunHeader(string line) => line.StartsWith(RunHeader, StringComparison.Ordinal);
