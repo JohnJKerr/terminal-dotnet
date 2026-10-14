@@ -10,16 +10,16 @@ public sealed class WhenStreamingRunOutput
     public async Task It_names_the_batch_the_output_belongs_to()
     {
         // Arrange
-        var reported = new List<TestRunUpdate>();
+        var reported = new RecordedProgress();
         var backend = new DotnetCliTestBackend(
             new StreamingCommandRunner("Adds item running"),
             new InMemoryTestResultStore());
 
         // Act
-        await backend.RunAsync([Cart], new Progress<TestRunUpdate>(reported.Add));
+        await backend.RunAsync([Cart], reported);
 
         // Assert
-        Assert.Equal("Cart.Tests (batch 1 of 1)", reported[^1].Label);
+        Assert.Equal("Cart.Tests (batch 1 of 1)", reported.Updates[^1].Label);
     }
 
     [Fact]
@@ -27,16 +27,16 @@ public sealed class WhenStreamingRunOutput
     {
         // Arrange
         var written = new string('a', 8) + new string('b', TestOutput.TailLength);
-        var reported = new List<TestRunUpdate>();
+        var reported = new RecordedProgress();
         var backend = new DotnetCliTestBackend(
             new StreamingCommandRunner(written),
             new InMemoryTestResultStore());
 
         // Act
-        await backend.RunAsync([Cart], new Progress<TestRunUpdate>(reported.Add));
+        await backend.RunAsync([Cart], reported);
 
         // Assert
-        Assert.Equal(new string('b', TestOutput.TailLength), reported[^1].Output);
+        Assert.Equal(new string('b', TestOutput.TailLength), reported.Updates[^1].Output);
     }
 
     [Fact]

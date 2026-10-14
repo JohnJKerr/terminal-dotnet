@@ -1,4 +1,5 @@
 using TerminalDotnet.Testing;
+using TerminalDotnet.Tests.Fakes;
 using Xunit;
 
 namespace TerminalDotnet.Tests.Tests;
@@ -46,15 +47,15 @@ public sealed class WhenRunningTestsInTheBackground
     public async Task It_passes_running_output_through()
     {
         // Arrange
-        var reported = new List<TestRunUpdate>();
+        var reported = new RecordedProgress();
         var test = new TestCase("Shop.Tests.Adds", "Adds", "Shop.csproj");
 
         // Act
         await new BackgroundTestBackend(new ReportingTests())
-            .RunAsync([test], new Progress<TestRunUpdate>(reported.Add));
+            .RunAsync([test], reported);
 
         // Assert
-        Assert.Equal("Cart.Tests (batch 1 of 1)", reported.Single().Label);
+        Assert.Equal("Cart.Tests (batch 1 of 1)", reported.Updates.Single().Label);
     }
 
     private sealed class RecordingTests : ITestBackend
