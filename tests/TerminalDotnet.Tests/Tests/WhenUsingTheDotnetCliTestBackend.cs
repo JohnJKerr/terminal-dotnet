@@ -104,6 +104,28 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_files_a_test_under_a_project_whose_folder_has_parentheses()
+    {
+        // Arrange
+        var assembly = TestPaths.In("Work (Shop)", "Cart.Tests", "bin", "Debug", "net10.0", "Cart.Tests.dll");
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, $"""
+                Test run for {assembly} (.NETCoreApp,Version=v10.0)
+                The following Tests are available:
+                    Cart.Tests.WhenAdding.It_adds_the_item
+                """, "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var tests = await backend.DiscoverAsync(TestPaths.In("Shop.sln"));
+
+        // Assert
+        Assert.Equal(
+            [TestPaths.In("Work (Shop)", "Cart.Tests", "Cart.Tests.csproj")],
+            tests.Select(test => test.ProjectPath));
+    }
+
+    [Fact]
     public async Task It_reports_an_assembly_that_listed_no_tests_as_a_failure()
     {
         // Arrange

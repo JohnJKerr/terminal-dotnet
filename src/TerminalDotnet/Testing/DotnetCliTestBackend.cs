@@ -99,8 +99,8 @@ public sealed partial class DotnetCliTestBackend(
 
     private static string? TestTarget(string header)
     {
-        var framework = header.IndexOf(" (", RunHeader.Length, StringComparison.Ordinal);
-        return framework < 0 ? null : ProjectTarget(header[RunHeader.Length..framework]);
+        var framework = header.LastIndexOf(" (", StringComparison.Ordinal);
+        return framework < RunHeader.Length ? null : ProjectTarget(header[RunHeader.Length..framework]);
     }
 
     private static string ProjectTarget(string assemblyPath)
