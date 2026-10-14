@@ -25,7 +25,7 @@ public sealed class WhenARunFailsAfterAnEarlierRun
         await retry;
 
         // Assert
-        Assert.Equal("Running 1 test...", snapshot.StatusLine);
+        Assert.Equal("Running Shop.Tests (1 of 1)...", snapshot.StatusLine);
     }
 
     private sealed class RetryingBackend(Task<TestRun> retry) : ITestBackend

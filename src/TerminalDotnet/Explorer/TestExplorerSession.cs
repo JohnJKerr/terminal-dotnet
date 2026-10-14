@@ -470,19 +470,19 @@ public sealed class TestExplorerSession(
     {
         lastRunTests = Snapshot.Of(tests);
         lastRunMembers = tests.ToHashSet();
-        activeTests.Clear();
-        activeTests.UnionWith(tests);
-        State = State with
-        {
-            Status = ExplorerStatus.Running,
-            VisibleNodes = CurrentNodes(),
-            Message = $"Running {CountedNoun.Of(tests.Count, "test")}...",
-            Diagnostic = null
-        };
-        TestRun run;
+        var projects = tests.GroupBy(test => test.ProjectPath).ToArray();
+        var runs = new List<TestRun>();
         try
         {
-            run = await backend.RunAsync(tests, cancellationToken);
+            for (var index = 0; index < projects.Length; index++)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var projectTests = Snapshot.Of(projects[index]);
+                ShowProjectRunning(projectTests, index, projects.Length);
+                var run = await backend.RunAsync(projectTests, cancellationToken);
+                runs.Add(run);
+                RecordProject(run);
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -495,14 +495,49 @@ public sealed class TestExplorerSession(
             return;
         }
 
+        var completed = Combined(runs);
+        EndRun(
+            completed.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed,
+            completed.Output,
+            completed.Diagnostic);
+        State = State with { LastRun = completed, SourceLocation = FailureSourceFrom(completed) };
+    }
+
+    private void ShowProjectRunning(IReadOnlyList<TestCase> projectTests, int index, int projectCount)
+    {
+        activeTests.Clear();
+        activeTests.UnionWith(projectTests);
+        var name = Path.GetFileNameWithoutExtension(projectTests[0].ProjectPath);
+        State = State with
+        {
+            Status = ExplorerStatus.Running,
+            VisibleNodes = CurrentNodes(),
+            Message = $"Running {name} ({index + 1} of {projectCount})...",
+            Diagnostic = null
+        };
+    }
+
+    private void RecordProject(TestRun run)
+    {
         foreach (var (test, outcome) in CompletedOutcomes(run))
         {
             completedOutcomes[test] = outcome;
         }
 
-        EndRun(run.Passed ? ExplorerStatus.Ready : ExplorerStatus.Failed, run.Output, run.Diagnostic);
-        State = State with { LastRun = run, SourceLocation = FailureSourceFrom(run) };
+        activeTests.Clear();
+        State = State with { VisibleNodes = CurrentNodes() };
     }
+
+    private static TestRun Combined(IReadOnlyList<TestRun> runs) =>
+        runs.Count == 1
+            ? runs[0]
+            : new TestRun(
+                runs.All(run => run.Passed),
+                TestOutput.Tail(string.Join(Environment.NewLine, runs.Select(run => run.Output))),
+                runs.SelectMany(run => run.Results).ToArray())
+            {
+                Diagnostic = runs.Select(run => run.Diagnostic).FirstOrDefault(diagnostic => diagnostic is not null)
+            };
 
     private void EndRun(ExplorerStatus status, string message, string? diagnostic)
     {

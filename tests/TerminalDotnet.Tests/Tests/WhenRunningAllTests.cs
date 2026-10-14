@@ -38,7 +38,7 @@ public sealed class WhenRunningAllTests
         await session.DispatchAsync(new ExplorerCommand.RunSelected());
 
         // Assert
-        Assert.Equal([Cart, Orders], backend.LastRun);
+        Assert.Equal([Cart, Orders], backend.RunHistory.SelectMany(run => run));
     }
 
     [Fact]

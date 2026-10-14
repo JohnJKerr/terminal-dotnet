@@ -1188,7 +1188,11 @@ internal sealed class TestRunnerApplication(
                 toastGeneration = ++testRunToastGeneration;
                 sinceTestRunStarted.Restart();
                 toast.Show(application, TestRunToast.Running(session.State, TimeSpan.Zero));
-                toast.KeepTurning(application, () => TestRunToast.Running(session.State, sinceTestRunStarted.Elapsed));
+                toast.KeepTurning(application, () =>
+                {
+                    RenderTests();
+                    return TestRunToast.Running(session.State, sinceTestRunStarted.Elapsed);
+                });
             }
 
             await run;
