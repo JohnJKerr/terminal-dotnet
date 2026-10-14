@@ -42,9 +42,20 @@ public sealed class PanelStartup(
         .. Pending(issues.State.Loading, token => issues.LoadAsync(target, token)),
         .. Pending(
             tests.State.Status == ExplorerStatus.Loading,
-            token => tests.LoadAsync(target, token)),
+            DiscoverUnlessBrokenAsync),
         .. Pending(issues.State.FlagsLoading, token => issues.LoadFlagsAsync(target, token))
     ];
+
+    private Task DiscoverUnlessBrokenAsync(CancellationToken cancellationToken)
+    {
+        if (issues.BuildFailed)
+        {
+            tests.WaitForBuild();
+            return Task.CompletedTask;
+        }
+
+        return tests.LoadAsync(target, cancellationToken);
+    }
 
     private static IEnumerable<Func<CancellationToken, Task>> Pending(
         bool stillLoading,

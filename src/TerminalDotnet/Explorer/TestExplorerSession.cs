@@ -23,6 +23,7 @@ public sealed class TestExplorerSession(
         new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
 
     private const string DiscoveringMessage = "Discovering tests...";
+    public const string WaitingForBuildMessage = "Tests are listed once the build succeeds.";
     private const string RootNodeId = "all-tests";
 
     public ExplorerState State { get; private set; } =
@@ -52,6 +53,9 @@ public sealed class TestExplorerSession(
         State = State with { Status = before.Status, Message = before.Message };
         beforeRediscovery = null;
     }
+
+    public void WaitForBuild() =>
+        State = new ExplorerState(ExplorerStatus.Failed, [], 0, WaitingForBuildMessage);
 
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
