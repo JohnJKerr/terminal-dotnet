@@ -19,7 +19,7 @@ public sealed partial class DotnetCliTestBackend(
         CancellationToken cancellationToken = default)
     {
         var request = DotnetProcess.Request(
-            ["test", target, "--list-tests", "--no-build", .. DotnetProcess.Switches()],
+            ["test", target, "--list-tests", "--no-build", .. DotnetProcess.OneProjectAtATimeSwitches()],
             Path.GetDirectoryName(Path.GetFullPath(target))!);
         var result = await commandRunner.RunAsync(request, cancellationToken).ConfigureAwait(false);
         if (result.ExitCode != 0 || ListedNothing(result.StandardOutput))

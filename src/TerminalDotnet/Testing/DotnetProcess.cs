@@ -10,6 +10,9 @@ public static class DotnetProcess
     public static IReadOnlyList<string> Switches() =>
         [NoLogo, TerminalLoggerOff, DoNotReuseBuildNodes, CpuSwitch()];
 
+    public static IReadOnlyList<string> OneProjectAtATimeSwitches() =>
+        [NoLogo, TerminalLoggerOff, DoNotReuseBuildNodes, OneNode];
+
     public static string CpuSwitch() => $"-m:{Math.Max(1, System.Environment.ProcessorCount - 1)}";
 
     public static CommandRequest Request(IReadOnlyList<string> arguments, string workingDirectory) =>
@@ -18,4 +21,5 @@ public static class DotnetProcess
     private const string NoLogo = "--nologo";
     private const string TerminalLoggerOff = "--tl:off";
     private const string DoNotReuseBuildNodes = "-nodeReuse:false";
+    private const string OneNode = "-m:1";
 }

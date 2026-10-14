@@ -20,7 +20,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
         Assert.Equal(
             [
                 "dotnet", "test", "/repo/Shop.sln", "--list-tests", "--no-build",
-                "--nologo", "--tl:off", "-nodeReuse:false", DotnetProcess.CpuSwitch()
+                "--nologo", "--tl:off", "-nodeReuse:false", "-m:1"
             ],
             [runner.LastRequest!.FileName, .. runner.LastRequest.Arguments]);
     }
