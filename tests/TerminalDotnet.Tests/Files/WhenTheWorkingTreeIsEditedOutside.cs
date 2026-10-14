@@ -76,6 +76,36 @@ public sealed class WhenTheWorkingTreeIsEditedOutside
     }
 
     [Fact]
+    public void An_overflow_while_a_build_is_running_is_not_worth_reloading_for()
+    {
+        // Act
+        var counts = WorkspaceEdits.CountsWhileBuilding("", building: true);
+
+        // Assert
+        Assert.False(counts);
+    }
+
+    [Fact]
+    public void An_overflow_once_the_build_has_finished_is()
+    {
+        // Act
+        var counts = WorkspaceEdits.CountsWhileBuilding("", building: false);
+
+        // Assert
+        Assert.True(counts);
+    }
+
+    [Fact]
+    public void A_source_edit_while_a_build_is_running_still_is()
+    {
+        // Act
+        var counts = WorkspaceEdits.CountsWhileBuilding("src/Order.cs", building: true);
+
+        // Assert
+        Assert.True(counts);
+    }
+
+    [Fact]
     public void A_windows_separator_marks_out_the_same_folders()
     {
         // Act

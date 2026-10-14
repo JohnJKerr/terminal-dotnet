@@ -149,10 +149,18 @@ internal sealed class TestRunnerApplication(
             Path.GetDirectoryName(Path.GetFullPath(target))!,
             path =>
             {
+                if (!WorkspaceEdits.CountsWhileBuilding(path, Building()))
+                {
+                    return;
+                }
+
                 outsideEdits.Noticed(path, sinceWatching.Elapsed);
                 editsSinceTheBuild.Noticed(path);
             });
     }
+
+    private bool Building() =>
+        issueSession.State.Loading || session.State.Status == ExplorerStatus.Loading;
 
     private bool RunTerminal()
     {
@@ -270,24 +278,16 @@ internal sealed class TestRunnerApplication(
     }
 
     /// <summary>
-    /// Repaints while discovery is out at `dotnet test`, so the marker beside
-    /// "Discovering tests..." turns instead of the panel sitting blank. The
-    /// draw is asked for explicitly because nothing else wakes the loop while
-    /// the reader is waiting.
+    /// Turns the marker beside "Discovering tests..." while discovery is out.
+    /// The timeout already woke the loop, so the tick only has to move the
+    /// label; redrawing the whole window on every frame stalls a large one.
     /// </summary>
     private void TurnActivityMarker(IApplication application) =>
-        application.AddTimeout(ActivityMarker.FrameDuration, () =>
-        {
-            if (session.State.Status != ExplorerStatus.Loading)
-            {
-                sinceLoadStarted.Stop();
-                return false;
-            }
-
-            RenderTests();
-            application.LayoutAndDraw(true);
-            return true;
-        });
+        WorkingIndicator.Turn(
+            new ApplicationFrameClock(application),
+            () => session.State.Status == ExplorerStatus.Loading,
+            RenderTests,
+            () => sinceLoadStarted.Stop());
 
     private Task FillPanelsAsync(
         IApplication application,
