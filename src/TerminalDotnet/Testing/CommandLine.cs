@@ -8,8 +8,6 @@ public sealed record CommandRequest(
     string WorkingDirectory,
     bool CaptureOutput = true)
 {
-    /// <summary>Text the command reads instead of a terminal. Empty leaves the
-    /// command attached to whatever standard input it inherited.</summary>
     public string StandardInput { get; init; } = "";
 
     /// <summary>Variables added to the process's own environment. Empty leaves
@@ -34,7 +32,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
             WorkingDirectory = request.WorkingDirectory,
             RedirectStandardOutput = request.CaptureOutput,
             RedirectStandardError = request.CaptureOutput,
-            RedirectStandardInput = request.StandardInput.Length > 0,
+            RedirectStandardInput = true,
             UseShellExecute = false
         };
         foreach (var variable in request.Environment)
@@ -72,17 +70,13 @@ public sealed class ProcessCommandRunner : ICommandRunner
             await standardError.ConfigureAwait(false));
     }
 
-    /// <summary>The stream is closed once the text is written, because a
-    /// command that reads standard input waits for its end before it acts.
-    /// </summary>
     private static async Task WriteStandardInputAsync(Process process, CommandRequest request)
     {
-        if (request.StandardInput.Length == 0)
+        if (request.StandardInput.Length > 0)
         {
-            return;
+            await process.StandardInput.WriteAsync(request.StandardInput).ConfigureAwait(false);
         }
 
-        await process.StandardInput.WriteAsync(request.StandardInput).ConfigureAwait(false);
         process.StandardInput.Close();
     }
 
