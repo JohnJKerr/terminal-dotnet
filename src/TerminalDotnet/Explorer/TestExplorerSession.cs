@@ -53,14 +53,46 @@ public sealed class TestExplorerSession(
 
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
+        var rediscovering = beforeRediscovery;
+        var previouslyDiscovered = discoveredTests;
+        var previouslyUpdated = updatedSuites;
         try
         {
-            State = await DiscoveredStateAsync(target, cancellationToken);
+            var discovered = await DiscoveredStateAsync(target, cancellationToken);
+            if (rediscovering is not null && discovered.DiscoveredTestCount == 0)
+            {
+                State = Kept(rediscovering, previouslyDiscovered, previouslyUpdated, "Discovery reported no tests.");
+                return;
+            }
+
+            State = discovered;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            State = new ExplorerState(ExplorerStatus.Failed, [], 0, exception.Message);
+            State = rediscovering is not null
+                ? Kept(rediscovering, previouslyDiscovered, previouslyUpdated, exception.Message)
+                : new ExplorerState(ExplorerStatus.Failed, [], 0, exception.Message);
         }
+    }
+
+    /// <summary>A rediscovery that fails, or that comes back with nothing, has
+    /// not earned the right to take the tree the reader was looking at. The
+    /// reason is said on the status line; the rows stay.</summary>
+    private ExplorerState Kept(
+        ExplorerState previous,
+        IReadOnlyList<TestCase> tests,
+        IReadOnlyDictionary<string, TestNodeUpdate> suites,
+        string reason)
+    {
+        discoveredTests = tests;
+        updatedSuites = suites;
+        beforeRediscovery = null;
+        return previous with
+        {
+            Status = ExplorerStatus.Failed,
+            Message = reason,
+            Diagnostic = reason
+        };
     }
 
     private async Task<ExplorerState> DiscoveredStateAsync(

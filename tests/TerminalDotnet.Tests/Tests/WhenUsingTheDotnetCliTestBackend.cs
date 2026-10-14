@@ -49,6 +49,56 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_reports_an_assembly_that_listed_no_tests_as_a_failure()
+    {
+        // Arrange
+        var output = """
+            Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+            The following Tests are available:
+            No test is available in /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll. Make sure that test discoverer & executors are registered and platform & framework version settings are appropriate and try again.
+            """;
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, output, "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var failure = await DiscoveryFailureAsync(backend);
+
+        // Assert
+        Assert.Equal($"Test discovery failed: {output.Trim()}", failure);
+    }
+
+    [Fact]
+    public async Task It_reports_output_that_never_lists_a_suite_as_a_failure()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, "Build succeeded.", "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var failure = await DiscoveryFailureAsync(backend);
+
+        // Assert
+        Assert.Equal("Test discovery failed: Build succeeded.", failure);
+    }
+
+    [Fact]
+    public async Task It_reports_the_build_output_when_discovery_fails()
+    {
+        // Arrange
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(1, "error CS1513: } expected", "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var failure = await DiscoveryFailureAsync(backend);
+
+        // Assert
+        Assert.Equal("Test discovery failed: error CS1513: } expected", failure);
+    }
+
+    [Fact]
     public async Task It_returns_the_reported_tests_when_discovering()
     {
         // Arrange
@@ -488,6 +538,19 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             "Accepts price(value: 1)",
             "Accepts price(value: 2)"
         ], run.Results.Select(result => result.Test.DisplayName));
+    }
+
+    private static async Task<string> DiscoveryFailureAsync(DotnetCliTestBackend backend)
+    {
+        try
+        {
+            await backend.DiscoverAsync("/repo/Shop.sln");
+            return "";
+        }
+        catch (InvalidOperationException exception)
+        {
+            return exception.Message;
+        }
     }
 
     private static RecordingCommandRunner ListingCartTests() => new(new CommandResult(0, """

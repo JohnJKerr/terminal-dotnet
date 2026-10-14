@@ -23,13 +23,30 @@ public sealed partial class DotnetCliTestBackend(
             ["test", target, "--list-tests", "--nologo", "--tl:off", "-m:1"],
             Path.GetDirectoryName(Path.GetFullPath(target))!);
         var result = await commandRunner.RunAsync(request, cancellationToken).ConfigureAwait(false);
-        if (result.ExitCode != 0)
+        if (result.ExitCode != 0 || ListedNothing(result.StandardOutput))
         {
-            throw new InvalidOperationException($"Test discovery failed: {result.StandardError}");
+            throw new InvalidOperationException($"Test discovery failed: {Described(result)}");
         }
 
         return DiscoveredTests(result.StandardOutput.Split('\n'), target);
     }
+
+    /// <summary>A host that cannot load an assembly still exits 0, and says so
+    /// in a sentence rather than a test row. Output that never reaches a list
+    /// at all is the same silence. Either one would otherwise publish an empty
+    /// tree and look like the suite had no tests.</summary>
+    private static bool ListedNothing(string output) =>
+        output.Contains("No test is available", StringComparison.Ordinal) ||
+        !output.Contains("The following Tests are available:", StringComparison.Ordinal);
+
+    /// <summary>The compiler writes its errors to standard output, so a
+    /// failure reported from standard error alone is a blank sentence.</summary>
+    private static string Described(CommandResult result) =>
+        string.Join(
+            Environment.NewLine,
+            new[] { result.StandardOutput, result.StandardError }
+                .Select(part => part.Trim())
+                .Where(part => part.Length > 0));
 
     private const string RunHeader = "Test run for ";
 

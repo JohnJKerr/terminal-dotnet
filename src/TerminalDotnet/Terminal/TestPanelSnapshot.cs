@@ -41,14 +41,27 @@ public sealed record TestPanelSnapshot(
     // says what it is waiting for, with a marker that turns, rather than
     // sitting blank or claiming there are no tests. A rediscovery keeps the
     // tree it had, and the message is not laid over it.
-    private static string EmptyMessageFrom(ExplorerState state, TimeSpan elapsed) =>
-        state.Status == ExplorerStatus.Loading && state.VisibleNodes.Count == 0
-            ? ActivityMarker.Marking(state.Message, elapsed)
-            : PanelEmptyState.For(
-                "tests",
-                state.VisibleNodes.Count,
-                state.SearchQuery,
-                state.ActiveFilter);
+    private static string EmptyMessageFrom(ExplorerState state, TimeSpan elapsed)
+    {
+        if (state.Status == ExplorerStatus.Loading && state.VisibleNodes.Count == 0)
+        {
+            return ActivityMarker.Marking(state.Message, elapsed);
+        }
+
+        // A first discovery that failed has no rows to keep. The reason has to
+        // stand where the tree would be: the status line is hidden whenever
+        // another panel has the focus.
+        if (state.Status == ExplorerStatus.Failed && state.VisibleNodes.Count == 0)
+        {
+            return state.Message;
+        }
+
+        return PanelEmptyState.For(
+            "tests",
+            state.VisibleNodes.Count,
+            state.SearchQuery,
+            state.ActiveFilter);
+    }
 
     // A run that failed, was cancelled, or came back without results leaves
     // the run before it on the state. The diagnostic is shown ahead of that
