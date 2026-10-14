@@ -33,4 +33,32 @@ public sealed class WhenACommandWritesPastThePipe
             Directory.Delete(directory, recursive: true);
         }
     }
+
+    [PosixFact(NeedsAPosixShell, Timeout = 10_000)]
+    public async Task It_reports_output_before_the_command_finishes()
+    {
+        // Arrange
+        var seen = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var runner = new ProcessCommandRunner();
+        var run = runner.RunAsync(new CommandRequest(
+            "sh",
+            ["-c", "printf 'started\\n'; sleep 0.3; printf 'done\\n'"],
+            Environment.CurrentDirectory)
+        {
+            OnOutput = chunk =>
+            {
+                if (chunk.Contains("started", StringComparison.Ordinal))
+                {
+                    seen.TrySetResult();
+                }
+            }
+        });
+
+        // Act
+        await seen.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        // Assert
+        Assert.False(run.IsCompleted);
+        await run;
+    }
 }

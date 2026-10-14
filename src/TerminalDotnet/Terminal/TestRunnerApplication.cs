@@ -1262,12 +1262,23 @@ internal sealed class TestRunnerApplication(
     private void ShowTestOutput(IApplication application)
     {
         var snapshot = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
-        dialogs.ShowText(
-            application,
-            $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close",
-            AnsiTestOutput.ToCells(snapshot.SelectedOutput),
-            wordWrap: true);
+        var title = OutputTitle(snapshot);
+        var lines = AnsiTestOutput.ToCells(snapshot.SelectedOutput);
+        if (session.State.Status != ExplorerStatus.Running)
+        {
+            dialogs.ShowText(application, title, lines, wordWrap: true);
+            return;
+        }
+
+        dialogs.ShowFollowing(application, title, lines, wordWrap: true, () =>
+        {
+            var live = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
+            return (OutputTitle(live), live.SelectedOutput);
+        });
     }
+
+    private static string OutputTitle(TestPanelSnapshot snapshot) =>
+        $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close";
 
     private void ShowCommands(IApplication application) => dialogs.ShowText(
         application,

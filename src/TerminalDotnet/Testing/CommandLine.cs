@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 
 namespace TerminalDotnet.Testing;
 
@@ -9,6 +10,8 @@ public sealed record CommandRequest(
     bool CaptureOutput = true)
 {
     public string StandardInput { get; init; } = "";
+
+    public Action<string>? OnOutput { get; init; }
 
     public IReadOnlyDictionary<string, string> Environment { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
@@ -44,10 +47,10 @@ public sealed class ProcessCommandRunner : ICommandRunner
             throw new InvalidOperationException($"Could not start {request.FileName}.");
         await WriteStandardInputAsync(process, request).ConfigureAwait(false);
         var standardOutput = request.CaptureOutput
-            ? process.StandardOutput.ReadToEndAsync(CancellationToken.None)
+            ? ReadAllAsync(process.StandardOutput, request.OnOutput)
             : Task.FromResult(string.Empty);
         var standardError = request.CaptureOutput
-            ? process.StandardError.ReadToEndAsync(CancellationToken.None)
+            ? ReadAllAsync(process.StandardError, request.OnOutput)
             : Task.FromResult(string.Empty);
         try
         {
@@ -70,6 +73,24 @@ public sealed class ProcessCommandRunner : ICommandRunner
         foreach (var variable in request.Environment)
         {
             startInfo.Environment[variable.Key] = variable.Value;
+        }
+    }
+
+    private static async Task<string> ReadAllAsync(StreamReader reader, Action<string>? onOutput)
+    {
+        var builder = new StringBuilder();
+        var buffer = new char[4096];
+        while (true)
+        {
+            var read = await reader.ReadAsync(buffer.AsMemory()).ConfigureAwait(false);
+            if (read == 0)
+            {
+                return builder.ToString();
+            }
+
+            var chunk = new string(buffer, 0, read);
+            builder.Append(chunk);
+            onOutput?.Invoke(chunk);
         }
     }
 

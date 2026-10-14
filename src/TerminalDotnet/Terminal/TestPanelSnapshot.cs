@@ -138,6 +138,11 @@ public sealed record TestPanelSnapshot(
 
     private static string SelectedOutputTitleFrom(ExplorerState state)
     {
+        if (state.Status == ExplorerStatus.Running && state.RunningLabel is { Length: > 0 } label)
+        {
+            return $"Test Output — {label}";
+        }
+
         if (state.LastRun is null || state.VisibleNodes.Count == 0)
         {
             return "Test Output";
@@ -151,6 +156,11 @@ public sealed record TestPanelSnapshot(
     // that explains it. Only a completed run may fall back to its own output.
     private static string SelectedOutputFrom(ExplorerState state)
     {
+        if (state.Status == ExplorerStatus.Running)
+        {
+            return state.RunningOutput.Length > 0 ? state.RunningOutput : "Waiting for test output...";
+        }
+
         if (state.Diagnostic is not null)
         {
             return state.Message;

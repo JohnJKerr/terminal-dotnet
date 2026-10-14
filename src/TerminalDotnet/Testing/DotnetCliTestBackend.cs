@@ -168,8 +168,14 @@ public sealed partial class DotnetCliTestBackend(
         return Path.Combine(projectDirectory, $"{projectName}.csproj");
     }
 
+    public Task<TestRun> RunAsync(
+        IReadOnlyCollection<TestCase> tests,
+        CancellationToken cancellationToken = default) =>
+        RunAsync(tests, progress: null, cancellationToken);
+
     public async Task<TestRun> RunAsync(
         IReadOnlyCollection<TestCase> tests,
+        IProgress<TestRunUpdate>? progress,
         CancellationToken cancellationToken = default)
     {
         if (tests.Count == 0)
@@ -181,7 +187,11 @@ public sealed partial class DotnetCliTestBackend(
         foreach (var project in tests.GroupBy(test => test.ProjectPath))
         {
             cancellationToken.ThrowIfCancellationRequested();
-            runs.Add(await RunProjectAsync(project.Key, project.ToArray(), cancellationToken).ConfigureAwait(false));
+            runs.Add(await RunProjectAsync(
+                project.Key,
+                project.ToArray(),
+                progress,
+                cancellationToken).ConfigureAwait(false));
         }
 
         return Combined(runs);
@@ -190,18 +200,31 @@ public sealed partial class DotnetCliTestBackend(
     private async Task<TestRun> RunProjectAsync(
         string target,
         IReadOnlyCollection<TestCase> tests,
+        IProgress<TestRunUpdate>? progress,
         CancellationToken cancellationToken)
     {
+        var batches = FilterBatches(tests).ToArray();
+        var reported = new ReportedTail(progress);
         var runs = new List<TestRun>();
-        foreach (var batch in FilterBatches(tests))
+        for (var index = 0; index < batches.Length; index++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            reported.Label(BatchLabel(target, index, batches.Length));
             var build = runs.Count == 0;
-            runs.Add(await RunBatchAsync(target, batch, build, cancellationToken).ConfigureAwait(false));
+            runs.Add(await RunBatchAsync(
+                target,
+                batches[index],
+                build,
+                reported.Append,
+                cancellationToken).ConfigureAwait(false));
+            reported.Flush();
         }
 
         return Combined(runs);
     }
+
+    private static string BatchLabel(string target, int index, int batchCount) =>
+        $"{Path.GetFileNameWithoutExtension(target)} (batch {index + 1} of {batchCount})";
 
     private static IEnumerable<IReadOnlyList<TestCase>> FilterBatches(IReadOnlyCollection<TestCase> tests)
     {
@@ -234,12 +257,19 @@ public sealed partial class DotnetCliTestBackend(
         string target,
         IReadOnlyList<TestCase> tests,
         bool build,
+        Action<string> onOutput,
         CancellationToken cancellationToken)
     {
         var resultPath = resultStore.CreatePath();
         try
         {
-            return await RunBatchIntoAsync(resultPath, target, tests, build, cancellationToken).ConfigureAwait(false);
+            return await RunBatchIntoAsync(
+                resultPath,
+                target,
+                tests,
+                build,
+                onOutput,
+                cancellationToken).ConfigureAwait(false);
         }
         finally
         {
@@ -252,6 +282,7 @@ public sealed partial class DotnetCliTestBackend(
         string target,
         IReadOnlyList<TestCase> tests,
         bool build,
+        Action<string> onOutput,
         CancellationToken cancellationToken)
     {
         var filter = string.Join('|', tests.Select(FilterClause));
@@ -270,7 +301,10 @@ public sealed partial class DotnetCliTestBackend(
                     DotnetProcess.CpuSwitch(),
                     .. BuildSwitches(build)
                 ],
-                Path.GetDirectoryName(Path.GetFullPath(target))!),
+                Path.GetDirectoryName(Path.GetFullPath(target))!) with
+            {
+                OnOutput = onOutput
+            },
             cancellationToken).ConfigureAwait(false);
 
         var output = string.IsNullOrWhiteSpace(result.StandardError)
@@ -431,4 +465,62 @@ public sealed partial class DotnetCliTestBackend(
 
     [GeneratedRegex(@" in (?<file>.+):line (?<line>\d+)")]
     private static partial Regex SourceLocation();
+
+    private sealed class ReportedTail(IProgress<TestRunUpdate>? progress)
+    {
+        private readonly object gate = new();
+        private string label = "";
+        private string tail = "";
+        private bool reported;
+        private DateTime reportedAt = DateTime.MinValue;
+
+        public void Label(string next)
+        {
+            lock (gate)
+            {
+                label = next;
+            }
+
+            Report(force: true);
+        }
+
+        public void Append(string chunk)
+        {
+            lock (gate)
+            {
+                tail = TestOutput.Tail(tail + chunk);
+            }
+
+            Report(force: false);
+        }
+
+        public void Flush() => Report(force: true);
+
+        private void Report(bool force)
+        {
+            TestRunUpdate? update = null;
+            lock (gate)
+            {
+                var sinceReported = DateTime.UtcNow - reportedAt;
+                if (!force && !TestOutput.ReportDue(reported, sinceReported))
+                {
+                    return;
+                }
+
+                if (label.Length == 0 && tail.Length == 0)
+                {
+                    return;
+                }
+
+                reported = true;
+                reportedAt = DateTime.UtcNow;
+                update = new TestRunUpdate(label, tail);
+            }
+
+            if (update is not null)
+            {
+                progress?.Report(update);
+            }
+        }
+    }
 }

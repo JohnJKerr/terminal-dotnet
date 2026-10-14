@@ -474,6 +474,7 @@ public sealed class TestExplorerSession(
         lastRunMembers = tests.ToHashSet();
         var projects = tests.GroupBy(test => test.ProjectPath).ToArray();
         var runs = new List<TestRun>();
+        var progress = new Progress<TestRunUpdate>(ShowRunningOutput);
         try
         {
             for (var index = 0; index < projects.Length; index++)
@@ -481,7 +482,7 @@ public sealed class TestExplorerSession(
                 cancellationToken.ThrowIfCancellationRequested();
                 var projectTests = Snapshot.Of(projects[index]);
                 ShowProjectRunning(projectTests, index, projects.Length);
-                var run = await RunProjectWithinLimitAsync(projectTests, cancellationToken);
+                var run = await RunProjectWithinLimitAsync(projectTests, progress, cancellationToken);
                 runs.Add(run);
                 RecordProject(run);
             }
@@ -507,13 +508,14 @@ public sealed class TestExplorerSession(
 
     private async Task<TestRun> RunProjectWithinLimitAsync(
         IReadOnlyList<TestCase> projectTests,
+        IProgress<TestRunUpdate> progress,
         CancellationToken cancellationToken)
     {
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         limit.CancelAfter(runLimit);
         try
         {
-            return await backend.RunAsync(projectTests, limit.Token);
+            return await backend.RunAsync(projectTests, progress, limit.Token);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
@@ -551,9 +553,14 @@ public sealed class TestExplorerSession(
             Status = ExplorerStatus.Running,
             VisibleNodes = CurrentNodes(),
             Message = $"Running {name} ({index + 1} of {projectCount})...",
-            Diagnostic = null
+            Diagnostic = null,
+            RunningOutput = "",
+            RunningLabel = name
         };
     }
+
+    private void ShowRunningOutput(TestRunUpdate update) =>
+        State = State with { RunningOutput = update.Output, RunningLabel = update.Label };
 
     private void RecordProject(TestRun run)
     {
@@ -585,7 +592,9 @@ public sealed class TestExplorerSession(
             Status = status,
             VisibleNodes = CurrentNodes(),
             Message = message,
-            Diagnostic = diagnostic
+            Diagnostic = diagnostic,
+            RunningOutput = "",
+            RunningLabel = null
         };
     }
 
