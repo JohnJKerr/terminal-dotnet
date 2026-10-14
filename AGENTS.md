@@ -31,6 +31,7 @@ Keep terminal framework types and process details outside the explorer module.
 - Fix the cause, not its symptom. If a change makes something worse, undo or narrow that change rather than adding logic that compensates for it. For example, run `dotnet test --list-tests` with `-m:1` so each project's list follows its own header; don't guess a test's project from its namespace.
 - Bound what a process can cost while it is running, not afterwards. Keep only the tail of output you will show (`CommandRequest.OutputLimit`), and give anything that holds a shared gate a time limit.
 - Give each path to the same operation the same guards. Startup and rebuild both skip discovery after a failed build; a new entry point must do the same.
+- Apply progress updates as they are reported. `Progress<T>` queues each update on the thread pool, so state can show an update late or after the work has finished, and a test can read it before it lands. Use a synchronous `IProgress<T>` in production and `Fakes/RecordedProgress` in tests.
 - Parse SDK output defensively. Paths can contain spaces and parentheses, so anchor on the end of a line (for example, the last ` (`) rather than the first match.
 
 ## Tests
