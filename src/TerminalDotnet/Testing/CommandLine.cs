@@ -93,14 +93,6 @@ public sealed class ProcessCommandRunner : ICommandRunner
         await Task.WhenAll(readers).ConfigureAwait(false);
     }
 
-    private static void KillProcessTree(Process process)
-    {
-        try
-        {
-            process.Kill(entireProcessTree: true);
-        }
-        catch (Exception exception) when (exception is InvalidOperationException or NotSupportedException)
-        {
-        }
-    }
+    private static void KillProcessTree(Process process) =>
+        ProcessTree.Stop(() => process.Kill(entireProcessTree: true));
 }

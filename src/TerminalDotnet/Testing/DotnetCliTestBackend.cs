@@ -215,7 +215,7 @@ public sealed partial class DotnetCliTestBackend(
                     "--logger",
                     $"trx;LogFileName={resultPath}",
                     "--nologo",
-                    "--tl:on",
+                    "--tl:off",
                     "-nodeReuse:false",
                     DotnetProcess.CpuSwitch(),
                     .. BuildSwitches(build)
@@ -227,7 +227,7 @@ public sealed partial class DotnetCliTestBackend(
             ? result.StandardOutput
             : $"{result.StandardOutput}{Environment.NewLine}{result.StandardError}";
         var recorded = await RecordedResultsAsync(resultPath, tests, cancellationToken).ConfigureAwait(false);
-        return new TestRun(result.ExitCode == 0 && recorded.Results.Count > 0, output.Trim(), recorded.Results)
+        return new TestRun(result.ExitCode == 0 && recorded.Results.Count > 0, TestOutput.Tail(output.Trim()), recorded.Results)
         {
             Diagnostic = recorded.Diagnostic
         };
@@ -242,7 +242,7 @@ public sealed partial class DotnetCliTestBackend(
             ? runs[0]
             : new TestRun(
                 runs.All(run => run.Passed),
-                string.Join(Environment.NewLine, runs.Select(run => run.Output)),
+                TestOutput.Tail(string.Join(Environment.NewLine, runs.Select(run => run.Output))),
                 runs.SelectMany(run => run.Results).ToArray())
             {
                 Diagnostic = runs.Select(run => run.Diagnostic).FirstOrDefault(diagnostic => diagnostic is not null)

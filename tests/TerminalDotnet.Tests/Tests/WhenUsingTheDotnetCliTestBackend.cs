@@ -170,7 +170,7 @@ public sealed class WhenUsingTheDotnetCliTestBackend
             "--logger",
             "trx;LogFileName=/tmp/terminal-dotnet.trx",
             "--nologo",
-            "--tl:on",
+            "--tl:off",
             "-nodeReuse:false",
             DotnetProcess.CpuSwitch()
         ],
@@ -360,6 +360,22 @@ public sealed class WhenUsingTheDotnetCliTestBackend
 
         // Assert
         Assert.Equal("2 tests passed", run.Output);
+    }
+
+    [Fact]
+    public async Task It_keeps_the_tail_of_a_long_run()
+    {
+        // Arrange
+        var written = new string('a', 8) + new string('b', TestOutput.TailLength);
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, written, "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var run = await backend.RunAsync([AddsItem()]);
+
+        // Assert
+        Assert.Equal(new string('b', TestOutput.TailLength), run.Output);
     }
 
     [Fact]

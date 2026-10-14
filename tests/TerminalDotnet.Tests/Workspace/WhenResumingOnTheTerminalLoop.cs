@@ -69,6 +69,35 @@ public sealed class WhenResumingOnTheTerminalLoop
     }
 
     [Fact]
+    public void Work_handed_to_the_loop_is_run_by_the_loop()
+    {
+        // Arrange
+        var handed = 0;
+        var context = new TerminalLoopContext(_ => handed++);
+
+        // Act
+        context.Invoke(() => { });
+
+        // Assert
+        Assert.Equal(1, handed);
+    }
+
+    [Fact]
+    public void Work_handed_over_once_the_loop_has_ended_is_left_there()
+    {
+        // Arrange
+        var handed = 0;
+        var context = new TerminalLoopContext(_ => handed++);
+        context.Release();
+
+        // Act
+        context.Invoke(() => { });
+
+        // Assert
+        Assert.Equal(0, handed);
+    }
+
+    [Fact]
     public void Work_the_loop_already_ran_is_not_run_again_once_it_has_ended()
     {
         // Arrange
