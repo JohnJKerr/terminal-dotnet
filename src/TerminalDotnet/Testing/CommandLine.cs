@@ -13,6 +13,8 @@ public sealed record CommandRequest(
 
     public Action<string>? OnOutput { get; init; }
 
+    public int? OutputLimit { get; init; }
+
     public IReadOnlyDictionary<string, string> Environment { get; init; } =
         new Dictionary<string, string>(StringComparer.Ordinal);
 }
@@ -47,10 +49,10 @@ public sealed class ProcessCommandRunner : ICommandRunner
             throw new InvalidOperationException($"Could not start {request.FileName}.");
         await WriteStandardInputAsync(process, request).ConfigureAwait(false);
         var standardOutput = request.CaptureOutput
-            ? ReadAllAsync(process.StandardOutput, request.OnOutput)
+            ? ReadAllAsync(process.StandardOutput, request)
             : Task.FromResult(string.Empty);
         var standardError = request.CaptureOutput
-            ? ReadAllAsync(process.StandardError, request.OnOutput)
+            ? ReadAllAsync(process.StandardError, request)
             : Task.FromResult(string.Empty);
         try
         {
@@ -76,7 +78,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
         }
     }
 
-    private static async Task<string> ReadAllAsync(StreamReader reader, Action<string>? onOutput)
+    private static async Task<string> ReadAllAsync(StreamReader reader, CommandRequest request)
     {
         var builder = new StringBuilder();
         var buffer = new char[4096];
@@ -85,14 +87,24 @@ public sealed class ProcessCommandRunner : ICommandRunner
             var read = await reader.ReadAsync(buffer.AsMemory()).ConfigureAwait(false);
             if (read == 0)
             {
-                return builder.ToString();
+                return KeptEnd(builder, request.OutputLimit).ToString();
             }
 
             var chunk = new string(buffer, 0, read);
             builder.Append(chunk);
-            onOutput?.Invoke(chunk);
+            if (builder.Length > 2 * request.OutputLimit)
+            {
+                KeptEnd(builder, request.OutputLimit);
+            }
+
+            request.OnOutput?.Invoke(chunk);
         }
     }
+
+    private static StringBuilder KeptEnd(StringBuilder builder, int? limit) =>
+        limit is { } kept && builder.Length > kept
+            ? builder.Remove(0, builder.Length - kept)
+            : builder;
 
     private static async Task WriteStandardInputAsync(Process process, CommandRequest request)
     {

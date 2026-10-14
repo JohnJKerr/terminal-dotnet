@@ -35,6 +35,25 @@ public sealed class WhenACommandWritesPastThePipe
     }
 
     [PosixFact(NeedsAPosixShell, Timeout = 10_000)]
+    public async Task It_keeps_only_the_end_of_output_past_the_limit()
+    {
+        // Arrange
+        var runner = new ProcessCommandRunner();
+
+        // Act
+        var result = await runner.RunAsync(new CommandRequest(
+            "sh",
+            ["-c", "head -c 262144 /dev/zero | tr '\\0' x; printf 'end'"],
+            Environment.CurrentDirectory)
+        {
+            OutputLimit = 1024
+        }).WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        Assert.Equal(new string('x', 1021) + "end", result.StandardOutput);
+    }
+
+    [PosixFact(NeedsAPosixShell, Timeout = 10_000)]
     public async Task It_reports_output_before_the_command_finishes()
     {
         // Arrange
