@@ -30,13 +30,15 @@ public sealed partial class DotnetCliTestBackend(
         return DiscoveredTests(result.StandardOutput.Split('\n'), target);
     }
 
-    /// <summary>A host that cannot load an assembly still exits 0, and says so
-    /// in a sentence rather than a test row. Output that never reaches a list
-    /// at all is the same silence. Either one would otherwise publish an empty
-    /// tree and look like the suite had no tests.</summary>
     private static bool ListedNothing(string output) =>
-        output.Contains("No test is available", StringComparison.Ordinal) ||
+        NeverListedASuite(output) || HostListedNoTest(output);
+
+    private static bool NeverListedASuite(string output) =>
         !output.Contains("The following Tests are available:", StringComparison.Ordinal);
+
+    private static bool HostListedNoTest(string output) =>
+        output.Contains("No test is available", StringComparison.Ordinal) &&
+        !output.Split('\n').Any(NamesATest);
 
     /// <summary>The compiler writes its errors to standard output, so a
     /// failure reported from standard error alone is a blank sentence.</summary>

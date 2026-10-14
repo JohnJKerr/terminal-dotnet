@@ -89,6 +89,45 @@ public sealed class WhenRediscoveringTheTests
     }
 
     [Fact]
+    public async Task It_keeps_the_listed_tests_when_discovery_fails()
+    {
+        // Arrange
+        var backend = new ChangingTestBackend(Adds, Removes);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
+        await session.LoadAsync("Shop.sln");
+        backend.FailWith("Test discovery failed: No test is available in Cart.Tests.dll.");
+
+        // Act
+        await session.LoadAsync("Shop.sln");
+
+        // Assert
+        Assert.Contains(session.State.VisibleNodes, node => node.Name == "Adds item");
+    }
+
+    [Fact]
+    public async Task It_keeps_a_passed_test_passed_when_discovery_fails()
+    {
+        // Arrange
+        var backend = new ChangingTestBackend(Adds, Removes);
+        var session = GivenA.TestExplorer()
+            .WithBackend(backend)
+            .Build();
+        await session.LoadAsync("Shop.sln");
+        await session.DispatchAsync(new ExplorerCommand.RunSelected());
+        backend.FailWith("Test discovery failed: No test is available in Cart.Tests.dll.");
+
+        // Act
+        await session.LoadAsync("Shop.sln");
+
+        // Assert
+        Assert.Equal(
+            TestNodeOutcome.Passed,
+            session.State.VisibleNodes.Single(node => node.Name == "Adds item").Outcome);
+    }
+
+    [Fact]
     public async Task It_keeps_the_tree_when_rediscovery_fails()
     {
         // Arrange
@@ -203,6 +242,16 @@ public sealed class WhenRediscoveringTheTests
         public Task<TestRun> RunAsync(
             IReadOnlyCollection<TestCase> tests,
             CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
+            Task.FromResult(new TestRun(
+                true,
+                "Passed",
+                [.. tests.Select(test => new TestResult(
+                    test,
+                    TestOutcome.Passed,
+                    TimeSpan.Zero,
+                    null,
+                    null,
+                    null,
+                    null))]));
     }
 }

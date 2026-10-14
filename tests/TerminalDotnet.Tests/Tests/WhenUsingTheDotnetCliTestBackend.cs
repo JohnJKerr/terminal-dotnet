@@ -66,6 +66,27 @@ public sealed class WhenUsingTheDotnetCliTestBackend
     }
 
     [Fact]
+    public async Task It_keeps_tests_another_assembly_listed_when_one_could_not_be_loaded()
+    {
+        // Arrange
+        var output = """
+            Test run for /repo/Cart.Tests/bin/Debug/net10.0/Cart.Tests.dll (.NETCoreApp,Version=v10.0)
+            The following Tests are available:
+                Shop.Tests.CartTests.Adds_item
+            No test is available in /repo/Locked.Tests/bin/Debug/net10.0/Locked.Tests.dll. Make sure that test discoverer & executors are registered and platform & framework version settings are appropriate and try again.
+            """;
+        var backend = new DotnetCliTestBackend(
+            new RecordingCommandRunner(new CommandResult(0, output, "")),
+            new InMemoryTestResultStore());
+
+        // Act
+        var tests = await backend.DiscoverAsync("/repo/Shop.sln");
+
+        // Assert
+        Assert.Equal(["Shop.Tests.CartTests.Adds_item"], tests.Select(test => test.FullyQualifiedName));
+    }
+
+    [Fact]
     public async Task It_reports_an_assembly_that_listed_no_tests_as_a_failure()
     {
         // Arrange

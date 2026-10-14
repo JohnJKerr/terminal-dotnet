@@ -54,6 +54,7 @@ public sealed class TestExplorerSession(
     public async Task LoadAsync(string target, CancellationToken cancellationToken = default)
     {
         var rediscovering = beforeRediscovery;
+        var onScreen = State;
         var previouslyDiscovered = discoveredTests;
         var previouslyUpdated = updatedSuites;
         try
@@ -69,10 +70,49 @@ public sealed class TestExplorerSession(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            State = rediscovering is not null
-                ? Kept(rediscovering, previouslyDiscovered, previouslyUpdated, exception.Message)
-                : new ExplorerState(ExplorerStatus.Failed, [], 0, exception.Message);
+            State = FailedDiscovery(
+                rediscovering,
+                onScreen,
+                previouslyDiscovered,
+                previouslyUpdated,
+                exception.Message);
         }
+    }
+
+    private ExplorerState FailedDiscovery(
+        ExplorerState? rediscovering,
+        ExplorerState onScreen,
+        IReadOnlyList<TestCase> previouslyDiscovered,
+        IReadOnlyDictionary<string, TestNodeUpdate> previouslyUpdated,
+        string reason)
+    {
+        var listed = ListedTree(rediscovering, onScreen, previouslyDiscovered);
+        return listed is null
+            ? new ExplorerState(ExplorerStatus.Failed, [], 0, reason)
+            : Kept(listed, previouslyDiscovered, previouslyUpdated, reason);
+    }
+
+    private ExplorerState? ListedTree(
+        ExplorerState? rediscovering,
+        ExplorerState onScreen,
+        IReadOnlyList<TestCase> previouslyDiscovered)
+    {
+        if (rediscovering is { VisibleNodes.Count: > 0 } standing)
+        {
+            return standing;
+        }
+
+        if (onScreen.VisibleNodes.Count > 0)
+        {
+            return onScreen;
+        }
+
+        if (previouslyDiscovered.Count == 0)
+        {
+            return null;
+        }
+
+        return onScreen with { VisibleNodes = VisibleNodes(previouslyDiscovered) };
     }
 
     /// <summary>A rediscovery that fails, or that comes back with nothing, has
