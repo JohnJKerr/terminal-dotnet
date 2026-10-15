@@ -18,6 +18,11 @@ public sealed class OutputView : View
     private IReadOnlyList<List<Cell>> rows = [];
     private int wrappedWidth;
 
+    public OutputView()
+    {
+        ViewportSettings |= ViewportSettingsFlags.HasVerticalScrollBar;
+    }
+
     /// <summary>Whether the output is still being reported, so a reader at
     /// its end stays there to see the latest of it.</summary>
     public bool FollowsTheRun { get; init; }

@@ -31,4 +31,18 @@ public sealed class WhenReadingTestOutput
         // Assert
         Assert.Equal(3, output.GetContentSize().Height);
     }
+
+    [Fact]
+    public void Output_longer_than_the_view_shows_a_scroll_bar()
+    {
+        // Arrange
+        var output = GivenA.OutputView(height: 5);
+
+        // Act
+        output.Show(AnsiTestOutput.ToCells(string.Join('\n', Enumerable.Range(1, 20).Select(line => $"line {line}"))));
+        output.Layout();
+
+        // Assert
+        Assert.True(output.VerticalScrollBar.Visible);
+    }
 }
