@@ -42,9 +42,23 @@ public sealed class OutputView : View
             return false;
         }
 
-        Viewport = Viewport with { Y = Math.Clamp(Viewport.Y + scrolled, 0, LastTop) };
+        ScrollBy(scrolled);
         return true;
     }
+
+    protected override bool OnMouseEvent(Mouse mouse)
+    {
+        if (!mouse.IsWheel)
+        {
+            return false;
+        }
+
+        ScrollBy(mouse.Flags.HasFlag(MouseFlags.WheeledDown) ? WheelRows : -WheelRows);
+        return true;
+    }
+
+    private void ScrollBy(int scrolled) =>
+        Viewport = Viewport with { Y = Math.Clamp(Viewport.Y + scrolled, 0, LastTop) };
 
     /// <summary>A page keeps one row of the last screen, so the reader has a
     /// line of context to carry across the jump.</summary>
@@ -58,6 +72,10 @@ public sealed class OutputView : View
         KeyCode.End => rows.Count,
         _ => null
     };
+
+    /// <summary>A notch of the wheel moves a few rows, so long output can be
+    /// crossed without a key.</summary>
+    private const int WheelRows = 3;
 
     private int PageRows => Math.Max(1, Viewport.Height - 1);
 
