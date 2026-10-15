@@ -26,6 +26,10 @@ public sealed class OutputView : View
     /// <summary>A match stands out from the coloured output around it.</summary>
     private static readonly Attribute MatchAttribute = new(Color.Black, Color.BrightYellow);
 
+    /// <summary>The match n and N have moved to stands out from the rest, so
+    /// a step is seen even when the rows on screen stay where they are.</summary>
+    private static readonly Attribute CurrentMatchAttribute = new(Color.Black, Color.BrightCyan);
+
     public OutputView()
     {
         ViewportSettings |= ViewportSettingsFlags.HasVerticalScrollBar;
@@ -79,6 +83,7 @@ public sealed class OutputView : View
 
         currentMatch = (currentMatch + step + matches.Count) % matches.Count;
         ScrollToMatch(matches[currentMatch]);
+        SetNeedsDraw();
         SearchChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -194,9 +199,17 @@ public sealed class OutputView : View
         .Where(screenRow => Viewport.Y + screenRow < rows.Count)
         .Select(screenRow => (rows[Viewport.Y + screenRow], screenRow));
 
-    private Attribute AttributeAt(int line, int column, Cell cell) => matchedCells.Contains((line, column))
-        ? MatchAttribute
+    private Attribute AttributeAt(int line, int column, Cell cell) =>
+        InCurrentMatch(line, column) ? CurrentMatchAttribute
+        : matchedCells.Contains((line, column)) ? MatchAttribute
         : cell.Attribute ?? GetAttributeForRole(VisualRole.Normal);
+
+    private bool InCurrentMatch(int line, int column) =>
+        matches.Count > 0 &&
+        matches[currentMatch] is var current &&
+        current.Line == line &&
+        column >= current.Column &&
+        column < current.Column + searched.Length;
 
     private void DrawRow(OutputRow row, int screenRow)
     {
