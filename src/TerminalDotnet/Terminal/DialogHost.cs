@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Terminal.Gui.App;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -123,6 +124,50 @@ internal sealed class DialogHost
         };
         ViewColours.ColourGround(text, () => Color.Black);
         dialog.Add(text);
+        AddSearch(dialog, text);
         return text;
+    }
+
+    /// <summary>A / opens a prompt beneath the output that searches it as
+    /// the reader types. Enter goes back to reading with the matches still
+    /// marked, and Esc clears the search rather than closing the output.
+    /// </summary>
+    private static void AddSearch(Window dialog, OutputView text)
+    {
+        var prompt = new TextField { X = 0, Y = Pos.AnchorEnd(1), Width = Dim.Fill(), Visible = false };
+        dialog.Add(prompt);
+        text.KeyDown += (_, key) =>
+        {
+            if (key.AsRune.Value != '/')
+            {
+                return;
+            }
+
+            prompt.Text = "";
+            ShowPrompt(text, prompt, shown: true);
+            key.Handled = true;
+        };
+        prompt.TextChanged += (_, _) => text.Search(prompt.Text);
+        prompt.KeyDown += (_, key) =>
+        {
+            if (key == Key.Esc)
+            {
+                text.Search("");
+            }
+            else if (key != Key.Enter)
+            {
+                return;
+            }
+
+            ShowPrompt(text, prompt, shown: false);
+            key.Handled = true;
+        };
+    }
+
+    private static void ShowPrompt(OutputView text, TextField prompt, bool shown)
+    {
+        prompt.Visible = shown;
+        text.Height = Dim.Fill(shown ? 1 : 0);
+        (shown ? (View)prompt : text).SetFocus();
     }
 }

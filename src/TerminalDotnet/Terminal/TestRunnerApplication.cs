@@ -1277,7 +1277,7 @@ internal sealed class TestRunnerApplication(
     }
 
     private static string OutputTitle(TestPanelSnapshot snapshot) =>
-        $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close";
+        $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  / search  n/N match  Esc close";
 
     private void ShowCommands(IApplication application) => dialogs.ShowText(
         application,
