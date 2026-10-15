@@ -1083,8 +1083,7 @@ internal sealed class TestRunnerApplication(
     private void ShowComment(IApplication application, FileComment selected) => dialogs.ShowText(
         application,
         $"Comment — {selected.DisplayPath} — ↑/↓ scroll  Esc close",
-        CommentCells(selected.Text),
-        wordWrap: true);
+        CommentCells(selected.Text));
 
     private static List<List<Cell>> CommentCells(string text) => text
         .Split('\n')
@@ -1266,11 +1265,11 @@ internal sealed class TestRunnerApplication(
         var lines = AnsiTestOutput.ToCells(snapshot.SelectedOutput);
         if (session.State.Status != ExplorerStatus.Running)
         {
-            dialogs.ShowText(application, title, lines, wordWrap: true);
+            dialogs.ShowText(application, title, lines);
             return;
         }
 
-        dialogs.ShowFollowing(application, title, lines, wordWrap: true, () =>
+        dialogs.ShowFollowing(application, title, lines, () =>
         {
             var live = TestPanelSnapshot.From(session.State, target, sinceLoadStarted.Elapsed);
             return (OutputTitle(live), live.SelectedOutput);
@@ -1278,13 +1277,12 @@ internal sealed class TestRunnerApplication(
     }
 
     private static string OutputTitle(TestPanelSnapshot snapshot) =>
-        $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  Esc close";
+        $"{snapshot.SelectedOutputTitle} — ↑/↓ scroll  / search  n/N match  Esc close";
 
     private void ShowCommands(IApplication application) => dialogs.ShowText(
         application,
         "Commands — ↑/↓ scroll  Esc close",
-        CommandMenu.Rows().Select(CommandMenuCells).ToList(),
-        wordWrap: false);
+        CommandMenu.Rows().Select(CommandMenuCells).ToList());
 
     private static List<Cell> CommandMenuCells(CommandMenuRow row) => Cell.ToCellList(
         row.Text,

@@ -35,6 +35,14 @@ internal static class GivenA
         return (preview, source);
     }
 
+    /// <summary>A screen of test output, laid out at the given size.</summary>
+    public static OutputView OutputView(int width = 20, int height = 5, bool followsTheRun = false)
+    {
+        var output = new OutputView { Width = width, Height = height, FollowsTheRun = followsTheRun };
+        output.Layout();
+        return output;
+    }
+
     /// <summary>A discovered test, named the way discovery names it: the
     /// display name is the method with its underscores read as spaces.</summary>
     public static TestCase TestCase(string fullyQualifiedName, string projectPath = "Shop.Tests.csproj") => new(

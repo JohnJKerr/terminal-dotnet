@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Terminal.Gui.App;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Terminal.Gui.Views;
 
@@ -41,49 +42,28 @@ internal sealed class DialogHost
 
     /// <summary>Coloured text over the whole screen, for reading and
     /// scrolling until the reader closes it.</summary>
-    public void ShowText(IApplication application, string title, List<List<Cell>> lines, bool wordWrap)
+    public void ShowText(IApplication application, string title, List<List<Cell>> lines)
     {
-        using var dialog = new Window
-        {
-            Title = title,
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            ShadowStyle = ShadowStyles.None
-        };
-        var text = new ColoredTextView(wordWrap) { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() };
-        text.Load(lines);
-        ViewColours.ColourGround(dialog, () => Color.Black);
-        ViewColours.ColourGround(text, () => Color.Black);
-        dialog.Add(text);
+        using var dialog = FullScreen(title);
+        var text = Output(dialog, followsTheRun: false, () => title);
+        text.Show(lines);
         Over(() => application.Run(dialog));
     }
 
+    /// <summary>Output that is still being reported, replaced as it changes
+    /// for as long as the reader has it open.</summary>
     public void ShowFollowing(
         IApplication application,
         string title,
         List<List<Cell>> lines,
-        bool wordWrap,
         Func<(string Title, string Output)> current)
     {
-        using var dialog = new Window
-        {
-            Title = title,
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            ShadowStyle = ShadowStyles.None
-        };
-        var text = new ColoredTextView(wordWrap) { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() };
-        text.Load(lines);
-        ViewColours.ColourGround(dialog, () => Color.Black);
-        ViewColours.ColourGround(text, () => Color.Black);
-        dialog.Add(text);
         var initial = current();
         var showingTitle = initial.Title;
         var showingOutput = initial.Output;
+        using var dialog = FullScreen(title);
+        var text = Output(dialog, followsTheRun: true, () => showingTitle);
+        text.Show(lines);
         var shownAt = TimeSpan.Zero;
         var clock = Stopwatch.StartNew();
         var open = true;
@@ -108,13 +88,92 @@ internal sealed class DialogHost
             showingTitle = latest.Title;
             showingOutput = latest.Output;
             shownAt = clock.Elapsed;
-            dialog.Title = latest.Title;
-            text.Load(AnsiTestOutput.ToCells(latest.Output));
-            text.MoveEnd();
-            text.SetNeedsDraw();
+            dialog.Title = WithSearchSummary(latest.Title, text);
+            text.Show(AnsiTestOutput.ToCells(latest.Output));
             return true;
         });
         Over(() => application.Run(dialog));
         open = false;
+    }
+
+    private static Window FullScreen(string title)
+    {
+        var dialog = new Window
+        {
+            Title = title,
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            ShadowStyle = ShadowStyles.None
+        };
+        ViewColours.ColourGround(dialog, () => Color.Black);
+        return dialog;
+    }
+
+    /// <summary>The title names which match the reader is on, so a step
+    /// that keeps the same rows on screen is still seen to move.</summary>
+    private static string WithSearchSummary(string title, OutputView text) =>
+        text.SearchSummary.Length == 0 ? title : $"{title} — {text.SearchSummary}";
+
+    private static OutputView Output(Window dialog, bool followsTheRun, Func<string> title)
+    {
+        var text = new OutputView
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            CanFocus = true,
+            FollowsTheRun = followsTheRun
+        };
+        ViewColours.ColourGround(text, () => Color.Black);
+        dialog.Add(text);
+        text.SearchChanged += (_, _) => dialog.Title = WithSearchSummary(title(), text);
+        AddSearch(dialog, text);
+        return text;
+    }
+
+    /// <summary>A / opens a prompt beneath the output that searches it as
+    /// the reader types. Enter goes back to reading with the matches still
+    /// marked, and Esc clears the search rather than closing the output.
+    /// </summary>
+    private static void AddSearch(Window dialog, OutputView text)
+    {
+        var prompt = new TextField { X = 0, Y = Pos.AnchorEnd(1), Width = Dim.Fill(), Visible = false };
+        dialog.Add(prompt);
+        text.KeyDown += (_, key) =>
+        {
+            if (key.AsRune.Value != '/')
+            {
+                return;
+            }
+
+            prompt.Text = "";
+            ShowPrompt(text, prompt, shown: true);
+            key.Handled = true;
+        };
+        prompt.TextChanged += (_, _) => text.Search(prompt.Text);
+        prompt.KeyDown += (_, key) =>
+        {
+            if (key == Key.Esc)
+            {
+                text.Search("");
+            }
+            else if (key != Key.Enter)
+            {
+                return;
+            }
+
+            ShowPrompt(text, prompt, shown: false);
+            key.Handled = true;
+        };
+    }
+
+    private static void ShowPrompt(OutputView text, TextField prompt, bool shown)
+    {
+        prompt.Visible = shown;
+        text.Height = Dim.Fill(shown ? 1 : 0);
+        (shown ? (View)prompt : text).SetFocus();
     }
 }

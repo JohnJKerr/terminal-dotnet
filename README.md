@@ -246,7 +246,9 @@ Panel `2`. The discovered tests, grouped by project, class and test.
   suite, blue for an edited one.
 - **Failures.** `f` selects the next failed test, and the Preview shows its
   source with the failing line picked out. `e` opens it in your editor.
-- **Output.** `o` shows the captured output of the run.
+- **Output.** `o` shows the captured output of the run, following it to the
+  end while it is still running. `/` searches it, `n` and `N` step through
+  the matches, and the mouse wheel or scroll bar moves through it.
 - **Filters.** `[` and `]` step through updated, failing, passing, last run
   and not run.
 - **Summary.** After a run, the status line counts the failed, passed and
