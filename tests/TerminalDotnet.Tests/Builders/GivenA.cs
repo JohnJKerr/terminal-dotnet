@@ -36,9 +36,9 @@ internal static class GivenA
     }
 
     /// <summary>A screen of test output, laid out at the given size.</summary>
-    public static OutputView OutputView(int width = 20, int height = 5)
+    public static OutputView OutputView(int width = 20, int height = 5, bool followsTheRun = false)
     {
-        var output = new OutputView { Width = width, Height = height };
+        var output = new OutputView { Width = width, Height = height, FollowsTheRun = followsTheRun };
         output.Layout();
         return output;
     }

@@ -16,11 +16,22 @@ public sealed class OutputView : View
     private IReadOnlyList<List<Cell>> rows = [];
     private int wrappedWidth;
 
+    /// <summary>Whether the output is still being reported, so the reader
+    /// starts at its end to see the latest of it.</summary>
+    public bool FollowsTheRun { get; init; }
+
     public void Show(IReadOnlyList<List<Cell>> output)
     {
         lines = output;
         Wrap();
+        if (FollowsTheRun)
+        {
+            ScrollToEnd();
+        }
     }
+
+    private void ScrollToEnd() =>
+        Viewport = Viewport with { Y = Math.Max(0, rows.Count - Viewport.Height) };
 
     protected override void OnViewportChanged(DrawEventArgs e)
     {
