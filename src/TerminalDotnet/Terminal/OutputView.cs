@@ -4,6 +4,7 @@ using Terminal.Gui.Drivers;
 using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
+using Color = Terminal.Gui.Drawing.Color;
 
 namespace TerminalDotnet.Terminal;
 
@@ -19,6 +20,11 @@ public sealed class OutputView : View
     private int wrappedWidth;
     private string searched = "";
     private int currentMatch;
+    private IReadOnlyList<OutputMatch> matches = [];
+    private IReadOnlySet<(int Line, int Column)> matchedCells = new HashSet<(int, int)>();
+
+    /// <summary>A match stands out from the coloured output around it.</summary>
+    private static readonly Attribute MatchAttribute = new(Color.Black, Color.BrightYellow);
 
     public OutputView()
     {
@@ -33,6 +39,7 @@ public sealed class OutputView : View
     {
         var following = FollowsTheRun && AtTheEnd;
         lines = output;
+        FindMatches();
         Wrap();
         Viewport = Viewport with { Y = following ? LastTop : Math.Min(Viewport.Y, LastTop) };
     }
@@ -43,7 +50,9 @@ public sealed class OutputView : View
     {
         searched = query;
         currentMatch = 0;
-        if (Matches().FirstOrDefault() is { } first)
+        FindMatches();
+        SetNeedsDraw();
+        if (matches.FirstOrDefault() is { } first)
         {
             ScrollToMatch(first);
         }
@@ -53,7 +62,6 @@ public sealed class OutputView : View
     /// the last to the first and back.</summary>
     private void StepMatch(int step)
     {
-        var matches = Matches().ToList();
         if (matches.Count == 0)
         {
             return;
@@ -63,16 +71,22 @@ public sealed class OutputView : View
         ScrollToMatch(matches[currentMatch]);
     }
 
-    private IEnumerable<OutputMatch> Matches() => searched.Length == 0
-        ? []
-        : lines.SelectMany((line, index) => MatchesIn(Text(line), index));
+    private void FindMatches()
+    {
+        matches = searched.Length == 0
+            ? []
+            : [.. lines.SelectMany((line, index) => MatchesIn(PlainText(line), index))];
+        matchedCells = matches
+            .SelectMany(match => Enumerable.Range(match.Column, searched.Length).Select(column => (match.Line, column)))
+            .ToHashSet();
+    }
 
     private IEnumerable<OutputMatch> MatchesIn(string text, int line) => Enumerable
         .Range(0, Math.Max(0, text.Length - searched.Length + 1))
         .Where(column => string.Compare(text, column, searched, 0, searched.Length, StringComparison.OrdinalIgnoreCase) == 0)
         .Select(column => new OutputMatch(line, column));
 
-    private static string Text(List<Cell> line) => string.Concat(line.Select(cell => cell.Grapheme));
+    private static string PlainText(List<Cell> line) => string.Concat(line.Select(cell => cell.Grapheme));
 
     private void ScrollToMatch(OutputMatch match)
     {
@@ -167,12 +181,16 @@ public sealed class OutputView : View
         .Where(screenRow => Viewport.Y + screenRow < rows.Count)
         .Select(screenRow => (rows[Viewport.Y + screenRow], screenRow));
 
+    private Attribute AttributeAt(int line, int column, Cell cell) => matchedCells.Contains((line, column))
+        ? MatchAttribute
+        : cell.Attribute ?? GetAttributeForRole(VisualRole.Normal);
+
     private void DrawRow(OutputRow row, int screenRow)
     {
         Move(0, screenRow);
-        foreach (var cell in row.Cells)
+        foreach (var (cell, offset) in row.Cells.Select((cell, offset) => (cell, offset)))
         {
-            SetAttribute(cell.Attribute ?? GetAttributeForRole(VisualRole.Normal));
+            SetAttribute(AttributeAt(row.Line, row.Start + offset, cell));
             AddStr(cell.Grapheme);
         }
     }
