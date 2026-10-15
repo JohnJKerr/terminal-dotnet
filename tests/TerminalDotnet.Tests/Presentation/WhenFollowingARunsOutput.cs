@@ -34,6 +34,21 @@ public sealed class WhenFollowingARunsOutput
         Assert.Equal(3, output.Viewport.Y);
     }
 
+    [Fact]
+    public void A_reader_scrolled_back_keeps_their_place_as_output_arrives()
+    {
+        // Arrange
+        var output = GivenA.OutputView(height: 5, followsTheRun: true);
+        output.Show(Lines(20));
+        output.ScrollVertical(-5);
+
+        // Act
+        output.Show(Lines(25));
+
+        // Assert
+        Assert.Equal(10, output.Viewport.Y);
+    }
+
     private static List<List<Cell>> Lines(int count) =>
         AnsiTestOutput.ToCells(string.Join('\n', Enumerable.Range(1, count).Select(line => $"line {line}")));
 }
