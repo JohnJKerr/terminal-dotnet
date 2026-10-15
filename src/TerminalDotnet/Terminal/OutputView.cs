@@ -15,7 +15,7 @@ namespace TerminalDotnet.Terminal;
 public sealed class OutputView : View
 {
     private IReadOnlyList<List<Cell>> lines = [];
-    private IReadOnlyList<List<Cell>> rows = [];
+    private IReadOnlyList<OutputRow> rows = [];
     private int wrappedWidth;
 
     public OutputView()
@@ -106,48 +106,20 @@ public sealed class OutputView : View
     private void Wrap()
     {
         wrappedWidth = Viewport.Width;
-        rows = [.. lines.SelectMany(line => WrappedRows(line, wrappedWidth))];
+        rows = OutputRows.Wrap(lines, wrappedWidth);
         SetContentSize(new Size(wrappedWidth, rows.Count));
         SetNeedsDraw();
     }
 
-    private static IEnumerable<List<Cell>> WrappedRows(List<Cell> line, int width)
-    {
-        if (width <= 0)
-        {
-            yield return line;
-            yield break;
-        }
-
-        var start = 0;
-        while (line.Count - start > width)
-        {
-            var length = RowLength(line, start, width);
-            yield return line.GetRange(start, length);
-            start += length;
-        }
-
-        yield return line.GetRange(start, line.Count - start);
-    }
-
-    /// <summary>A row ends after the last space that fits, so a word is
-    /// carried whole onto the next row; a word wider than a row is broken.
-    /// </summary>
-    private static int RowLength(List<Cell> line, int start, int width)
-    {
-        var lastSpace = line.FindLastIndex(start + width - 1, width - 1, cell => cell.Grapheme == " ");
-        return lastSpace > start ? lastSpace - start + 1 : width;
-    }
-
-    private IEnumerable<(List<Cell> Row, int ScreenRow)> VisibleRows() => Enumerable
+    private IEnumerable<(OutputRow Row, int ScreenRow)> VisibleRows() => Enumerable
         .Range(0, Viewport.Height)
         .Where(screenRow => Viewport.Y + screenRow < rows.Count)
         .Select(screenRow => (rows[Viewport.Y + screenRow], screenRow));
 
-    private void DrawRow(List<Cell> row, int screenRow)
+    private void DrawRow(OutputRow row, int screenRow)
     {
         Move(0, screenRow);
-        foreach (var cell in row)
+        foreach (var cell in row.Cells)
         {
             SetAttribute(cell.Attribute ?? GetAttributeForRole(VisualRole.Normal));
             AddStr(cell.Grapheme);
