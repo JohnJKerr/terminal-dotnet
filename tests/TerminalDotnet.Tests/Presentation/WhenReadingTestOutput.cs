@@ -18,4 +18,17 @@ public sealed class WhenReadingTestOutput
         // Assert
         Assert.Equal(3, output.GetContentSize().Height);
     }
+
+    [Fact]
+    public void A_wrapped_line_breaks_after_a_word_rather_than_inside_one()
+    {
+        // Arrange
+        var output = GivenA.OutputView(width: 10);
+
+        // Act
+        output.Show(AnsiTestOutput.ToCells("aaa bbbbbbbb ccc"));
+
+        // Assert
+        Assert.Equal(3, output.GetContentSize().Height);
+    }
 }

@@ -106,8 +106,33 @@ public sealed class OutputView : View
         SetNeedsDraw();
     }
 
-    private static IEnumerable<List<Cell>> WrappedRows(List<Cell> line, int width) =>
-        line.Count == 0 || width <= 0 ? [line] : line.Chunk(width).Select(row => row.ToList());
+    private static IEnumerable<List<Cell>> WrappedRows(List<Cell> line, int width)
+    {
+        if (width <= 0)
+        {
+            yield return line;
+            yield break;
+        }
+
+        var start = 0;
+        while (line.Count - start > width)
+        {
+            var length = RowLength(line, start, width);
+            yield return line.GetRange(start, length);
+            start += length;
+        }
+
+        yield return line.GetRange(start, line.Count - start);
+    }
+
+    /// <summary>A row ends after the last space that fits, so a word is
+    /// carried whole onto the next row; a word wider than a row is broken.
+    /// </summary>
+    private static int RowLength(List<Cell> line, int start, int width)
+    {
+        var lastSpace = line.FindLastIndex(start + width - 1, width - 1, cell => cell.Grapheme == " ");
+        return lastSpace > start ? lastSpace - start + 1 : width;
+    }
 
     private IEnumerable<(List<Cell> Row, int ScreenRow)> VisibleRows() => Enumerable
         .Range(0, Viewport.Height)
