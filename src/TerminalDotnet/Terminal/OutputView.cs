@@ -17,6 +17,7 @@ public sealed class OutputView : View
     private IReadOnlyList<List<Cell>> lines = [];
     private IReadOnlyList<OutputRow> rows = [];
     private int wrappedWidth;
+    private string searched = "";
 
     public OutputView()
     {
@@ -33,6 +34,34 @@ public sealed class OutputView : View
         lines = output;
         Wrap();
         Viewport = Viewport with { Y = following ? LastTop : Math.Min(Viewport.Y, LastTop) };
+    }
+
+    /// <summary>Brings the first place the output says
+    /// <paramref name="query"/> to the top, ignoring case.</summary>
+    public void Search(string query)
+    {
+        searched = query;
+        if (Matches().FirstOrDefault() is { } first)
+        {
+            ScrollToMatch(first);
+        }
+    }
+
+    private IEnumerable<OutputMatch> Matches() => searched.Length == 0
+        ? []
+        : lines.SelectMany((line, index) => MatchesIn(Text(line), index));
+
+    private IEnumerable<OutputMatch> MatchesIn(string text, int line) => Enumerable
+        .Range(0, Math.Max(0, text.Length - searched.Length + 1))
+        .Where(column => string.Compare(text, column, searched, 0, searched.Length, StringComparison.OrdinalIgnoreCase) == 0)
+        .Select(column => new OutputMatch(line, column));
+
+    private static string Text(List<Cell> line) => string.Concat(line.Select(cell => cell.Grapheme));
+
+    private void ScrollToMatch(OutputMatch match)
+    {
+        var row = Math.Max(0, rows.ToList().FindIndex(candidate => candidate.Holds(match.Line, match.Column)));
+        Viewport = Viewport with { Y = Math.Min(row, LastTop) };
     }
 
     private bool AtTheEnd => Viewport.Y >= LastTop;
@@ -126,3 +155,5 @@ public sealed class OutputView : View
         }
     }
 }
+
+internal sealed record OutputMatch(int Line, int Column);
