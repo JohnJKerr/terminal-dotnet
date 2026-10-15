@@ -44,6 +44,16 @@ public sealed class OutputView : View
         Viewport = Viewport with { Y = following ? LastTop : Math.Min(Viewport.Y, LastTop) };
     }
 
+    /// <summary>Which match the reader is on, such as "match 3 of 12", or
+    /// nothing when there is no search.</summary>
+    public string SearchSummary => searched.Length == 0 ? ""
+        : matches.Count == 0 ? "no matches"
+        : $"match {currentMatch + 1} of {matches.Count}";
+
+    /// <summary>Raised when the search, its matches or the reader's place
+    /// among them changes.</summary>
+    public event EventHandler? SearchChanged;
+
     /// <summary>Brings the first place the output says
     /// <paramref name="query"/> to the top, ignoring case.</summary>
     public void Search(string query)
@@ -69,6 +79,7 @@ public sealed class OutputView : View
 
         currentMatch = (currentMatch + step + matches.Count) % matches.Count;
         ScrollToMatch(matches[currentMatch]);
+        SearchChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private void FindMatches()
@@ -79,6 +90,8 @@ public sealed class OutputView : View
         matchedCells = matches
             .SelectMany(match => Enumerable.Range(match.Column, searched.Length).Select(column => (match.Line, column)))
             .ToHashSet();
+        currentMatch = Math.Clamp(currentMatch, 0, Math.Max(0, matches.Count - 1));
+        SearchChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private IEnumerable<OutputMatch> MatchesIn(string text, int line) => Enumerable

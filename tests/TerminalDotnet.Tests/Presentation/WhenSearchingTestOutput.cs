@@ -80,6 +80,47 @@ public sealed class WhenSearchingTestOutput
         Assert.Equal(1, output.Viewport.Y);
     }
 
+    [Fact]
+    public void It_says_which_match_is_current()
+    {
+        // Arrange
+        var output = OutputOf(20);
+        output.Search("line 1");
+
+        // Act
+        output.NewKeyDownEvent(new Key(KeyCode.N));
+
+        // Assert
+        Assert.Equal("match 2 of 11", output.SearchSummary);
+    }
+
+    [Fact]
+    public void It_says_when_nothing_matches()
+    {
+        // Arrange
+        var output = OutputOf(20);
+
+        // Act
+        output.Search("missing");
+
+        // Assert
+        Assert.Equal("no matches", output.SearchSummary);
+    }
+
+    [Fact]
+    public void It_says_nothing_once_the_search_is_cleared()
+    {
+        // Arrange
+        var output = OutputOf(20);
+        output.Search("line 1");
+
+        // Act
+        output.Search("");
+
+        // Assert
+        Assert.Equal("", output.SearchSummary);
+    }
+
     private static OutputView OutputOf(int lines)
     {
         var output = GivenA.OutputView(height: 5);

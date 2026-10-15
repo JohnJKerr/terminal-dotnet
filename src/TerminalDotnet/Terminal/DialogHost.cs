@@ -45,7 +45,7 @@ internal sealed class DialogHost
     public void ShowText(IApplication application, string title, List<List<Cell>> lines)
     {
         using var dialog = FullScreen(title);
-        var text = Output(dialog, followsTheRun: false);
+        var text = Output(dialog, followsTheRun: false, () => title);
         text.Show(lines);
         Over(() => application.Run(dialog));
     }
@@ -58,12 +58,12 @@ internal sealed class DialogHost
         List<List<Cell>> lines,
         Func<(string Title, string Output)> current)
     {
-        using var dialog = FullScreen(title);
-        var text = Output(dialog, followsTheRun: true);
-        text.Show(lines);
         var initial = current();
         var showingTitle = initial.Title;
         var showingOutput = initial.Output;
+        using var dialog = FullScreen(title);
+        var text = Output(dialog, followsTheRun: true, () => showingTitle);
+        text.Show(lines);
         var shownAt = TimeSpan.Zero;
         var clock = Stopwatch.StartNew();
         var open = true;
@@ -88,7 +88,7 @@ internal sealed class DialogHost
             showingTitle = latest.Title;
             showingOutput = latest.Output;
             shownAt = clock.Elapsed;
-            dialog.Title = latest.Title;
+            dialog.Title = WithSearchSummary(latest.Title, text);
             text.Show(AnsiTestOutput.ToCells(latest.Output));
             return true;
         });
@@ -111,7 +111,12 @@ internal sealed class DialogHost
         return dialog;
     }
 
-    private static OutputView Output(Window dialog, bool followsTheRun)
+    /// <summary>The title names which match the reader is on, so a step
+    /// that keeps the same rows on screen is still seen to move.</summary>
+    private static string WithSearchSummary(string title, OutputView text) =>
+        text.SearchSummary.Length == 0 ? title : $"{title} — {text.SearchSummary}";
+
+    private static OutputView Output(Window dialog, bool followsTheRun, Func<string> title)
     {
         var text = new OutputView
         {
@@ -124,6 +129,7 @@ internal sealed class DialogHost
         };
         ViewColours.ColourGround(text, () => Color.Black);
         dialog.Add(text);
+        text.SearchChanged += (_, _) => dialog.Title = WithSearchSummary(title(), text);
         AddSearch(dialog, text);
         return text;
     }
