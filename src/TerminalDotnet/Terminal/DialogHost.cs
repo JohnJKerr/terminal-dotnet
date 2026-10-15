@@ -41,46 +41,25 @@ internal sealed class DialogHost
 
     /// <summary>Coloured text over the whole screen, for reading and
     /// scrolling until the reader closes it.</summary>
-    public void ShowText(IApplication application, string title, List<List<Cell>> lines, bool wordWrap)
+    public void ShowText(IApplication application, string title, List<List<Cell>> lines)
     {
-        using var dialog = new Window
-        {
-            Title = title,
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            ShadowStyle = ShadowStyles.None
-        };
-        var text = new ColoredTextView(wordWrap) { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() };
-        text.Load(lines);
-        ViewColours.ColourGround(dialog, () => Color.Black);
-        ViewColours.ColourGround(text, () => Color.Black);
-        dialog.Add(text);
+        using var dialog = FullScreen(title);
+        var text = Output(dialog, followsTheRun: false);
+        text.Show(lines);
         Over(() => application.Run(dialog));
     }
 
+    /// <summary>Output that is still being reported, replaced as it changes
+    /// for as long as the reader has it open.</summary>
     public void ShowFollowing(
         IApplication application,
         string title,
         List<List<Cell>> lines,
-        bool wordWrap,
         Func<(string Title, string Output)> current)
     {
-        using var dialog = new Window
-        {
-            Title = title,
-            X = 0,
-            Y = 0,
-            Width = Dim.Fill(),
-            Height = Dim.Fill(),
-            ShadowStyle = ShadowStyles.None
-        };
-        var text = new ColoredTextView(wordWrap) { X = 0, Y = 0, Width = Dim.Fill(), Height = Dim.Fill() };
-        text.Load(lines);
-        ViewColours.ColourGround(dialog, () => Color.Black);
-        ViewColours.ColourGround(text, () => Color.Black);
-        dialog.Add(text);
+        using var dialog = FullScreen(title);
+        var text = Output(dialog, followsTheRun: true);
+        text.Show(lines);
         var initial = current();
         var showingTitle = initial.Title;
         var showingOutput = initial.Output;
@@ -109,12 +88,41 @@ internal sealed class DialogHost
             showingOutput = latest.Output;
             shownAt = clock.Elapsed;
             dialog.Title = latest.Title;
-            text.Load(AnsiTestOutput.ToCells(latest.Output));
-            text.MoveEnd();
-            text.SetNeedsDraw();
+            text.Show(AnsiTestOutput.ToCells(latest.Output));
             return true;
         });
         Over(() => application.Run(dialog));
         open = false;
+    }
+
+    private static Window FullScreen(string title)
+    {
+        var dialog = new Window
+        {
+            Title = title,
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            ShadowStyle = ShadowStyles.None
+        };
+        ViewColours.ColourGround(dialog, () => Color.Black);
+        return dialog;
+    }
+
+    private static OutputView Output(Window dialog, bool followsTheRun)
+    {
+        var text = new OutputView
+        {
+            X = 0,
+            Y = 0,
+            Width = Dim.Fill(),
+            Height = Dim.Fill(),
+            CanFocus = true,
+            FollowsTheRun = followsTheRun
+        };
+        ViewColours.ColourGround(text, () => Color.Black);
+        dialog.Add(text);
+        return text;
     }
 }
