@@ -1,5 +1,7 @@
 using System.Drawing;
 using Terminal.Gui.Drawing;
+using Terminal.Gui.Drivers;
+using Terminal.Gui.Input;
 using Terminal.Gui.ViewBase;
 using Attribute = Terminal.Gui.Drawing.Attribute;
 
@@ -32,6 +34,32 @@ public sealed class OutputView : View
 
     /// <summary>The first row on screen when the last row is at the bottom.</summary>
     private int LastTop => Math.Max(0, rows.Count - Viewport.Height);
+
+    protected override bool OnKeyDown(Key key)
+    {
+        if (RowsToScroll(key) is not { } scrolled)
+        {
+            return false;
+        }
+
+        Viewport = Viewport with { Y = Math.Clamp(Viewport.Y + scrolled, 0, LastTop) };
+        return true;
+    }
+
+    /// <summary>A page keeps one row of the last screen, so the reader has a
+    /// line of context to carry across the jump.</summary>
+    private int? RowsToScroll(Key key) => key.NoShift.KeyCode switch
+    {
+        KeyCode.CursorDown or KeyCode.J => 1,
+        KeyCode.CursorUp or KeyCode.K => -1,
+        KeyCode.PageDown => PageRows,
+        KeyCode.PageUp => -PageRows,
+        KeyCode.Home => -rows.Count,
+        KeyCode.End => rows.Count,
+        _ => null
+    };
+
+    private int PageRows => Math.Max(1, Viewport.Height - 1);
 
     protected override void OnViewportChanged(DrawEventArgs e)
     {
