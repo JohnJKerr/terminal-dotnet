@@ -18,6 +18,7 @@ public sealed class OutputView : View
     private IReadOnlyList<OutputRow> rows = [];
     private int wrappedWidth;
     private string searched = "";
+    private int currentMatch;
 
     public OutputView()
     {
@@ -41,10 +42,25 @@ public sealed class OutputView : View
     public void Search(string query)
     {
         searched = query;
+        currentMatch = 0;
         if (Matches().FirstOrDefault() is { } first)
         {
             ScrollToMatch(first);
         }
+    }
+
+    /// <summary>Moves <paramref name="step"/> matches on, going round from
+    /// the last to the first and back.</summary>
+    private void StepMatch(int step)
+    {
+        var matches = Matches().ToList();
+        if (matches.Count == 0)
+        {
+            return;
+        }
+
+        currentMatch = (currentMatch + step + matches.Count) % matches.Count;
+        ScrollToMatch(matches[currentMatch]);
     }
 
     private IEnumerable<OutputMatch> Matches() => searched.Length == 0
@@ -71,6 +87,12 @@ public sealed class OutputView : View
 
     protected override bool OnKeyDown(Key key)
     {
+        if (key.NoShift.KeyCode == KeyCode.N)
+        {
+            StepMatch(key.IsShift ? -1 : 1);
+            return true;
+        }
+
         if (RowsToScroll(key) is not { } scrolled)
         {
             return false;
