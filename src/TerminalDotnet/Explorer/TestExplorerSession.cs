@@ -18,6 +18,7 @@ public sealed class TestExplorerSession(
     private IReadOnlyList<TestCase> discoveredTests = [];
     private IReadOnlyList<TestCase> lastRunTests = [];
     private IReadOnlySet<TestCase> lastRunMembers = new HashSet<TestCase>();
+    private string finishedProjectsOutput = "";
     private bool running;
     private IReadOnlyDictionary<string, TestNodeUpdate> updatedSuites =
         new Dictionary<string, TestNodeUpdate>(StringComparer.Ordinal);
@@ -476,6 +477,7 @@ public sealed class TestExplorerSession(
     {
         lastRunTests = Snapshot.Of(tests);
         lastRunMembers = tests.ToHashSet();
+        finishedProjectsOutput = "";
         var projects = tests.GroupBy(test => test.ProjectPath).ToArray();
         var runs = new List<TestRun>();
         var progress = new ShownAsReported(ShowRunningOutput);
@@ -558,13 +560,22 @@ public sealed class TestExplorerSession(
             VisibleNodes = CurrentNodes(),
             Message = $"Running {name} ({index + 1} of {projectCount})...",
             Diagnostic = null,
-            RunningOutput = "",
+            RunningOutput = finishedProjectsOutput,
             RunningLabel = name
         };
     }
 
     private void ShowRunningOutput(TestRunUpdate update) =>
-        State = State with { RunningOutput = update.Output, RunningLabel = update.Label };
+        State = State with
+        {
+            RunningOutput = RunOutputSoFar(update.Output),
+            RunningLabel = update.Label
+        };
+
+    private string RunOutputSoFar(string runningProjectOutput) =>
+        finishedProjectsOutput.Length == 0
+            ? runningProjectOutput
+            : TestOutput.Tail(finishedProjectsOutput + Environment.NewLine + runningProjectOutput);
 
     private void RecordProject(TestRun run)
     {
@@ -573,6 +584,7 @@ public sealed class TestExplorerSession(
             completedOutcomes[test] = outcome;
         }
 
+        finishedProjectsOutput = RunOutputSoFar(run.Output);
         activeTests.Clear();
         State = State with { VisibleNodes = CurrentNodes() };
     }

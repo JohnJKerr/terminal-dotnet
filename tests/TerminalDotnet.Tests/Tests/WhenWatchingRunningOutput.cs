@@ -26,7 +26,7 @@ public sealed class WhenWatchingRunningOutput
         await backend.Reported.Task.WaitAsync(TimeSpan.FromSeconds(2));
 
         // Assert
-        Assert.Equal("Submits order running", session.State.RunningOutput);
+        Assert.EndsWith("Submits order running", session.State.RunningOutput);
 
         backend.Finish();
         await run;
@@ -48,7 +48,25 @@ public sealed class WhenWatchingRunningOutput
         await run;
 
         // Assert
-        Assert.Equal("Submits order running", shownWhenReported);
+        Assert.EndsWith("Submits order running", shownWhenReported);
+    }
+
+    [Fact]
+    public async Task It_keeps_the_output_of_the_projects_that_already_finished()
+    {
+        // Arrange
+        var backend = new ReportingSecondProject(Cart, Orders);
+        var session = await GivenA.TestExplorer().WithBackend(backend).LoadedAsync();
+
+        // Act
+        var run = session.DispatchAsync(new ExplorerCommand.RunSelected());
+        await backend.Reported.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        // Assert
+        Assert.Equal($"Adds item passed{Environment.NewLine}Submits order running", session.State.RunningOutput);
+
+        backend.Finish();
+        await run;
     }
 
     [Fact]
@@ -103,18 +121,18 @@ public sealed class WhenWatchingRunningOutput
                 return Hold(tests);
             }
 
-            return Task.FromResult(Passed(tests));
+            return Task.FromResult(Passed(tests, "Adds item passed"));
         }
 
         private async Task<TestRun> Hold(IReadOnlyCollection<TestCase> tests)
         {
             await finished.Task;
-            return Passed(tests);
+            return Passed(tests, "Submits order passed");
         }
 
-        private static TestRun Passed(IReadOnlyCollection<TestCase> tests) => new(
+        private static TestRun Passed(IReadOnlyCollection<TestCase> tests, string output) => new(
             true,
-            "Passed",
+            output,
             [.. tests.Select(test => new TestResult(test, TestOutcome.Passed, TimeSpan.Zero, null, null, null, null))]);
     }
 }
