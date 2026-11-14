@@ -1237,8 +1237,10 @@ internal sealed class TestRunnerApplication(
         OnTheLoop(() => RequestOpen(application, source.Path, source.HighlightLine));
     }
 
+    private const int SourcePreviewBytes = 1024 * 1024;
+
     private static string TooLargeToPreview(string path) =>
-        $"{Path.GetFileName(path)} is larger than {FileText.MaxBytes / (1024 * 1024)} MB, " +
+        $"{Path.GetFileName(path)} is larger than {SourcePreviewBytes / (1024 * 1024)} MB, " +
         "too large to preview. Open it in your editor instead.";
 
     private void CommentOn(IApplication application, string path)
@@ -1547,25 +1549,46 @@ internal sealed class TestRunnerApplication(
 
     /// <summary>A file that cannot be read says so in the preview rather than
     /// in a box over the panels, because the preview follows every move.</summary>
-    private void PreviewSource(SourceLocation source)
+    private void PreviewSource(SourceLocation source) =>
+        panelWork.Track(PreviewSourceAsync(source, previewed));
+
+    private async Task PreviewSourceAsync(SourceLocation source, PreviewSubject? subject)
     {
         var title = PreviewPanelTitle("Preview", $"{DisplayPathFor(source.Path)}:{source.HighlightLine}");
-        previewedSource = source;
+        string? text;
         try
         {
+            text = await Task.Run(() => FileText.ReadWithin(source.Path, SourcePreviewBytes));
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            OnTheLoop(() =>
+            {
+                if (previewed == subject)
+                {
+                    preview.ShowNothing(title);
+                }
+            });
+            return;
+        }
+
+        OnTheLoop(() =>
+        {
+            if (previewed != subject)
+            {
+                return;
+            }
+
+            previewedSource = source;
             preview.ShowSource(
                 title,
-                FileText.ReadWithin(source.Path) ?? TooLargeToPreview(source.Path),
-                LanguageFrom(source.Path),
+                text ?? TooLargeToPreview(source.Path),
+                text is { Length: > 64 * 1024 } ? "plaintext" : LanguageFrom(source.Path),
                 source.HighlightLine,
                 shell.State.PreviewedList is PanelKind.Issues or PanelKind.Tests,
                 PreviewedDetails(),
                 PreviewedDetailTone());
-        }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
-        {
-            preview.ShowNothing(title);
-        }
+        });
     }
 
     private string PreviewedDetails() => shell.State.PreviewedList == PanelKind.Issues
