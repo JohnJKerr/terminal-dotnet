@@ -57,7 +57,7 @@ public sealed class CommandClipboard(ICommandRunner commandRunner, string workin
                 cancellationToken).ConfigureAwait(false);
             return result.ExitCode == 0;
         }
-        catch (Exception exception) when (exception is Win32Exception or InvalidOperationException)
+        catch (Exception exception) when (exception is Win32Exception or InvalidOperationException or IOException)
         {
             return false;
         }

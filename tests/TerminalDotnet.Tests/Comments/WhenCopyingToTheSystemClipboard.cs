@@ -1,4 +1,4 @@
-using System.ComponentModel;
+using TerminalDotnet.Tests.Fakes;
 using TerminalDotnet.Comments;
 using TerminalDotnet.Testing;
 using Xunit;
@@ -11,7 +11,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     public async Task It_hands_the_text_to_the_clipboard_tool()
     {
         // Arrange
-        var runner = new RecordingCommandRunner();
+        var runner = new ClipboardCommandRunner();
         var clipboard = new CommandClipboard(runner, "/repo");
 
         // Act
@@ -25,7 +25,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     public async Task It_reaches_for_the_wayland_tool_first()
     {
         // Arrange
-        var runner = new RecordingCommandRunner();
+        var runner = new ClipboardCommandRunner();
         var clipboard = new CommandClipboard(runner, "/repo");
 
         // Act
@@ -39,7 +39,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     public async Task It_says_the_text_was_copied_once_a_tool_takes_it()
     {
         // Arrange
-        var clipboard = new CommandClipboard(new RecordingCommandRunner(), "/repo");
+        var clipboard = new CommandClipboard(new ClipboardCommandRunner(), "/repo");
 
         // Act
         var copied = await clipboard.TryCopyAsync("needs a guard");
@@ -52,7 +52,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     public async Task It_tries_the_next_tool_when_the_first_is_not_installed()
     {
         // Arrange
-        var runner = new RecordingCommandRunner
+        var runner = new ClipboardCommandRunner
         {
             Installed = ["xclip", "xsel", "pbcopy"],
             Takes = "xclip"
@@ -70,7 +70,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     public async Task It_tries_the_next_tool_when_one_runs_but_fails()
     {
         // Arrange
-        var runner = new RecordingCommandRunner { Takes = "xclip" };
+        var runner = new ClipboardCommandRunner { Takes = "xclip" };
         var clipboard = new CommandClipboard(runner, "/repo");
 
         // Act
@@ -84,7 +84,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     public async Task It_reaches_the_windows_clipboard_when_no_other_tool_is_installed()
     {
         // Arrange
-        var runner = new RecordingCommandRunner { Installed = ["clip"], Takes = "clip" };
+        var runner = new ClipboardCommandRunner { Installed = ["clip"], Takes = "clip" };
         var clipboard = new CommandClipboard(runner, "/repo");
 
         // Act
@@ -98,7 +98,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     public async Task It_stops_at_the_first_tool_that_takes_the_text()
     {
         // Arrange
-        var runner = new RecordingCommandRunner();
+        var runner = new ClipboardCommandRunner();
         var clipboard = new CommandClipboard(runner, "/repo");
 
         // Act
@@ -113,7 +113,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     {
         // Arrange
         var clipboard = new CommandClipboard(
-            new RecordingCommandRunner { Installed = [] },
+            new ClipboardCommandRunner { Installed = [] },
             "/repo");
 
         // Act
@@ -127,7 +127,7 @@ public sealed class WhenCopyingToTheSystemClipboard
     public async Task It_does_not_wait_on_the_output_of_a_tool_that_stays_running()
     {
         // Arrange
-        var runner = new RecordingCommandRunner();
+        var runner = new ClipboardCommandRunner();
         var clipboard = new CommandClipboard(runner, "/repo");
 
         // Act
@@ -137,31 +137,17 @@ public sealed class WhenCopyingToTheSystemClipboard
         Assert.False(runner.Requests[0].CaptureOutput);
     }
 
-    private sealed class RecordingCommandRunner : ICommandRunner
+    [Fact]
+    public async Task It_tries_the_next_tool_when_the_first_closes_its_input()
     {
-        public List<CommandRequest> Requests { get; } = [];
+        // Arrange
+        var runner = new ClipboardCommandRunner { BrokenPipe = true, Takes = "xclip" };
+        var clipboard = new CommandClipboard(runner, "/repo");
 
-        /// <summary>The tools the machine has. One missing throws the way a
-        /// missing executable does.</summary>
-        public IReadOnlyList<string> Installed { get; init; } =
-            ["wl-copy", "xclip", "xsel", "pbcopy"];
+        // Act
+        var copied = await clipboard.TryCopyAsync("needs a guard");
 
-        /// <summary>The one tool that takes the text. The rest run and refuse.
-        /// </summary>
-        public string Takes { get; init; } = "wl-copy";
-
-        public Task<CommandResult> RunAsync(
-            CommandRequest request,
-            CancellationToken cancellationToken = default)
-        {
-            Requests.Add(request);
-            if (!Installed.Contains(request.FileName))
-            {
-                throw new Win32Exception($"{request.FileName} not found");
-            }
-
-            return Task.FromResult(
-                new CommandResult(request.FileName == Takes ? 0 : 1, "", ""));
-        }
+        // Assert
+        Assert.True(copied);
     }
 }
