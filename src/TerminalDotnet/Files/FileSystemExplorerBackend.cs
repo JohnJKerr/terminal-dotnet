@@ -17,7 +17,9 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         var gitStatuses = await listing.StatusesAsync(root, cancellationToken).ConfigureAwait(false);
         var projectPaths = ProjectPaths(target);
         var tracked = await TrackedFilesAsync(projectPaths, cancellationToken).ConfigureAwait(false);
-        return [.. projectPaths.SelectMany(projectPath => ProjectEntries(projectPath, tracked, gitStatuses))];
+        var grouped = tracked is null ? null : FilesByProject(projectPaths, tracked);
+        return [.. projectPaths.SelectMany(projectPath => ProjectEntries(
+            projectPath, grouped is null ? null : grouped[ProjectDirectoryOf(projectPath)], gitStatuses))];
     }
 
     /// <summary>Git is asked once, from the folder every project sits
@@ -38,9 +40,37 @@ public sealed partial class FileSystemExplorerBackend(ICommandRunner commandRunn
         GitStatuses gitStatuses)
     {
         var projectDirectory = ProjectDirectoryOf(projectPath);
-        var paths = tracked?.Where(path => GitFileListing.IsUnder(path, projectDirectory))
-            ?? GitFileListing.FilesOnDisk(projectDirectory);
+        var paths = tracked ?? GitFileListing.FilesOnDisk(projectDirectory);
         return gitStatuses.EntriesFor(projectPath, projectDirectory, paths);
+    }
+
+    private static Dictionary<string, IReadOnlyList<string>> FilesByProject(
+        IReadOnlyList<string> projects,
+        IReadOnlyList<string> tracked)
+    {
+        var folders = projects.Select(ProjectDirectoryOf).Distinct(StringComparer.Ordinal)
+            .ToDictionary(folder => folder, _ => new List<string>(), StringComparer.Ordinal);
+        foreach (var path in tracked)
+        {
+            AddToContainingProjects(path, folders);
+        }
+
+        return folders.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<string>)pair.Value,
+            StringComparer.Ordinal);
+    }
+
+    private static void AddToContainingProjects(string path, Dictionary<string, List<string>> folders)
+    {
+        var folder = Path.GetDirectoryName(path);
+        while (folder is not null)
+        {
+            if (folders.TryGetValue(folder, out var files) && GitFileListing.IsUnder(path, folder))
+            {
+                files.Add(path);
+            }
+
+            folder = Path.GetDirectoryName(folder);
+        }
     }
 
     private static string ProjectDirectoryOf(string projectPath) => Path.GetDirectoryName(projectPath)!;
