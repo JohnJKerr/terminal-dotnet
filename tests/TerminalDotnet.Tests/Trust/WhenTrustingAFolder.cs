@@ -138,6 +138,22 @@ public sealed class WhenTrustingAFolder : IDisposable
         Assert.Contains(Repository, question.Message);
     }
 
+    [Fact]
+    public async Task It_does_not_borrow_trust_from_an_unrelated_repository_root()
+    {
+        // Arrange
+        var other = Path.Combine(home.FullName, "trusted");
+        var runner = new TerminalDotnet.Tests.Fakes.RecordingCommandRunner(new CommandResult(0, other, ""));
+        var trust = new WorkspaceTrust(Store, runner);
+        await trust.TryTrustAsync(other);
+
+        // Act
+        var decision = await trust.CheckAsync(LaunchFolder);
+
+        // Assert
+        Assert.False(decision.Trusted);
+    }
+
     public void Dispose() => home.Delete(recursive: true);
 
     /// <summary>Answers `git rev-parse --show-toplevel` with the given root, or
