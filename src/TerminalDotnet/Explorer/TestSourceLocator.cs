@@ -15,6 +15,8 @@ public interface ITestSourceLocator
 
 public sealed class FileTestSourceLocator : ITestSourceLocator
 {
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(string Project, string Class), string> classFiles = new();
+
     /// <summary>Scans the project's sources, which takes long enough that it
     /// is kept off whichever thread asked.</summary>
     public Task<SourceLocation?> LocateAsync(
@@ -22,7 +24,7 @@ public sealed class FileTestSourceLocator : ITestSourceLocator
         CancellationToken cancellationToken = default) =>
         Task.Run(() => Located(test, cancellationToken), cancellationToken);
 
-    private static SourceLocation? Located(TestCase test, CancellationToken cancellationToken)
+    private SourceLocation? Located(TestCase test, CancellationToken cancellationToken)
     {
         var projectDirectory = Path.GetDirectoryName(Path.GetFullPath(test.ProjectPath));
         if (projectDirectory is null || !Directory.Exists(projectDirectory))
@@ -38,13 +40,29 @@ public sealed class FileTestSourceLocator : ITestSourceLocator
 
         var classDeclaration = new Regex($@"\bclass\s+{Regex.Escape(parts[^2])}\b");
         var methodDeclaration = new Regex($@"\b{Regex.Escape(parts[^1])}\s*\(");
-        return SourceFiles(projectDirectory)
+        var key = (projectDirectory, parts[^2]);
+        if (classFiles.TryGetValue(key, out var cached) && File.Exists(cached))
+        {
+            var location = LocationIn(cached, classDeclaration, methodDeclaration);
+            if (location is not null)
+            {
+                return location;
+            }
+        }
+
+        var found = SourceFiles(projectDirectory)
             .Select(path =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 return LocationIn(path, classDeclaration, methodDeclaration);
             })
             .FirstOrDefault(location => location is not null);
+        if (found is not null)
+        {
+            classFiles[key] = found.Path;
+        }
+
+        return found;
     }
 
     /// <summary>The method is looked for below its class, so a method of the
