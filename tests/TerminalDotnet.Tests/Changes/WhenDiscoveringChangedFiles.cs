@@ -368,6 +368,22 @@ public sealed class WhenDiscoveringChangedFiles
         Assert.Equal(Path.TrimEndingDirectorySeparator(Path.GetTempPath()), runner.WorkingDirectories.Last());
     }
 
+    [Fact]
+    public async Task It_reports_a_diff_that_is_too_large_to_preview()
+    {
+        // Arrange
+        var runner = new TerminalDotnet.Tests.Fakes.RecordingCommandRunner(
+            new CommandResult(0, new string('x', 1024 * 1024 + 1), ""));
+        var backend = new GitChangesetBackend(runner);
+        var file = new ChangedFile(TestPaths.In("large.txt"), "large.txt", ChangeKind.Modified);
+
+        // Act
+        var diff = await backend.DiffAsync(file);
+
+        // Assert
+        Assert.Contains("too large", diff);
+    }
+
     private sealed class GitCommandRunner(string root, string status) : ICommandRunner
     {
         public int RootExitCode { get; init; }
