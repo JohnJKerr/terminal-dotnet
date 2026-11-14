@@ -37,6 +37,9 @@ public sealed class EditorLauncher : IFileOpener
                 executable,
                 [.. configuredArguments, $"+{line}", path],
                 Path.GetDirectoryName(Path.GetFullPath(path))!,
-                CaptureOutput: false),
+                CaptureOutput: false)
+            {
+                InheritStandardInput = true
+            },
             cancellationToken);
 }

@@ -69,4 +69,17 @@ public sealed class WhenOpeningSource
         // Assert
         Assert.Equal(EditorLauncher.DefaultEditor, editor);
     }
+    [Fact]
+    public async Task It_preserves_terminal_input_for_an_interactive_editor()
+    {
+        // Arrange
+        var runner = new RecordingCommandRunner();
+        var launcher = new EditorLauncher("nano", runner);
+
+        // Act
+        await launcher.OpenAsync("/repo/CartTests.cs", 42);
+
+        // Assert
+        Assert.True(runner.LastRequest?.InheritStandardInput);
+    }
 }

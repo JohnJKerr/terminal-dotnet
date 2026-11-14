@@ -63,13 +63,17 @@ Mitigation: `WorkspaceTrust` and `TrustPrompt`.
   stray `Enter` (the default button) exit with code 1 without building.
 - **Scope.** Trust is remembered per repository root, or per launch folder
   outside git. Matching is exact (case-insensitive on Windows), so trusting a
-  folder never extends to a separate repository nested inside it.
+  folder never extends to a separate repository nested inside it. A git-reported
+  root is only used when it contains the launch folder; an unrelated
+  `core.worktree` cannot borrow another folder's trust.
 - **Tests:** `WhenTrustingAFolder`. The prompt was driven end to end in a real
   terminal: quitting, `Esc`, trusting, and relaunching a trusted folder.
 
 Residual:
 - `git rev-parse` runs before the prompt, to find the repository root. It is
-  hardened as described in finding 4.
+  hardened as described in finding 4. Bare executable names are resolved from
+  absolute PATH entries before launch, avoiding implicit current-directory
+  lookup. Explicit configured executable paths remain supported.
 - Declining exits instead of opening a restricted view. DEV-192 tracks a
   restricted mode that keeps the panels that never run `dotnet`.
 
@@ -158,14 +162,19 @@ Residual, accepted: a file swapped for a named pipe between being measured and
 being opened would still block. That needs a process racing the app on the
 same machine.
 
-### 6. Subprocess output is captured without a limit (accepted)
+### 6. Subprocess output limits depend on the caller
 
-`ProcessCommandRunner` reads standard output and error with `ReadToEndAsync`
-and applies no deadline. On cancellation it does kill the whole process tree,
-and quitting waits for the panels' work, so nothing is orphaned. The producers
-are the user's own `dotnet` and `git`, and the output grows only as large as the
-build log. Accepted for a local tool; revisit if the app ever runs commands
-unattended.
+`ProcessCommandRunner` reads output incrementally and retains only the tail
+when `CommandRequest.OutputLimit` is supplied. Diff previews retain at most
+1 MiB plus one character to detect overflow and show a size warning instead
+of rendering a partial diff. Source previews read at most 1 MiB off the
+terminal loop and use plain text above 64 KiB to avoid syntax-highlighting cost.
+
+Other callers must choose their own output limit and cancellation deadline;
+an omitted limit still permits unbounded capture. The generic runner does not
+impose a deadline. Cancellation kills the process tree while waiting for exit.
+Writing stdin occurs before that wait and is not covered by its cancellation
+handler.
 
 ### 7. Test names in the `--filter` expression (fixed)
 

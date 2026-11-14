@@ -64,9 +64,26 @@ public sealed class WorkspaceTrust(string storePath, ICommandRunner commandRunne
         }
     }
 
-    private async Task<string> FolderToTrustAsync(string launchFolder, CancellationToken cancellationToken) =>
-        Normalized(await GitRepository.RootAsync(commandRunner, launchFolder, cancellationToken).ConfigureAwait(false)
-            ?? launchFolder);
+    private async Task<string> FolderToTrustAsync(string launchFolder, CancellationToken cancellationToken)
+    {
+        var launch = Normalized(launchFolder);
+        var root = await GitRepository.RootAsync(commandRunner, launch, cancellationToken).ConfigureAwait(false);
+        if (root is null)
+        {
+            return launch;
+        }
+
+        var repository = Normalized(root);
+        var prefix = Path.EndsInDirectorySeparator(repository)
+            ? repository
+            : repository + Path.DirectorySeparatorChar;
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        return FolderComparer.Equals(launch, repository) || launch.StartsWith(prefix, comparison)
+            ? repository
+            : launch;
+    }
 
     private IReadOnlyList<string> TrustedFolders()
     {

@@ -43,6 +43,8 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             .ToArray());
     }
 
+    private const int MaxDiffCharacters = 1024 * 1024;
+
     public async Task<string> DiffAsync(
         ChangedFile file,
         CancellationToken cancellationToken = default)
@@ -54,15 +56,18 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
             cancellationToken).ConfigureAwait(false);
         if (tracked.StandardOutput.Length > 0)
         {
-            return tracked.StandardOutput;
+            return PreviewableDiff(tracked.StandardOutput);
         }
 
         var untracked = await GitAsync(
             folder,
             ["diff", .. WithoutConfiguredTools, "--no-index", "--", "/dev/null", file.Path],
             cancellationToken).ConfigureAwait(false);
-        return untracked.StandardOutput;
+        return PreviewableDiff(untracked.StandardOutput);
     }
+
+    private static string PreviewableDiff(string text) =>
+        text.Length > MaxDiffCharacters ? "Diff is too large to preview." : text;
 
     /// <summary>A repository's configuration can hand diffs to an external
     /// program or convert files through a textconv driver before comparing
@@ -142,7 +147,12 @@ public sealed class GitChangesetBackend(ICommandRunner commandRunner) : IChanges
         string workingDirectory,
         IReadOnlyList<string> arguments,
         CancellationToken cancellationToken) =>
-        commandRunner.RunAsync(GitRequest.For(arguments, workingDirectory), cancellationToken);
+        commandRunner.RunAsync(
+            GitRequest.For(arguments, workingDirectory) with
+            {
+                OutputLimit = arguments[0] == "diff" ? MaxDiffCharacters + 1 : null
+            },
+            cancellationToken);
 
     private static ChangedFile ChangedFileFrom(
         GitStatusEntry entry,
