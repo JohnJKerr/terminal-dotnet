@@ -32,7 +32,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
 {
     public async Task<CommandResult> RunAsync(CommandRequest request, CancellationToken cancellationToken = default)
     {
-        var startInfo = new ProcessStartInfo(request.FileName)
+        var startInfo = new ProcessStartInfo(ExecutablePath(request.FileName))
         {
             WorkingDirectory = request.WorkingDirectory,
             RedirectStandardOutput = request.CaptureOutput,
@@ -73,6 +73,34 @@ public sealed class ProcessCommandRunner : ICommandRunner
             process.ExitCode,
             await standardOutput.ConfigureAwait(false),
             await standardError.ConfigureAwait(false));
+    }
+
+    private static string ExecutablePath(string fileName)
+    {
+        if (Path.IsPathRooted(fileName) || fileName.Contains(Path.DirectorySeparatorChar) ||
+            fileName.Contains(Path.AltDirectorySeparatorChar))
+        {
+            return fileName;
+        }
+
+        var extensions = OperatingSystem.IsWindows() && !Path.HasExtension(fileName)
+            ? new[] { ".exe", ".com" }
+            : new[] { "" };
+        var folders = (Environment.GetEnvironmentVariable("PATH") ?? "")
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            .Select(folder => folder.Trim('"'))
+            .Where(Path.IsPathFullyQualified);
+        foreach (var folder in folders)
+        {
+            var executable = extensions.Select(extension => Path.Combine(folder, fileName + extension))
+                .FirstOrDefault(File.Exists);
+            if (executable is not null)
+            {
+                return executable;
+            }
+        }
+
+        throw new System.ComponentModel.Win32Exception(2, $"Executable not found on PATH: {fileName}");
     }
 
     private static void AddRequestedEnvironment(ProcessStartInfo startInfo, CommandRequest request)

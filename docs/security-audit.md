@@ -71,7 +71,9 @@ Mitigation: `WorkspaceTrust` and `TrustPrompt`.
 
 Residual:
 - `git rev-parse` runs before the prompt, to find the repository root. It is
-  hardened as described in finding 4.
+  hardened as described in finding 4. Bare executable names are resolved from
+  absolute PATH entries before launch, avoiding implicit current-directory
+  lookup. Explicit configured executable paths remain supported.
 - Declining exits instead of opening a restricted view. DEV-192 tracks a
   restricted mode that keeps the panels that never run `dotnet`.
 

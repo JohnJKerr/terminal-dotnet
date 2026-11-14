@@ -3,6 +3,10 @@ using Xunit;
 
 namespace TerminalDotnet.Tests.Workspace;
 
+[CollectionDefinition("Executable lookup", DisableParallelization = true)]
+public sealed class ExecutableLookupCollection;
+
+[Collection("Executable lookup")]
 public sealed class WhenStartingACommand
 {
     [Fact]
@@ -30,10 +34,11 @@ public sealed class WhenStartingACommand
         Assert.Equal("en", result.StandardOutput.Trim());
     }
     [PosixFact("Executable search is exercised with a POSIX shell script.")]
-    public async Task It_does_not_start_an_executable_from_the_working_folder()
+    public async Task It_does_not_start_an_executable_from_the_launch_folder()
     {
         // Arrange
         var folder = Directory.CreateTempSubdirectory("terminal-dotnet-executable-");
+        var originalDirectory = Environment.CurrentDirectory;
         try
         {
             var executable = Path.Combine(folder.FullName, "sh");
@@ -42,6 +47,7 @@ public sealed class WhenStartingACommand
             {
                 File.SetUnixFileMode(executable, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
             }
+            Environment.CurrentDirectory = folder.FullName;
             var runner = new ProcessCommandRunner();
             var request = new CommandRequest("sh", ["-c", "printf trusted"], folder.FullName);
 
@@ -53,6 +59,7 @@ public sealed class WhenStartingACommand
         }
         finally
         {
+            Environment.CurrentDirectory = originalDirectory;
             folder.Delete(recursive: true);
         }
     }
