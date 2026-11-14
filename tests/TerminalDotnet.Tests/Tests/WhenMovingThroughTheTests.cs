@@ -60,4 +60,23 @@ public sealed class WhenMovingThroughTheTests
         // Assert
         Assert.Same(source, session.State.SourceLocation);
     }
+    [Fact]
+    public async Task It_keeps_the_latest_source_when_an_earlier_lookup_finishes_last()
+    {
+        // Arrange
+        var locator = new TerminalDotnet.Tests.Fakes.HeldTestSource();
+        var session = await GivenA.TestExplorer()
+            .WithTests(GivenA.TestCase("Shop.Tests.CartTests.Adds_item"))
+            .WithSourceLocator(locator)
+            .LoadedAsync();
+        var earlier = session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
+        await session.DispatchAsync(new ExplorerCommand.LoadSelectedSource());
+
+        // Act
+        locator.First.SetResult(new SourceLocation("earlier.cs", 1));
+        await earlier;
+
+        // Assert
+        Assert.Equal("latest.cs", session.State.SourceLocation?.Path);
+    }
 }
