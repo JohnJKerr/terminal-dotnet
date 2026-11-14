@@ -9,6 +9,8 @@ public sealed record CommandRequest(
     string WorkingDirectory,
     bool CaptureOutput = true)
 {
+    public bool InheritStandardInput { get; init; }
+
     public string StandardInput { get; init; } = "";
 
     public Action<string>? OnOutput { get; init; }
@@ -35,7 +37,7 @@ public sealed class ProcessCommandRunner : ICommandRunner
             WorkingDirectory = request.WorkingDirectory,
             RedirectStandardOutput = request.CaptureOutput,
             RedirectStandardError = request.CaptureOutput,
-            RedirectStandardInput = true,
+            RedirectStandardInput = !request.InheritStandardInput,
             UseShellExecute = false
         };
         AddRequestedEnvironment(startInfo, request);
@@ -47,7 +49,10 @@ public sealed class ProcessCommandRunner : ICommandRunner
 
         using var process = Process.Start(startInfo) ??
             throw new InvalidOperationException($"Could not start {request.FileName}.");
-        await WriteStandardInputAsync(process, request).ConfigureAwait(false);
+        if (!request.InheritStandardInput)
+        {
+            await WriteStandardInputAsync(process, request).ConfigureAwait(false);
+        }
         var standardOutput = request.CaptureOutput
             ? ReadAllAsync(process.StandardOutput, request)
             : Task.FromResult(string.Empty);
