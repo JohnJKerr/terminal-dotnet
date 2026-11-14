@@ -6,10 +6,10 @@ namespace TerminalDotnet.Tests.Fakes;
 internal sealed class HeldTestSource : ITestSourceLocator
 {
     public TaskCompletionSource<SourceLocation?> First { get; } = new();
-    private int calls;
+    private int _calls;
 
     public Task<SourceLocation?> LocateAsync(TestCase test, CancellationToken cancellationToken = default) =>
-        Interlocked.Increment(ref calls) == 1
+        Interlocked.Increment(ref _calls) == 1
             ? First.Task
             : Task.FromResult<SourceLocation?>(new SourceLocation("latest.cs", 2));
 }

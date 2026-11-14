@@ -15,7 +15,7 @@ public interface ITestSourceLocator
 
 public sealed class FileTestSourceLocator : ITestSourceLocator
 {
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<(string Project, string Class), string> classFiles = new();
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(string Project, string Class), string> _classFiles = new();
 
     /// <summary>Scans the project's sources, which takes long enough that it
     /// is kept off whichever thread asked.</summary>
@@ -41,7 +41,7 @@ public sealed class FileTestSourceLocator : ITestSourceLocator
         var classDeclaration = new Regex($@"\bclass\s+{Regex.Escape(parts[^2])}\b");
         var methodDeclaration = new Regex($@"\b{Regex.Escape(parts[^1])}\s*\(");
         var key = (projectDirectory, parts[^2]);
-        if (classFiles.TryGetValue(key, out var cached) && File.Exists(cached))
+        if (_classFiles.TryGetValue(key, out var cached) && File.Exists(cached))
         {
             var location = LocationIn(cached, classDeclaration, methodDeclaration);
             if (location is not null)
@@ -59,7 +59,7 @@ public sealed class FileTestSourceLocator : ITestSourceLocator
             .FirstOrDefault(location => location is not null);
         if (found is not null)
         {
-            classFiles[key] = found.Path;
+            _classFiles[key] = found.Path;
         }
 
         return found;

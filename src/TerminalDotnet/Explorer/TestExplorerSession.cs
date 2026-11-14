@@ -189,7 +189,7 @@ public sealed class TestExplorerSession(
         return Task.CompletedTask;
     }
 
-    private long sourceLookup;
+    private long _sourceLookup;
 
     private async Task LoadSelectedSourceAsync(CancellationToken cancellationToken)
     {
@@ -198,10 +198,10 @@ public sealed class TestExplorerSession(
             return;
         }
 
-        var lookup = Interlocked.Increment(ref sourceLookup);
+        var lookup = Interlocked.Increment(ref _sourceLookup);
         var selected = State.VisibleNodes[State.SelectedIndex];
         var source = await testSourceLocator.LocateAsync(selected.Tests[0], cancellationToken);
-        if (lookup == Volatile.Read(ref sourceLookup) &&
+        if (lookup == Volatile.Read(ref _sourceLookup) &&
             State.VisibleNodes.Count > State.SelectedIndex &&
             State.VisibleNodes[State.SelectedIndex] == selected)
         {
